@@ -22,6 +22,7 @@ import {
   Settings
 } from 'lucide-react';
 import { MethodologyToolkit } from './components/MethodologyToolkit';
+import { InfoTooltip } from './components/InfoTooltip';
 import { 
   DndContext, 
   closestCorners, 
@@ -957,6 +958,7 @@ Verifica la consola para más detalles.`);
         >
           <GitBranch size={18} />
           <span style={{ fontWeight: 500 }}>01. Design</span>
+          <InfoTooltip content="Define tu hipótesis de crecimiento. Estructura: 'Si hacemos [Acción], entonces veremos un cambio en [Métrica] porque [Razón estratégica]'. No lances experimentos sin una tesis clara." position="right" />
         </button>
 
         <button 
@@ -966,6 +968,7 @@ Verifica la consola para más detalles.`);
         >
           <TableIcon size={18} />
           <span style={{ fontWeight: 500 }}>02. Explore</span>
+          <InfoTooltip content="Usa el framework ICE para decidir qué probar primero. Evalúa el Impacto potencial, la Confianza en que funcionará y la Facilidad (Ease) de ejecución. Prioriza lo que mueva la aguja con el menor esfuerzo." position="right" />
         </button>
 
         <button 
@@ -975,6 +978,7 @@ Verifica la consola para más detalles.`);
         >
           <LayoutDashboard size={18} />
           <span style={{ fontWeight: 500 }}>03. Be Agile</span>
+          <InfoTooltip content="Este es tu motor de High-Tempo Testing. Mueve los experimentos de 'Builders' a 'Live Testers' rápidamente para generar datos reales. El objetivo es la velocidad de aprendizaje, no la perfección inicial." position="right" />
         </button>
 
         <button 
@@ -984,6 +988,7 @@ Verifica la consola para más detalles.`);
         >
           <Book size={18} />
           <span style={{ fontWeight: 500 }}>04. Learning</span>
+          <InfoTooltip content="Cierra el Growth Loop. Documenta aquí si la hipótesis se validó o se rechazó. El aprendizaje es el activo más valioso; un experimento 'fallido' es un éxito si nos dice qué no hacer en el futuro." position="right" />
         </button>
 
         <div style={{ marginTop: 'auto' }}>
