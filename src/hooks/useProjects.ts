@@ -88,11 +88,13 @@ export function useProjects() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'projects' },
-        () => fetchProjects()
+        () => { fetchProjects(); }
       )
       .subscribe();
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   return {

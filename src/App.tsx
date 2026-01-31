@@ -889,8 +889,12 @@ Verifica la consola para más detalles.`);
             onChange={(e) => {
               if (e.target.value === '__create_new__') {
                 setIsCreateProjectOpen(true);
-                // Reset to current project
-                setTimeout(() => e.target.value = activeProjectId, 0);
+                // Reset to current project or empty
+                setTimeout(() => {
+                  if (e.target) {
+                    e.target.value = activeProjectId || '';
+                  }
+                }, 0);
               } else {
                 setActiveProjectId(e.target.value);
               }

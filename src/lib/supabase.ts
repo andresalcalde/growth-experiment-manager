@@ -29,5 +29,5 @@ export function handleSupabaseError(error: any, context: string) {
 if (import.meta.env.DEV) {
   supabase.from('projects').select('count').single()
     .then(() => console.log('✅ Supabase connected successfully'))
-    .catch((err) => console.warn('⚠️ Supabase connection issue:', err.message))
+    .catch((err: any) => console.warn('⚠️ Supabase connection issue:', err.message))
 }

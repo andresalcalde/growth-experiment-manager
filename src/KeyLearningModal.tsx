@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Lightbulb } from 'lucide-react';
+import { Lightbulb } from 'lucide-react';
 
 interface KeyLearningModalProps {
   isOpen: boolean;
