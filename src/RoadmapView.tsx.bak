@@ -1,0 +1,671 @@
+import React, { useState } from 'react';
+import { Target, Edit2, Plus, TrendingUp, X, Lightbulb } from 'lucide-react';
+import type { NorthStarMetric, Objective, Strategy, Experiment } from './types';
+
+interface RoadmapViewProps {
+  northStar: NorthStarMetric;
+  onUpdateNorthStar: (updatedNorthStar: NorthStarMetric) => void;
+  objectives: Objective[];
+  strategies: Strategy[];
+  experiments: Experiment[];
+  onAddObjective: (title: string) => void;
+  onAddStrategy: (objectiveId: string, title: string) => void;
+  onSelectExperiment: (exp: Experiment) => void;
+}
+
+type ModalState = 
+  | { type: 'none' } 
+  | { type: 'northstar' } 
+  | { type: 'objective' } 
+  | { type: 'strategy'; objectiveId: string };
+
+export const RoadmapView: React.FC<RoadmapViewProps> = ({ 
+  northStar, 
+  onUpdateNorthStar,
+  objectives,
+  strategies,
+  experiments,
+  onAddObjective,
+  onAddStrategy,
+  onSelectExperiment
+}) => {
+  const [modalState, setModalState] = useState<ModalState>({ type: 'none' });
+  
+  // North Star form state
+  const [nsMetricName, setNsMetricName] = useState('');
+  const [nsCurrentValue, setNsCurrentValue] = useState('');
+  const [nsTargetValue, setNsTargetValue] = useState('');
+  
+  // Objective form state
+  const [objectiveTitle, setObjectiveTitle] = useState('');
+  
+  // Strategy form state
+  const [strategyTitle, setStrategyTitle] = useState('');
+
+  const calculateProgress = () => {
+    if (northStar.targetValue === 0) return 0;
+    return Math.min(100, Math.round((northStar.currentValue / northStar.targetValue) * 100));
+  };
+
+  // Count experiments linked to a strategy
+  const countLinkedExperiments = (strategyId: string): number => {
+    return experiments.filter(exp => exp.linkedStrategyId === strategyId).length;
+  };
+
+  // Handlers
+  const handleOpenNorthStarModal = () => {
+    setNsMetricName(northStar.name);
+    setNsCurrentValue(northStar.currentValue.toString());
+    setNsTargetValue(northStar.targetValue.toString());
+    setModalState({ type: 'northstar' });
+  };
+
+  const handleSaveNorthStar = () => {
+    const current = parseFloat(nsCurrentValue.replace(/,/g, ''));
+    const target = parseFloat(nsTargetValue.replace(/,/g, ''));
+    
+    if (!nsMetricName.trim() || isNaN(current) || isNaN(target)) {
+      alert('Por favor completa todos los campos con valores válidos');
+      return;
+    }
+    
+    onUpdateNorthStar({
+      ...northStar,
+      name: nsMetricName.trim(),
+      currentValue: current,
+      targetValue: target
+    });
+    
+    setModalState({ type: 'none' });
+  };
+
+  const handleOpenObjectiveModal = () => {
+    setObjectiveTitle('');
+    setModalState({ type: 'objective' });
+  };
+
+  const handleSaveObjective = () => {
+    if (!objectiveTitle.trim()) {
+      alert('Por favor ingresa un título');
+      return;
+    }
+    
+    onAddObjective(objectiveTitle.trim());
+    setModalState({ type: 'none' });
+  };
+
+  const handleOpenStrategyModal = (objectiveId: string) => {
+    setStrategyTitle('');
+    setModalState({ type: 'strategy', objectiveId });
+  };
+
+  const handleSaveStrategy = () => {
+    if (modalState.type !== 'strategy') return;
+    
+    if (!strategyTitle.trim()) {
+      alert('Por favor ingresa un título');
+      return;
+    }
+    
+    onAddStrategy(modalState.objectiveId, strategyTitle.trim());
+    setModalState({ type: 'none' });
+  };
+
+  const closeModal = () => {
+    setModalState({ type: 'none' });
+  };
+
+  return (
+    <div style={{ padding: '32px', overflowY: 'auto', height: '100%', position: 'relative' }}>
+      
+      {/* North Star Modal */}
+      {modalState.type === 'northstar' && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            padding: '32px',
+            width: '500px',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 700, margin: 0 }}>Edit North Star Metric</h2>
+              <button 
+                onClick={closeModal}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px'
+                }}
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px' }}>
+                Metric Name
+              </label>
+              <input
+                type="text"
+                value={nsMetricName}
+                onChange={(e) => setNsMetricName(e.target.value)}
+                placeholder="e.g. Monthly Active Users"
+                autoFocus
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  outline: 'none'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px' }}>
+                Current Value ({northStar.unit})
+              </label>
+              <input
+                type="text"
+                value={nsCurrentValue}
+                onChange={(e) => setNsCurrentValue(e.target.value)}
+                placeholder="e.g. 800000"
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  outline: 'none'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px' }}>
+                Target Value ({northStar.unit})
+              </label>
+              <input
+                type="text"
+                value={nsTargetValue}
+                onChange={(e) => setNsTargetValue(e.target.value)}
+                placeholder="e.g. 1000000"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSaveNorthStar();
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  outline: 'none'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={closeModal}
+                style={{
+                  padding: '10px 20px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  background: 'white',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '14px'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveNorthStar}
+                style={{
+                  padding: '10px 20px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  background: '#4f46e5',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '14px'
+                }}
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Objective Modal */}
+      {modalState.type === 'objective' && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            padding: '32px',
+            width: '500px',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 700, margin: 0 }}>New Objective</h2>
+              <button 
+                onClick={closeModal}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px'
+                }}
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px' }}>
+                Objective Title
+              </label>
+              <input
+                type="text"
+                value={objectiveTitle}
+                onChange={(e) => setObjectiveTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSaveObjective();
+                  }
+                }}
+                placeholder="e.g. Expand to Brazil Market"
+                autoFocus
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  outline: 'none'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={closeModal}
+                style={{
+                  padding: '10px 20px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  background: 'white',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '14px'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveObjective}
+                style={{
+                  padding: '10px 20px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  background: '#4f46e5',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '14px'
+                }}
+              >
+                Create Objective
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Strategy Modal */}
+      {modalState.type === 'strategy' && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            padding: '32px',
+            width: '500px',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 700, margin: 0 }}>Add Strategy</h2>
+              <button 
+                onClick={closeModal}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px'
+                }}
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px' }}>
+                Strategy Title
+              </label>
+              <input
+                type="text"
+                value={strategyTitle}
+                onChange={(e) => setStrategyTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSaveStrategy();
+                  }
+                }}
+                placeholder="e.g. SEO Optimization"
+                autoFocus
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  outline: 'none'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={closeModal}
+                style={{
+                  padding: '10px 20px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  background: 'white',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '14px'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveStrategy}
+                style={{
+                  padding: '10px 20px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  background: '#4f46e5',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '14px'
+                }}
+              >
+                Add Strategy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* North Star Section */}
+      <div style={{ 
+        background: 'linear-gradient(135deg, #4f46e5 0%, #312e81 100%)', 
+        borderRadius: '16px', 
+        padding: '32px', 
+        color: 'white',
+        marginBottom: '48px',
+        boxShadow: '0 10px 15px -3px rgba(79, 70, 229, 0.4)'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', opacity: 0.8 }}>
+              <TrendingUp size={20} />
+              <span style={{ textTransform: 'uppercase', letterSpacing: '1px', fontSize: '12px', fontWeight: 600 }}>North Star Metric</span>
+            </div>
+            <h1 style={{ fontSize: '32px', fontWeight: 700, margin: 0 }}>{northStar.name}</h1>
+          </div>
+          <button 
+            onClick={handleOpenNorthStarModal}
+            style={{ 
+              background: 'rgba(255,255,255,0.1)', 
+              border: 'none', 
+              borderRadius: '8px', 
+              padding: '8px', 
+              cursor: 'pointer',
+              color: 'white',
+              transition: 'background 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+          >
+            <Edit2 size={18} />
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: '16px', marginBottom: '16px' }}>
+          <div style={{ fontSize: '48px', fontWeight: 800, lineHeight: 1 }}>
+            {northStar.unit}{northStar.currentValue.toLocaleString()}
+          </div>
+          <div style={{ fontSize: '16px', opacity: 0.7, paddingBottom: '8px' }}>
+             / {northStar.unit}{northStar.targetValue.toLocaleString()} Target
+          </div>
+        </div>
+
+        <div style={{ background: 'rgba(255,255,255,0.2)', height: '8px', borderRadius: '99px', overflow: 'hidden' }}>
+          <div style={{ width: `${calculateProgress()}%`, height: '100%', background: 'white', borderRadius: '99px', transition: 'width 0.3s ease' }}></div>
+        </div>
+        <div style={{ textAlign: 'right', marginTop: '8px', fontSize: '14px', fontWeight: 600, color: '#e0e7ff' }}>
+          {calculateProgress()}% Achieved
+        </div>
+      </div>
+
+      {/* Strategy Roadmap Section */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <h2 style={{ fontSize: '24px', fontWeight: 700 }}>Strategy Roadmap</h2>
+        <button 
+          onClick={handleOpenObjectiveModal}
+          style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '8px', 
+            background: '#4f46e5', 
+            color: 'white', 
+            border: 'none', 
+            borderRadius: '8px', 
+            padding: '10px 16px', 
+            fontWeight: 600, 
+            cursor: 'pointer',
+            transition: 'background 0.2s'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.background = '#4338ca'}
+          onMouseLeave={(e) => e.currentTarget.style.background = '#4f46e5'}
+        >
+          <Plus size={18} />
+          New Objective
+        </button>
+      </div>
+
+      {/* Objectives List */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        {objectives.length === 0 && (
+          <div style={{ padding: '48px', textAlign: 'center', background: 'white', borderRadius: '16px', border: '1px dashed #e5e7eb' }}>
+            <div style={{ background: '#f3f4f6', width: '48px', height: '48px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <Target size={24} style={{ color: '#9ca3af' }} />
+            </div>
+            <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#111827', marginBottom: '8px' }}>No Objectives Yet</h3>
+            <p style={{ color: '#6b7280', fontSize: '14px', maxWidth: '400px', margin: '0 auto 24px' }}>
+              Click the button above to create your first strategic objective.
+            </p>
+            <button 
+              onClick={handleOpenObjectiveModal}
+              style={{ 
+                background: '#4f46e5', 
+                color: 'white', 
+                padding: '10px 20px', 
+                borderRadius: '8px', 
+                border: 'none', 
+                fontWeight: 600, 
+                cursor: 'pointer'
+              }}
+            >
+              Create First Objective
+            </button>
+          </div>
+        )}
+        
+        {objectives.map(objective => {
+          const objectiveStrategies = strategies.filter(s => s.parentObjectiveId === objective.id);
+          
+          return (
+            <div key={objective.id} style={{ 
+              border: '1px solid #e5e7eb', 
+              borderRadius: '12px', 
+              padding: '24px', 
+              background: 'white', 
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
+            }}>
+              {/* Objective Header */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ background: '#eff6ff', padding: '8px', borderRadius: '8px', color: '#4f46e5' }}>
+                    <Target size={24} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#6b7280', fontWeight: 700, letterSpacing: '0.5px' }}>Objective</div>
+                    <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: '#111827' }}>{objective.title}</h3>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleOpenStrategyModal(objective.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 12px',
+                    background: '#f9fafb',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: '#4b5563',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#f3f4f6';
+                    e.currentTarget.style.borderColor = '#d1d5db';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#f9fafb';
+                    e.currentTarget.style.borderColor = '#e5e7eb';
+                  }}
+                >
+                  <Plus size={14} />
+                  Add Strategy
+                </button>
+              </div>
+
+              {/* Strategies List */}
+              {objectiveStrategies.length === 0 ? (
+                <div style={{ 
+                  padding: '24px', 
+                  background: '#f9fafb', 
+                  borderRadius: '8px', 
+                  border: '1px dashed #d1d5db',
+                  textAlign: 'center'
+                }}>
+                  <Lightbulb size={20} style={{ color: '#9ca3af', marginBottom: '8px' }} />
+                  <p style={{ fontSize: '13px', color: '#6b7280', margin: 0 }}>
+                    No strategies added yet. Click "Add Strategy" to create one.
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {objectiveStrategies.map(strategy => {
+                    const linkedCount = countLinkedExperiments(strategy.id);
+                    
+                    return (
+                      <div 
+                        key={strategy.id}
+                        style={{
+                          padding: '16px',
+                          background: '#f9fafb',
+                          borderRadius: '8px',
+                          border: '1px solid #e5e7eb',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: '14px', color: '#111827', marginBottom: '4px' }}>
+                            {strategy.title}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                            {linkedCount} {linkedCount === 1 ? 'Experiment' : 'Experiments'} Linked
+                          </div>
+                        </div>
+                        <div style={{
+                          background: linkedCount > 0 ? '#dcfce7' : '#f3f4f6',
+                          color: linkedCount > 0 ? '#166534' : '#6b7280',
+                          padding: '4px 12px',
+                          borderRadius: '12px',
+                          fontSize: '12px',
+                          fontWeight: 600
+                        }}>
+                          {linkedCount}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};

@@ -1,0 +1,42 @@
+const App: React.FC = () => { console.log("🚀 CONEXIÓN ENTERPRISE ACTIVADA: oumhhngnwjijtmgpnhba");
+  const [view, setView] = useState<'board' | 'table' | 'library' | 'roadmap'>('board');
+  
+  // =======================================
+  // SUPABASE ENTERPRISE INTEGRATION
+  // =======================================
+  const { projects, loading: projectsLoading, createProject: createProjectDB } = useProjects();
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  
+  // Auto-select first project when loaded
+  useEffect(() => {
+    if (projects.length > 0 && !activeProjectId) {
+      console.log('📌 Auto-selecting project:', projects[0].id);
+      setActiveProjectId(projects[0].id);
+    }
+  }, [projects, activeProjectId]);
+  
+  const { 
+    experiments = [],
+    loading: experimentsLoading, 
+    updateExperiment: updateExperimentDB, 
+    createExperiment: createExperimentDB, 
+    deleteExperiment: deleteExperimentDB 
+  } = useExperiments(activeProjectId);
+  
+  const { 
+    northStar, 
+    loading: northStarLoading, 
+    updateNorthStar: updateNorthStarDB 
+  } = useNorthStar(activeProjectId);
+  
+  // Global Team Members State
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>(INITIAL_TEAM_MEMBERS);
+  
+  // Modal States
+  const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  
+  // Temporary
+  const objectives: Objective[] = [];
+  const strategies: Strategy[] = [];
+  
