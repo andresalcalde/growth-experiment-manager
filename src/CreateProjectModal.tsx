@@ -66,7 +66,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
   };
 
   const handleFinish = () => {
-    const projectId = `project-${Date.now()}`;
+    // ✅ NO generar ID aquí - Supabase lo generará automáticamente
     
     const northStar: NorthStarMetric = {
       name: metricName,
@@ -194,7 +194,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
 
     const newProject: Project = {
       metadata: {
-        id: projectId,
+        id: '', // ✅ Vacío - Supabase generará el UUID
         name: projectName,
         logo: projectLogo,
         createdAt: new Date().toISOString(),
