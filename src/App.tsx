@@ -1,8 +1,4 @@
-// Rebuild trigger: Sat Jan 31 08:51:58 CST 2026
-import React, { useState, useEffect } from 'react';
-import { useProjects } from './hooks/useProjects';
-import { useExperiments } from './hooks/useExperiments';
-import { useNorthStar } from './hooks/useNorthStar';
+import React, { useState } from 'react';
 import { 
   Plus, 
   LayoutDashboard, 
@@ -23,7 +19,6 @@ import {
   Settings
 } from 'lucide-react';
 import { MethodologyToolkit } from './components/MethodologyToolkit';
-import { InfoTooltip } from './components/InfoTooltip';
 import { 
   DndContext, 
   closestCorners, 
@@ -51,12 +46,13 @@ import { CSS } from '@dnd-kit/utilities';
 import type { Status, Experiment, Objective, Strategy, NorthStarMetric, FunnelStage, Project, TeamMember } from './types';
 import { CreateProjectModal } from './CreateProjectModal';
 import { SettingsView } from './SettingsView';
+import { PortfolioView } from './PortfolioView';
 import { ExperimentDrawer } from './ExperimentDrawer';
 import { RoadmapView } from './RoadmapView';
 import { ExperimentModal } from './ExperimentModal';
 import type { ExperimentFormData } from './ExperimentModal';
 import { KeyLearningModal } from './KeyLearningModal';
-// MOCK DATA REMOVED - Using Supabase Enterprise
+import { POLANCO_NORTH_STAR, POLANCO_OBJECTIVES, POLANCO_STRATEGIES, POLANCO_EXPERIMENTS } from './laboratorioPolancoData';
 
 
 // Original MOCK_EXPERIMENTS replaced with Laboratorio Polanco data
@@ -443,36 +439,11 @@ const CaseStudyModal = ({ experiment, onClose }: { experiment: Experiment; onClo
 
 
 
-const App: React.FC = () => { console.log("🚀 CONEXIÓN ENTERPRISE ACTIVADA: oumhhngnwjijtmgpnhba");
-  const [view, setView] = useState<'board' | 'table' | 'library' | 'roadmap'>('board');
+const App: React.FC = () => { console.log("App rendering");
+  const [view, setView] = useState<'portfolio' | 'board' | 'table' | 'library' | 'roadmap'>('portfolio');
   
-  // =======================================
-  // SUPABASE ENTERPRISE INTEGRATION
-  // =======================================
-  const { projects, loading: projectsLoading, createProject: createProjectDB } = useProjects();
-  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
-  
-  // Auto-select first project when loaded
-  useEffect(() => {
-    if (projects.length > 0 && !activeProjectId) {
-      console.log('📌 Auto-selecting project:', projects[0].id);
-      setActiveProjectId(projects[0].id);
-    }
-  }, [projects, activeProjectId]);
-  
-  const { 
-    experiments = [],
-    loading: experimentsLoading, 
-    updateExperiment: updateExperimentDB, 
-    createExperiment: createExperimentDB, 
-    deleteExperiment: deleteExperimentDB 
-  } = useExperiments(activeProjectId);
-  
-  const { 
-    northStar, 
-    loading: northStarLoading, 
-    updateNorthStar: updateNorthStarDB 
-  } = useNorthStar(activeProjectId);
+  // Multi-Project State Management
+  const [activeProjectId, setActiveProjectId] = useState<string>('lab-polanco');
   
   // Global Team Members State
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>(INITIAL_TEAM_MEMBERS);
@@ -480,11 +451,76 @@ const App: React.FC = () => { console.log("🚀 CONEXIÓN ENTERPRISE ACTIVADA: o
   // Modal States
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  
-  // Temporary
-  const objectives: Objective[] = [];
-  const strategies: Strategy[] = [];
-  
+  const [projects, setProjects] = useState<Project[]>([
+    {
+      metadata: {
+        id: 'lab-polanco',
+        name: 'Laboratorio Polanco',
+        createdAt: new Date().toISOString(),
+      },
+      northStar: POLANCO_NORTH_STAR,
+      objectives: POLANCO_OBJECTIVES,
+      strategies: POLANCO_STRATEGIES,
+      experiments: POLANCO_EXPERIMENTS,
+    },
+    {
+      metadata: {
+        id: 'demo-project',
+        name: 'Demo Project',
+        createdAt: new Date().toISOString(),
+      },
+      northStar: {
+        name: 'Revenue',
+        currentValue: 0,
+        targetValue: 0,
+        unit: '$',
+        type: 'currency'
+      },
+      objectives: [],
+      strategies: [],
+      experiments: [],
+    }
+  ]);
+
+  // Derived state from active project
+  const activeProject = projects.find(p => p.metadata.id === activeProjectId) || projects[0];
+  const northStar = activeProject.northStar;
+  const objectives = activeProject.objectives;
+  const strategies = activeProject.strategies;
+  const experiments = activeProject.experiments;
+
+  // Update functions now modify the active project
+  const setNorthStar = (updater: NorthStarMetric | ((prev: NorthStarMetric) => NorthStarMetric)) => {
+    setProjects(prev => prev.map(p =>
+      p.metadata.id === activeProjectId
+        ? { ...p, northStar: typeof updater === 'function' ? updater(p.northStar) : updater }
+        : p
+    ));
+  };
+
+  const setObjectives = (updater: Objective[] | ((prev: Objective[]) => Objective[])) => {
+    setProjects(prev => prev.map(p =>
+      p.metadata.id === activeProjectId
+        ? { ...p, objectives: typeof updater === 'function' ? updater(p.objectives) : updater }
+        : p
+    ));
+  };
+
+  const setStrategies = (updater: Strategy[] | ((prev: Strategy[]) => Strategy[])) => {
+    setProjects(prev => prev.map(p =>
+      p.metadata.id === activeProjectId
+        ? { ...p, strategies: typeof updater === 'function' ? updater(p.strategies) : updater }
+        : p
+    ));
+  };
+
+  const setExperiments = (updater: Experiment[] | ((prev: Experiment[]) => Experiment[])) => {
+    setProjects(prev => prev.map(p =>
+      p.metadata.id === activeProjectId
+        ? { ...p, experiments: typeof updater === 'function' ? updater(p.experiments) : updater }
+        : p
+    ));
+  };
   const [selectedExperiment, setSelectedExperiment] = useState<Experiment | null>(null);
   const [selectedCaseStudy, setSelectedCaseStudy] = useState<Experiment | null>(null);
   
@@ -777,65 +813,39 @@ const App: React.FC = () => { console.log("🚀 CONEXIÓN ENTERPRISE ACTIVADA: o
     ));
   };
 
-  // Project Management Handlers
-  const handleCreateProject = async (newProject: Project) => {
-    console.log('➕ Creating project via Supabase:', newProject);
+  // ============================================================================
+  // PORTFOLIO NAVIGATION HANDLERS
+  // ============================================================================
+  
+  const handleSelectProjectFromPortfolio = (projectId: string) => {
+    console.log('📂 Selected project from portfolio:', projectId);
+    setActiveProjectId(projectId);
+    setView('roadmap'); // Navigate to Design/Roadmap view
+    
+    // Persist to localStorage for session continuity
+    try {
+      localStorage.setItem('lastActiveProjectId', projectId);
+    } catch (error) {
+      console.warn('Failed to save to localStorage:', error);
+    }
+  };
+  
+  const handleBackToPortfolio = () => {
+    console.log('🏠 Returning to portfolio');
+    setActiveProjectId(null);
+    setView('portfolio');
     
     try {
-      // Create project in Supabase
-      const projectData = {
-        name: newProject.metadata.name
-      };
-      
-      const createdProject = await createProjectDB(projectData);
-      
-      if (!createdProject) {
-        throw new Error('Failed to create project - no data returned');
-      }
-      
-      console.log('✅ Project created successfully:', createdProject);
-      
-      // Auto-select the new project
-      setActiveProjectId(createdProject.id);
-      
-      // Create experiments if they exist in the template
-      if (newProject.experiments && newProject.experiments.length > 0) {
-        console.log(`📦 Creating ${newProject.experiments.length} template experiments...`);
-        
-        for (const exp of newProject.experiments) {
-          try {
-            await createExperimentDB({
-              project_id: createdProject.id,
-              title: exp.title,
-              status: exp.status,
-              hypothesis: exp.hypothesis || '',
-              observation: exp.observation || '',
-              problem: exp.problem || '',
-              impact: exp.impact,
-              confidence: exp.confidence,
-              ease: exp.ease,
-              ice_score: exp.iceScore,
-              funnel_stage: exp.funnelStage,
-              north_star_metric: exp.northStarMetric,
-              linked_strategy_id: exp.linkedStrategy || null,
-              owner_id: exp.owner?.id || null
-            });
-          } catch (expError: any) {
-            console.warn(`⚠️ Failed to create experiment "${exp.title}":`, expError.message);
-          }
-        }
-        
-        console.log('✅ Template experiments created');
-      }
-      
-      alert(`✅ Proyecto "${createdProject.name}" creado exitosamente!`);
-      
-    } catch (error: any) {
-      console.error('❌ Error creating project:', error);
-      alert(`❌ Error al crear proyecto: ${error.message || 'Unknown error'}
-
-Verifica la consola para más detalles.`);
+      localStorage.removeItem('lastActiveProjectId');
+    } catch (error) {
+      console.warn('Failed to clear localStorage:', error);
     }
+  };
+
+  // Project Management Handlers
+  const handleCreateProject = (newProject: Project) => {
+    setProjects(prev => [...prev, newProject]);
+    setActiveProjectId(newProject.metadata.id);
   };
 
   // Team Management Handlers
@@ -855,6 +865,23 @@ Verifica la consola para más detalles.`);
 
 
 
+  // ============================================================================
+  // RENDER
+  // ============================================================================
+  
+  // Portfolio View - Show when no project is selected or view is 'portfolio'
+  if (view === 'portfolio') {
+    return (
+      <PortfolioView
+        projects={projects}
+        onSelectProject={handleSelectProjectFromPortfolio}
+        onCreateProject={() => setIsCreateProjectOpen(true)}
+        loading={projectsLoading}
+      />
+    );
+  }
+
+  // Main App View - Show when project is selected
   return (
     <div className="app-container">
       {/* Sidebar - Simplified for brevity in this view */}
@@ -887,16 +914,12 @@ Verifica la consola para más detalles.`);
             Active Project
           </label>
           <select
-            value={activeProjectId || ''}
+            value={activeProjectId}
             onChange={(e) => {
               if (e.target.value === '__create_new__') {
                 setIsCreateProjectOpen(true);
-                // Reset to current project or empty
-                setTimeout(() => {
-                  if (e.target) {
-                    e.target.value = activeProjectId || '';
-                  }
-                }, 0);
+                // Reset to current project
+                setTimeout(() => e.target.value = activeProjectId, 0);
               } else {
                 setActiveProjectId(e.target.value);
               }
@@ -915,8 +938,8 @@ Verifica la consola para más detalles.`);
             }}
           >
             {projects.map(project => (
-              <option key={project.id} value={project.id}>
-                📁 {project.name}
+              <option key={project.metadata.id} value={project.metadata.id}>
+                {project.metadata.logo || '📁'} {project.metadata.name}
               </option>
             ))}
             <option value="__create_new__" style={{ color: '#4F46E5', fontWeight: 700 }}>
@@ -940,13 +963,7 @@ Verifica la consola para más detalles.`);
             alignItems: 'center',
             gap: '8px'
           }}
-          onClick={() => {
-            if (!activeProjectId) {
-              alert('❌ Primero debes crear o seleccionar un proyecto');
-              return;
-            }
-            setIsNewModalOpen(true);
-          }}
+          onClick={() => setIsNewModalOpen(true)}
         >
           <Plus size={18} />
           New Experiment
@@ -959,7 +976,6 @@ Verifica la consola para más detalles.`);
         >
           <GitBranch size={18} />
           <span style={{ fontWeight: 500 }}>01. Design</span>
-          <InfoTooltip content="Define tu hipótesis de crecimiento. Estructura: 'Si hacemos [Acción], entonces veremos un cambio en [Métrica] porque [Razón estratégica]'. No lances experimentos sin una tesis clara." position="right" />
         </button>
 
         <button 
@@ -969,7 +985,6 @@ Verifica la consola para más detalles.`);
         >
           <TableIcon size={18} />
           <span style={{ fontWeight: 500 }}>02. Explore</span>
-          <InfoTooltip content="Usa el framework ICE para decidir qué probar primero. Evalúa el Impacto potencial, la Confianza en que funcionará y la Facilidad (Ease) de ejecución. Prioriza lo que mueva la aguja con el menor esfuerzo." position="right" />
         </button>
 
         <button 
@@ -979,7 +994,6 @@ Verifica la consola para más detalles.`);
         >
           <LayoutDashboard size={18} />
           <span style={{ fontWeight: 500 }}>03. Be Agile</span>
-          <InfoTooltip content="Este es tu motor de High-Tempo Testing. Mueve los experimentos de 'Builders' a 'Live Testers' rápidamente para generar datos reales. El objetivo es la velocidad de aprendizaje, no la perfección inicial." position="right" />
         </button>
 
         <button 
@@ -989,7 +1003,6 @@ Verifica la consola para más detalles.`);
         >
           <Book size={18} />
           <span style={{ fontWeight: 500 }}>04. Learning</span>
-          <InfoTooltip content="Cierra el Growth Loop. Documenta aquí si la hipótesis se validó o se rechazó. El aprendizaje es el activo más valioso; un experimento 'fallido' es un éxito si nos dice qué no hacer en el futuro." position="right" />
         </button>
 
         <div style={{ marginTop: 'auto' }}>
