@@ -876,7 +876,7 @@ const App: React.FC = () => { console.log("App rendering");
         projects={projects}
         onSelectProject={handleSelectProjectFromPortfolio}
         onCreateProject={() => setIsCreateProjectOpen(true)}
-        loading={projectsLoading}
+        loading={false}
       />
     );
   }
