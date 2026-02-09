@@ -439,8 +439,8 @@ const CaseStudyModal = ({ experiment, onClose }: { experiment: Experiment; onClo
 
 
 
-const App: React.FC = () => { console.log("App rendering");
-  const [view, setView] = useState<'portfolio' | 'board' | 'table' | 'library' | 'roadmap'>('portfolio');
+const App: React.FC = () => {
+  const [view, setView] = useState<'portfolio' | 'board' | 'table' | 'library' | 'roadmap'>('roadmap');
   
   // Multi-Project State Management
   const [activeProjectId, setActiveProjectId] = useState<string>('lab-polanco');
@@ -832,8 +832,7 @@ const App: React.FC = () => { console.log("App rendering");
   
   const handleBackToPortfolio = () => {
     console.log('🏠 Returning to portfolio');
-    setActiveProjectId(null);
-    setView('portfolio');
+    setView('roadmap');
     
     try {
       localStorage.removeItem('lastActiveProjectId');

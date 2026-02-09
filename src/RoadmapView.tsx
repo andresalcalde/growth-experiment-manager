@@ -39,21 +39,21 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
   onDeleteObjective
 }) => {
   const [modalState, setModalState] = useState<ModalState>({ type: 'none' });
-  // Safety check: If no northStar data, show empty state
+  // Safety check: Strategy-First Empty State
   if (!northStar) {
     return (
-      <div style={{ 
-        padding: '40px', 
-        textAlign: 'center',
-        color: '#6b7280'
-      }}>
-        <Target size={48} style={{ margin: '0 auto 16px', opacity: 0.3 }} />
-        <h3 style={{ marginBottom: '8px' }}>No Project Selected</h3>
-        <p>Please create a project to start using the roadmap.</p>
+      <div style={{ padding: "60px 40px", textAlign: "center", maxWidth: "600px", margin: "0 auto" }}>
+        <div style={{ width: "80px", height: "80px", borderRadius: "20px", background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", boxShadow: "0 8px 24px rgba(102, 126, 234, 0.3)" }}>
+          <Target size={40} color="white" />
+        </div>
+        <h2 style={{ fontSize: "28px", fontWeight: 700, color: "#111827", marginBottom: "12px", letterSpacing: "-0.02em" }}>Define tu Estrategia de Crecimiento</h2>
+        <p style={{ fontSize: "16px", color: "#6b7280", lineHeight: 1.6, marginBottom: "32px" }}>Antes de crear experimentos, define tu North Star Metric y objetivos estratégicos. Este enfoque Strategy-First asegura que cada experimento esté alineado con tus metas.</p>
+        <button onClick={() => onUpdateNorthStar({ name: "Revenue", currentValue: 0, targetValue: 0, unit: "$", type: "currency" })} style={{ padding: "16px 32px", background: "linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)", color: "white", border: "none", borderRadius: "12px", fontSize: "16px", fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "10px", boxShadow: "0 4px 12px rgba(79, 70, 229, 0.4)" }}>
+          <Plus size={20} /> Definir Objetivo Estratégico
+        </button>
       </div>
     );
   }
-
   
   // North Star form state
   const [nsMetricName, setNsMetricName] = useState('');
