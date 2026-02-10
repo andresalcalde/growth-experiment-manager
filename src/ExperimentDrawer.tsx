@@ -90,7 +90,29 @@ export const ExperimentDrawer: React.FC<ExperimentDrawerProps> = ({
   };
 
   const handleImageUpload = () => {
-    alert('Image upload functionality - coming soon!\nIntegrate with your file storage service.');
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.multiple = true;
+    input.onchange = (e) => {
+      const files = (e.target as HTMLInputElement).files;
+      if (!files) return;
+      Array.from(files).forEach(file => {
+        if (file.size > 5*1024*1024) { alert('Max 5MB'); return; }
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const d = ev.target?.result as string;
+          const cur = experiment.visualProof || [];
+          onExperimentUpdate(experiment.id, { visualProof: [...cur, d] });
+        };
+        reader.readAsDataURL(file);
+      });
+    };
+    input.click();
+  };
+  const handleRemoveImage = (idx: number) => {
+    const cur = experiment.visualProof || [];
+    onExperimentUpdate(experiment.id, { visualProof: cur.filter((_,i)=>i!==idx) });
   };
 
   return (
@@ -658,8 +680,13 @@ export const ExperimentDrawer: React.FC<ExperimentDrawerProps> = ({
                  <div className="label">Visual Proof</div>
                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '12px', marginTop: '12px' }}>
                     {experiment.visualProof && experiment.visualProof.map((proof, i) => (
-                      <div key={i} style={{ aspectRatio: '16/9', background: '#eee', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-subtle)', fontSize: '12px', fontWeight: 500, border: '1px solid var(--border-subtle)' }}>
-                         {proof}
+                      <div key={i} style={{ position: 'relative', aspectRatio: '16/9', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+                        {proof.startsWith('data:') ? (
+                          <img src={proof} alt={'Proof'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <div style={{ width: '100%', height: '100%', background: '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{proof}</div>
+                        )}
+                        <button onClick={() => handleRemoveImage(i)} style={{ position: 'absolute', top: '4px', right: '4px', width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', cursor: 'pointer', fontSize: '14px' }}>x</button>
                       </div>
                     ))}
                     <button 
