@@ -36,3 +36,4 @@ supabase/.env
 *.BEFORE_*
 *.backup
 
+.vercel
