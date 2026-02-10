@@ -376,11 +376,17 @@ const CaseStudyModal = ({ experiment, onClose }: { experiment: Experiment; onClo
                   <div style={{ marginBottom: '32px' }}>
                      <h3 style={{ fontSize: '14px', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-subtle)', marginBottom: '12px' }}>The Evidence</h3>
                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                        {experiment.visualProof?.map((proof, i) => (
-                           <div key={i} style={{ aspectRatio: '16/9', background: '#f3f4f6', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-subtle)' }}>
-                              <span style={{ fontSize: '12px', color: 'var(--text-subtle)' }}>{proof}</span>
-                           </div>
-                        ))}
+                         {experiment.visualProof?.map((proof, i) => (
+                            <div key={i} style={{ aspectRatio: '16/9', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+                               {proof.startsWith('data:') ? (
+                                  <img src={proof} alt={'Evidence ' + (i+1)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                               ) : (
+                                  <div style={{ width: '100%', height: '100%', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                     <span style={{ fontSize: '12px', color: 'var(--text-subtle)' }}>{proof}</span>
+                                  </div>
+                               )}
+                            </div>
+                         ))}
                         {(!experiment.visualProof || experiment.visualProof.length === 0) && (
                            <div style={{ aspectRatio: '16/9', background: '#f3f4f6', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed var(--border-subtle)', gridColumn: 'span 2' }}>
                               <span style={{ fontSize: '12px', color: 'var(--text-subtle)' }}>No visual evidence attached</span>
@@ -390,12 +396,18 @@ const CaseStudyModal = ({ experiment, onClose }: { experiment: Experiment; onClo
                   </div>
 
                   <div>
-                     <h3 style={{ fontSize: '14px', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-subtle)', marginBottom: '12px' }}>The Verdict</h3>
-                     <div style={{ background: highlightColor, padding: '24px', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.05)' }}>
-                        <p style={{ fontSize: '18px', fontWeight: 500, lineHeight: '1.5' }}>
-                           {experiment.keyLearnings || "No key learnings recorded."}
-                        </p>
-                     </div>
+                      <h3 style={{ fontSize: '14px', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-subtle)', marginBottom: '12px' }}>Key Learnings</h3>
+                      <div style={{ background: highlightColor, padding: '24px', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.05)' }}>
+                         {experiment.keyLearnings ? (
+                            <p style={{ fontSize: '18px', fontWeight: 500, lineHeight: '1.5', margin: 0 }}>
+                               {experiment.keyLearnings}
+                            </p>
+                         ) : (
+                            <p style={{ fontSize: '16px', color: 'var(--text-muted)', fontStyle: 'italic', margin: 0 }}>
+                               No key learnings recorded yet.
+                            </p>
+                         )}
+                      </div>
                   </div>
                </div>
 
