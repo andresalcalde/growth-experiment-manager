@@ -492,10 +492,18 @@ const App: React.FC = () => {
     try {
       const saved = localStorage.getItem('gem-projects');
       if (saved) {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        // Validate that saved data has correct structure
+        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].metadata && parsed[0].metadata.id) {
+          return parsed;
+        }
+        // Data is corrupted or old format, clear it
+        console.warn('Saved projects data is invalid, using defaults');
+        localStorage.removeItem('gem-projects');
       }
     } catch (e) {
       console.warn('Failed to load saved projects:', e);
+      localStorage.removeItem('gem-projects');
     }
     return [
     {
