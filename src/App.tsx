@@ -287,11 +287,11 @@ const LibraryCard = ({ experiment, onClick }: { experiment: Experiment; onClick:
       {/* Hero Image */}
       <div style={{ height: '160px', background: '#f3f4f6', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {hasImage ? (
-           <div style={{ width: '100%', height: '100%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>
-             <ImageIcon2 size={32} />
-           </div>
+           <img src={experiment.visualProof![0]} alt={experiment.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
-           <div style={{ width: '100%', height: '100%', background: 'linear-gradient(45deg, #f3f4f6, #e5e7eb)' }} />
+           <div style={{ width: '100%', height: '100%', background: 'linear-gradient(45deg, #f3f4f6, #e5e7eb)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>
+             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+           </div>
         )}
         
         {/* Result Badge */}
