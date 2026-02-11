@@ -382,7 +382,6 @@ const CaseStudyModal = ({ experiment, onClose }: { experiment: Experiment; onClo
                             <div key={i} style={{ aspectRatio: '16/9', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
                                {proof.startsWith('data:') ? (
                                   <img src={proof} alt={'Evidence ' + (i+1)} style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); setLightboxImage(proof); }} />
-                                  <img src={proof} alt={'Evidence ' + (i+1)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                ) : (
                                   <div style={{ width: '100%', height: '100%', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                      <span style={{ fontSize: '12px', color: 'var(--text-subtle)' }}>{proof}</span>
