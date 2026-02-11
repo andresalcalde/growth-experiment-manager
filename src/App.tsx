@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   LayoutDashboard, 
@@ -487,7 +487,17 @@ const App: React.FC = () => {
   // Modal States
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [projects, setProjects] = useState<Project[]>([
+  // Load projects from localStorage, fallback to defaults
+  const getInitialProjects = (): Project[] => {
+    try {
+      const saved = localStorage.getItem('gem-projects');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.warn('Failed to load saved projects:', e);
+    }
+    return [
     {
       metadata: {
         id: 'lab-polanco',
@@ -516,7 +526,9 @@ const App: React.FC = () => {
       strategies: [],
       experiments: [],
     }
-  ]);
+    ];
+  };
+  const [projects, setProjects] = useState<Project[]>(getInitialProjects);
 
   // Derived state from active project
   const activeProject = projects.find(p => p.metadata.id === activeProjectId) || projects[0];
@@ -557,6 +569,16 @@ const App: React.FC = () => {
         : p
     ));
   };
+
+  // Auto-save projects to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('gem-projects', JSON.stringify(projects));
+    } catch (e) {
+      console.warn('Failed to save projects:', e);
+    }
+  }, [projects]);
+
   const [selectedExperiment, setSelectedExperiment] = useState<Experiment | null>(null);
   const [selectedCaseStudy, setSelectedCaseStudy] = useState<Experiment | null>(null);
   
