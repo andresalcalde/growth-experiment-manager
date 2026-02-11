@@ -1311,16 +1311,19 @@ const App: React.FC = () => {
                           <option value="Building">Building</option>
                           <option value="Live Testing">Live Testing</option>
                           <option value="Analysis">Analysis</option>
+                          <option value="Finished - Winner">✅ Winner</option>
+                          <option value="Finished - Loser">❌ Loser</option>
+                          <option value="Finished - Inconclusive">⚪ Inconclusive</option>
                         </select>
                       </td>
-                      <td style={{ textAlign: 'center', fontWeight: 600, color: '#374151' }}>
-                        {exp.impact}
+                      <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                        <EditableCell value={exp.impact} onChange={(v) => updateIceScore(exp.id, 'impact', v)} />
                       </td>
-                      <td style={{ textAlign: 'center', fontWeight: 600, color: '#374151' }}>
-                        {exp.confidence}
+                      <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                        <EditableCell value={exp.confidence} onChange={(v) => updateIceScore(exp.id, 'confidence', v)} />
                       </td>
-                      <td style={{ textAlign: 'center', fontWeight: 600, color: '#374151' }}>
-                        {exp.ease}
+                      <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                        <EditableCell value={exp.ease} onChange={(v) => updateIceScore(exp.id, 'ease', v)} />
                       </td>
                       <td style={{ textAlign: 'center' }}>
                         <div 

@@ -435,3 +435,111 @@ button {
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
+
+/* ===== QA IMPROVEMENTS ===== */
+
+/* Smoother table hover with transition */
+.data-table tr {
+  transition: background-color 0.15s ease;
+}
+
+.data-table tr:hover td {
+  background-color: #F5F3FF;
+}
+
+/* Better Kanban column styling */
+.kanban-column {
+  background: rgba(0,0,0,0.02);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+/* Empty state animation */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.empty-state {
+  animation: fadeInUp 0.4s ease-out;
+}
+
+/* Experiment card subtle hover glow */
+.experiment-card:hover {
+  border-color: rgba(79, 70, 229, 0.3);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.08);
+}
+
+/* Better tab active state in sidebar */
+.tab.active {
+  background: var(--accent-soft) !important;
+  color: var(--accent) !important;
+  font-weight: 600;
+}
+
+/* Drawer animation */
+.drawer {
+  animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+/* Status select better styling */
+.data-table select {
+  transition: all 0.2s;
+}
+
+.data-table select:hover {
+  opacity: 0.8;
+}
+
+/* Scrollbar styling */
+.main-content::-webkit-scrollbar,
+.drawer-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.main-content::-webkit-scrollbar-track,
+.drawer-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.main-content::-webkit-scrollbar-thumb,
+.drawer-content::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 3px;
+}
+
+.main-content::-webkit-scrollbar-thumb:hover,
+.drawer-content::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+}
+
+/* ICE badge pulse for high scores */
+.ice-high {
+  animation: subtlePulse 3s ease-in-out infinite;
+}
+
+@keyframes subtlePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+  50% { box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1); }
+}
+
+/* Column header status color dot */
+.column-header span:first-child::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+/* Sidebar nav item hover */
+.sidebar button:hover {
+  background: rgba(79, 70, 229, 0.04);
+}
