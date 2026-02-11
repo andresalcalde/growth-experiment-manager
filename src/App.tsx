@@ -938,10 +938,9 @@ const App: React.FC = () => {
   if (view === 'portfolio') {
     return (
       <PortfolioView
-        projects={projects.map(p => ({ id: p.metadata.id, name: p.metadata.name, created_at: p.metadata.createdAt }))}
+        projects={projects}
         onSelectProject={handleSelectProjectFromPortfolio}
         onCreateProject={() => setIsCreateProjectOpen(true)}
-        loading={false}
       />
     );
   }
