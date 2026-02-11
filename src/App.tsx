@@ -476,7 +476,7 @@ const CaseStudyModal = ({ experiment, onClose }: { experiment: Experiment; onClo
 
 
 const App: React.FC = () => {
-  const [view, setView] = useState<'portfolio' | 'board' | 'table' | 'library' | 'roadmap'>('roadmap');
+  const [view, setView] = useState<'portfolio' | 'board' | 'table' | 'library' | 'roadmap'>('portfolio');
   
   // Multi-Project State Management
   const [activeProjectId, setActiveProjectId] = useState<string>('lab-polanco');
@@ -890,7 +890,7 @@ const App: React.FC = () => {
   
   const handleBackToPortfolio = () => {
     console.log('🏠 Returning to portfolio');
-    setView('roadmap');
+    setView('portfolio');
     
     try {
       localStorage.removeItem('lastActiveProjectId');
@@ -1025,6 +1025,25 @@ const App: React.FC = () => {
           <Plus size={18} />
           New Experiment
         </button>
+
+        {/* Back to Portfolio */}
+        {view !== 'portfolio' && (
+          <button 
+            onClick={() => setView('portfolio')}
+            style={{ 
+              display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', 
+              borderRadius: '8px', width: '100%', textAlign: 'left', border: 'none', 
+              cursor: 'pointer', background: 'transparent', color: '#6B7280',
+              marginBottom: '8px', fontSize: '13px', fontWeight: 500,
+              transition: 'all 0.15s'
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#F3F4F6'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            <span>All Projects</span>
+          </button>
+        )}
 
         <button 
           className={'tab ' + (view === 'roadmap' ? 'active' : '')} 

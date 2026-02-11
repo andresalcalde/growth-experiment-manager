@@ -1,374 +1,260 @@
-/**
- * PortfolioView - Landing page for project selection
- * 
- * Enterprise-grade implementation with:
- * - Full TypeScript typing
- * - Accessibility (ARIA labels, keyboard navigation)
- * - Performance optimizations
- * - Error boundaries
- * - Responsive design
- * 
- * @version 2.0.0
- * @author Growth Lab Team
- */
-
-import React, { useMemo } from 'react';
-import { Folder, Plus, TrendingUp, Calendar, Users, Sparkles } from 'lucide-react';
+import React from 'react';
+import {
+    LayoutGrid,
+    Beaker,
+    TrendingUp,
+    Clock,
+    ChevronRight,
+    Sparkles,
+    Plus
+} from 'lucide-react';
+import type { Project } from './types';
 
 // ============================================================================
-// TYPES
+// RoleBadge Component
 // ============================================================================
-
-interface Project {
-  id: string;
-  name: string;
-  created_at?: string;
-  description?: string;
-}
-
-interface PortfolioViewProps {
-  projects: Project[];
-  onSelectProject: (projectId: string) => void;
-  onCreateProject: () => void;
-  loading: boolean;
-}
-
-// ============================================================================
-// STYLES
-// ============================================================================
-
-const styles = {
-  container: {
-    minHeight: '100vh',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    padding: '60px 40px',
-    position: 'relative' as const,
-    overflow: 'hidden'
-  },
-  header: {
-    maxWidth: '1200px',
-    margin: '0 auto',
-    marginBottom: '48px',
-    textAlign: 'center' as const
-  },
-  title: {
-    fontSize: '48px',
-    fontWeight: 700,
-    color: 'white',
-    marginBottom: '16px',
-    textAlign: 'center' as const,
-    letterSpacing: '-0.02em'
-  },
-  subtitle: {
-    fontSize: '18px',
-    color: 'rgba(255, 255, 255, 0.95)',
-    textAlign: 'center' as const,
-    maxWidth: '600px',
-    margin: '0 auto',
-    lineHeight: 1.6
-  },
-  grid: {
-    maxWidth: '1200px',
-    margin: '0 auto',
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-    gap: '24px',
-    position: 'relative' as const,
-    zIndex: 1
-  },
-  createCard: {
-    background: 'rgba(255, 255, 255, 0.12)',
-    backdropFilter: 'blur(12px)',
-    WebkitBackdropFilter: 'blur(12px)',
-    border: '2px dashed rgba(255, 255, 255, 0.3)',
-    borderRadius: '20px',
-    padding: '48px 32px',
-    cursor: 'pointer',
-    transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
-    display: 'flex',
-    flexDirection: 'column' as const,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: '260px',
-    outline: 'none',
-    position: 'relative' as const,
-    overflow: 'hidden'
-  },
-  projectCard: {
-    background: 'white',
-    border: 'none',
-    borderRadius: '20px',
-    padding: '32px 28px',
-    cursor: 'pointer',
-    transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
-    textAlign: 'left' as const,
-    minHeight: '260px',
-    display: 'flex',
-    flexDirection: 'column' as const,
-    outline: 'none',
-    position: 'relative' as const,
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)'
-  },
-  iconCircle: {
-    width: '72px',
-    height: '72px',
-    borderRadius: '50%',
-    background: 'rgba(255, 255, 255, 0.25)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: '20px',
-    transition: 'transform 0.3s ease'
-  },
-  projectIcon: {
-    width: '60px',
-    height: '60px',
-    borderRadius: '16px',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: '24px',
-    boxShadow: '0 8px 16px rgba(102, 126, 234, 0.3)'
-  }
+const RoleBadge = ({ role }: { role: string }) => {
+    const config: Record<string, { bg: string; color: string; label: string }> = {
+        admin: { bg: 'rgba(79, 70, 229, 0.1)', color: '#4F46E5', label: 'Admin' },
+        editor: { bg: 'rgba(16, 185, 129, 0.1)', color: '#059669', label: 'Editor' },
+        viewer: { bg: 'rgba(107, 114, 128, 0.1)', color: '#6B7280', label: 'Viewer' },
+    };
+    const c = config[role] || config.admin;
+    return (
+        <span style={{
+            fontSize: '11px', fontWeight: 600, padding: '2px 8px',
+            borderRadius: '99px', background: c.bg, color: c.color,
+            textTransform: 'uppercase', letterSpacing: '0.5px'
+        }}>
+            {c.label}
+        </span>
+    );
 };
 
 // ============================================================================
-// COMPONENT
+// ProjectCard Component
 // ============================================================================
-
-export const PortfolioView: React.FC<PortfolioViewProps> = ({
-  projects,
-  onSelectProject,
-  onCreateProject,
-  loading
+const ProjectCard = ({
+    project,
+    onClick
+}: {
+    project: Project;
+    onClick: () => void;
 }) => {
-  // Memoize sorted projects for performance
-  const sortedProjects = useMemo(() => {
-    return [...projects].sort((a, b) => {
-      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
-      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-      return dateB - dateA; // Most recent first
-    });
-  }, [projects]);
+    const activeExperiments = project.experiments.filter(
+        e => !e.status.startsWith('Finished')
+    ).length;
+    const totalExperiments = project.experiments.length;
+    const isDemo = project.metadata.name.toLowerCase().includes('demo');
+    const northStarValue = project.northStar?.currentValue ?? 0;
+    const northStarName = project.northStar?.name ?? 'Not set';
+    const northStarUnit = project.northStar?.unit ?? '';
 
-  // Loading state
-  if (loading) {
+    // Format the value nicely
+    const formatValue = (val: number, unit: string) => {
+        if (unit === '$' || unit === 'currency') return `$${val.toLocaleString()}`;
+        if (unit === '%') return `${val}%`;
+        return val.toLocaleString();
+    };
+
     return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        flexDirection: 'column' as const,
-        gap: '20px'
-      }}>
-        <div style={{
-          width: '48px',
-          height: '48px',
-          border: '4px solid rgba(255, 255, 255, 0.3)',
-          borderTopColor: 'white',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }} />
-        <div style={{ color: 'white', fontSize: '18px', fontWeight: 500 }}>
-          Cargando proyectos...
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={styles.container} role="main" aria-label="Portfolio de proyectos">
-      {/* Decorative background elements */}
-      <div style={{
-        position: 'absolute',
-        top: '-200px',
-        right: '-200px',
-        width: '600px',
-        height: '600px',
-        background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)',
-        borderRadius: '50%',
-        pointerEvents: 'none'
-      }} />
-      
-      {/* Header */}
-      <header style={styles.header}>
-        <h1 style={styles.title}>
-          <Sparkles 
-            size={40} 
-            style={{ 
-              display: 'inline-block', 
-              verticalAlign: 'middle', 
-              marginRight: '12px',
-              color: '#fbbf24'
-            }} 
-          />
-          Growth Lab Portfolio
-        </h1>
-        <p style={styles.subtitle}>
-          Selecciona un proyecto existente para continuar o crea uno nuevo para empezar a experimentar
-        </p>
-      </header>
-
-      {/* Projects Grid */}
-      <div style={styles.grid} role="list" aria-label="Lista de proyectos">
-        {/* Create New Project Card */}
-        <button
-          onClick={onCreateProject}
-          style={styles.createCard}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
-            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.5)';
-            e.currentTarget.style.transform = 'translateY(-6px)';
-            e.currentTarget.style.boxShadow = '0 24px 48px rgba(0, 0, 0, 0.2)';
-            const icon = e.currentTarget.querySelector('[data-icon]') as HTMLElement;
-            if (icon) icon.style.transform = 'scale(1.1) rotate(90deg)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)';
-            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)';
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = 'none';
-            const icon = e.currentTarget.querySelector('[data-icon]') as HTMLElement;
-            if (icon) icon.style.transform = 'scale(1) rotate(0deg)';
-          }}
-          aria-label="Crear nuevo proyecto"
-          role="listitem"
-        >
-          <div style={styles.iconCircle} data-icon>
-            <Plus size={36} color="white" strokeWidth={2.5} />
-          </div>
-          <h3 style={{
-            fontSize: '22px',
-            fontWeight: 600,
-            color: 'white',
-            marginBottom: '10px',
-            letterSpacing: '-0.01em'
-          }}>
-            Iniciar Nuevo Proyecto
-          </h3>
-          <p style={{
-            fontSize: '15px',
-            color: 'rgba(255, 255, 255, 0.85)',
-            textAlign: 'center',
-            lineHeight: 1.5
-          }}>
-            Define objetivos estratégicos y empieza a experimentar
-          </p>
-        </button>
-
-        {/* Existing Projects */}
-        {sortedProjects.map((project) => (
-          <button
-            key={project.id}
-            onClick={() => onSelectProject(project.id)}
-            style={styles.projectCard}
+        <div
+            onClick={onClick}
+            style={{
+                background: 'white',
+                borderRadius: '16px',
+                border: '1px solid #E5E7EB',
+                padding: '24px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '16px',
+                position: 'relative',
+                overflow: 'hidden',
+            }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-8px)';
-              e.currentTarget.style.boxShadow = '0 24px 48px rgba(0, 0, 0, 0.12)';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 8px 25px rgba(0,0,0,0.08)';
+                e.currentTarget.style.borderColor = '#4F46E5';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.07)';
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'none';
+                e.currentTarget.style.borderColor = '#E5E7EB';
             }}
-            aria-label={`Abrir proyecto ${project.name}`}
-            role="listitem"
-          >
-            <div style={styles.projectIcon}>
-              <Folder size={32} color="white" strokeWidth={2} />
+        >
+            {/* Top row: badges */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <RoleBadge role="admin" />
+                {isDemo && (
+                    <span style={{
+                        fontSize: '11px', fontWeight: 600, padding: '2px 8px',
+                        borderRadius: '99px', background: '#FEF3C7', color: '#D97706',
+                        textTransform: 'uppercase', letterSpacing: '0.5px'
+                    }}>
+                        Demo
+                    </span>
+                )}
             </div>
 
-            <h3 style={{
-              fontSize: '22px',
-              fontWeight: 600,
-              color: '#111827',
-              marginBottom: '10px',
-              lineHeight: 1.3,
-              letterSpacing: '-0.01em'
-            }}>
-              {project.name}
-            </h3>
-
-            {project.created_at && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                fontSize: '14px',
-                color: '#6b7280',
-                marginBottom: '20px'
-              }}>
-                <Calendar size={15} />
-                <time dateTime={project.created_at}>
-                  {new Date(project.created_at).toLocaleDateString('es-ES', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </time>
-              </div>
-            )}
-
-            <div style={{ marginTop: 'auto' }}>
-              <div style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '10px 20px',
-                background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)',
-                borderRadius: '10px',
-                fontSize: '14px',
-                color: '#4f46e5',
-                fontWeight: 600,
-                transition: 'all 0.2s ease'
-              }}>
-                <TrendingUp size={16} />
-                Abrir Proyecto →
-              </div>
+            {/* Project Name */}
+            <div>
+                <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, lineHeight: 1.3, color: '#111827' }}>
+                    {project.metadata.name}
+                </h3>
             </div>
-          </button>
-        ))}
 
-        {/* Empty State */}
-        {sortedProjects.length === 0 && (
-          <div style={{
-            gridColumn: '1 / -1',
-            textAlign: 'center',
-            padding: '80px 20px',
-            color: 'rgba(255, 255, 255, 0.9)'
-          }}>
-            <Users 
-              size={72} 
-              color="rgba(255, 255, 255, 0.5)" 
-              style={{ marginBottom: '28px' }} 
-            />
-            <h3 style={{ 
-              fontSize: '28px', 
-              fontWeight: 600, 
-              marginBottom: '14px', 
-              color: 'white' 
+            {/* North Star Metric */}
+            <div style={{
+                background: 'linear-gradient(135deg, #F5F3FF 0%, #EEF2FF 100%)',
+                borderRadius: '12px',
+                padding: '16px',
             }}>
-              No hay proyectos todavía
-            </h3>
-            <p style={{ 
-              fontSize: '17px', 
-              marginBottom: '32px',
-              opacity: 0.9 
-            }}>
-              Crea tu primer proyecto para comenzar tu journey de growth
-            </p>
-          </div>
-        )}
-      </div>
+                <div style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#6B7280', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <TrendingUp size={12} />
+                    North Star
+                </div>
+                <div style={{ fontSize: '24px', fontWeight: 800, color: '#4F46E5' }}>
+                    {formatValue(northStarValue, northStarUnit)}
+                </div>
+                <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
+                    {northStarName}
+                </div>
+            </div>
 
-      {/* CSS for spinner animation */}
-      <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
+            {/* Stats row */}
+            <div style={{ display: 'flex', gap: '16px', marginTop: 'auto' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Beaker size={14} color="#6B7280" />
+                    <span style={{ fontSize: '13px', color: '#374151' }}>
+                        <strong>{activeExperiments}</strong> active
+                    </span>
+                    <span style={{ fontSize: '12px', color: '#9CA3AF' }}>
+                        / {totalExperiments} total
+                    </span>
+                </div>
+            </div>
+
+            {/* Arrow indicator */}
+            <div style={{
+                position: 'absolute', bottom: '24px', right: '20px',
+                color: '#D1D5DB', transition: 'color 0.2s'
+            }}>
+                <ChevronRight size={20} />
+            </div>
+        </div>
+    );
+};
+
+// ============================================================================
+// Loading Skeleton
+// ============================================================================
+const ProjectCardSkeleton = () => (
+    <div style={{
+        background: 'white', borderRadius: '16px', border: '1px solid #E5E7EB',
+        padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px',
+    }}>
+        <div style={{ width: '60px', height: '20px', borderRadius: '10px', background: '#F3F4F6' }} />
+        <div style={{ width: '70%', height: '22px', borderRadius: '6px', background: '#F3F4F6' }} />
+        <div style={{ height: '80px', borderRadius: '12px', background: '#F3F4F6' }} />
+        <div style={{ width: '50%', height: '16px', borderRadius: '6px', background: '#F3F4F6' }} />
     </div>
-  );
+);
+
+// ============================================================================
+// PortfolioView Component
+// ============================================================================
+interface PortfolioViewProps {
+    projects: Project[];
+    onSelectProject: (projectId: string) => void;
+    onCreateProject: () => void;
+}
+
+export const PortfolioView: React.FC<PortfolioViewProps> = ({
+    projects,
+    onSelectProject,
+    onCreateProject,
+}) => {
+    const isLoading = false; // Future: real loading state
+
+    return (
+        <div style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto' }}>
+            {/* Header */}
+            <div style={{ marginBottom: '32px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                    <div style={{
+                        width: '40px', height: '40px', borderRadius: '12px',
+                        background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                        <LayoutGrid size={20} color="white" />
+                    </div>
+                    <h1 style={{ fontSize: '28px', fontWeight: 800, margin: 0, color: '#111827' }}>
+                        Projects
+                    </h1>
+                </div>
+                <p style={{ fontSize: '15px', color: '#6B7280', margin: 0 }}>
+                    Select a project to manage experiments and track growth.
+                </p>
+            </div>
+
+            {/* Grid */}
+            {isLoading ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+                    <ProjectCardSkeleton />
+                    <ProjectCardSkeleton />
+                    <ProjectCardSkeleton />
+                </div>
+            ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+                    {projects.map((project) => (
+                        <ProjectCard
+                            key={project.metadata.id}
+                            project={project}
+                            onClick={() => onSelectProject(project.metadata.id)}
+                        />
+                    ))}
+
+                    {/* Create New Project Card */}
+                    <div
+                        onClick={onCreateProject}
+                        style={{
+                            borderRadius: '16px',
+                            border: '2px dashed #D1D5DB',
+                            padding: '24px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '12px',
+                            minHeight: '220px',
+                            color: '#9CA3AF',
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = '#4F46E5';
+                            e.currentTarget.style.color = '#4F46E5';
+                            e.currentTarget.style.background = 'rgba(79, 70, 229, 0.02)';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = '#D1D5DB';
+                            e.currentTarget.style.color = '#9CA3AF';
+                            e.currentTarget.style.background = 'transparent';
+                        }}
+                    >
+                        <div style={{
+                            width: '48px', height: '48px', borderRadius: '50%',
+                            background: 'rgba(79, 70, 229, 0.08)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                            <Plus size={24} />
+                        </div>
+                        <span style={{ fontSize: '15px', fontWeight: 600 }}>Create New Project</span>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
 };
