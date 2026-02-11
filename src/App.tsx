@@ -341,6 +341,8 @@ const CaseStudyModal = ({ experiment, onClose }: { experiment: Experiment; onClo
   if (isWinner) highlightColor = 'rgba(74, 222, 128, 0.2)';
   if (isLoser) highlightColor = '#FEE2E2';
 
+  const [lightboxImage, setLightboxImage] = React.useState<string | null>(null);
+
   return (
     <div className="drawer-overlay" style={{ alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
       <div style={{ background: 'white', borderRadius: '16px', width: '800px', maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--shadow-lg)' }} onClick={e => e.stopPropagation()}>
@@ -379,6 +381,7 @@ const CaseStudyModal = ({ experiment, onClose }: { experiment: Experiment; onClo
                          {experiment.visualProof?.map((proof, i) => (
                             <div key={i} style={{ aspectRatio: '16/9', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
                                {proof.startsWith('data:') ? (
+                                  <img src={proof} alt={'Evidence ' + (i+1)} style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); setLightboxImage(proof); }} />
                                   <img src={proof} alt={'Evidence ' + (i+1)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                ) : (
                                   <div style={{ width: '100%', height: '100%', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -445,6 +448,28 @@ const CaseStudyModal = ({ experiment, onClose }: { experiment: Experiment; onClo
             </div>
          </div>
       </div>
+
+      {/* Lightbox */}
+      {lightboxImage && (
+        <div onClick={(e) => { e.stopPropagation(); setLightboxImage(null); }} style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.85)', zIndex: 2000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'zoom-out', padding: '40px'
+        }}>
+          <img src={lightboxImage} alt="Evidence enlarged" style={{
+            maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain',
+            borderRadius: '8px', boxShadow: '0 25px 50px rgba(0,0,0,0.5)'
+          }} />
+          <button onClick={(e) => { e.stopPropagation(); setLightboxImage(null); }} style={{
+            position: 'absolute', top: '20px', right: '20px',
+            background: 'rgba(255,255,255,0.2)', border: 'none',
+            color: 'white', width: '40px', height: '40px', borderRadius: '50%',
+            fontSize: '20px', cursor: 'pointer', display: 'flex',
+            alignItems: 'center', justifyContent: 'center'
+          }}>x</button>
+        </div>
+      )}
     </div>
   );
 };
