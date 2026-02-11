@@ -1033,24 +1033,31 @@ const App: React.FC = () => {
           New Experiment
         </button>
 
-        {/* Back to Portfolio */}
-        {view !== 'portfolio' && (
-          <button 
-            onClick={() => setView('portfolio')}
-            style={{ 
-              display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', 
-              borderRadius: '8px', width: '100%', textAlign: 'left', border: 'none', 
-              cursor: 'pointer', background: 'transparent', color: '#6B7280',
-              marginBottom: '8px', fontSize: '13px', fontWeight: 500,
-              transition: 'all 0.15s'
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = '#F3F4F6'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-            <span>All Projects</span>
-          </button>
-        )}
+        {/* Back to Portfolio - Prominent */}
+        <button 
+          onClick={() => setView('portfolio')}
+          style={{ 
+            display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', 
+            borderRadius: '8px', width: '100%', textAlign: 'left', 
+            border: '1px solid #E5E7EB', 
+            cursor: 'pointer', background: '#F9FAFB', color: '#4F46E5',
+            marginBottom: '16px', fontSize: '13px', fontWeight: 600,
+            transition: 'all 0.2s',
+            letterSpacing: '-0.1px',
+          }}
+          onMouseEnter={(e) => { 
+            e.currentTarget.style.background = '#EEF2FF'; 
+            e.currentTarget.style.borderColor = '#C7D2FE'; 
+          }}
+          onMouseLeave={(e) => { 
+            e.currentTarget.style.background = '#F9FAFB'; 
+            e.currentTarget.style.borderColor = '#E5E7EB'; 
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+          <span>All Projects</span>
+        </button>
 
         <button 
           className={'tab ' + (view === 'roadmap' ? 'active' : '')} 
