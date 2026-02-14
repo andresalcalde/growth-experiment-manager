@@ -47,6 +47,7 @@ import type { ExperimentFormData } from './ExperimentModal';
 import { KeyLearningModal } from './KeyLearningModal';
 import { useProjectContext } from './contexts/ProjectContext';
 import { useAuth } from './contexts/AuthContext';
+import { SectionGuide } from './components/SectionGuide';
 
 
 // Original MOCK_EXPERIMENTS replaced with Laboratorio Polanco data
@@ -1077,6 +1078,14 @@ const App: React.FC = () => {
             </div>
           </div>
         </header>
+
+        {/* Section Guide — Contextual guide for each view */}
+        <div style={{ padding: '16px 24px 0 24px' }}>
+          {view === 'roadmap' && <SectionGuide guideId="roadmap" />}
+          {view === 'table' && <SectionGuide guideId="table" />}
+          {view === 'board' && <SectionGuide guideId="board" />}
+          {view === 'library' && <SectionGuide guideId="library" />}
+        </div>
 
         {view === 'board' ? (
           <div className="kanban-board">

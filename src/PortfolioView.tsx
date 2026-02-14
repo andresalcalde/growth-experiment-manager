@@ -9,6 +9,7 @@ import {
     Sparkles
 } from 'lucide-react';
 import type { Project } from './types';
+import { SectionGuide } from './components/SectionGuide';
 
 // ============================================================================
 // RoleBadge Component
@@ -307,6 +308,11 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                     <p style={{ fontSize: '15px', color: '#6B7280', margin: 0 }}>
                         {totalActive} active experiments across {projects.length} projects · {totalExperiments} total experiments
                     </p>
+                </div>
+
+                {/* Section Guide */}
+                <div style={{ marginBottom: '20px' }}>
+                    <SectionGuide guideId="portfolio" />
                 </div>
 
                 {/* Search + Actions */}
