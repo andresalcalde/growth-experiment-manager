@@ -2,10 +2,13 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
+import { AuthProvider } from './contexts/AuthContext'
+import { ProjectProvider } from './contexts/ProjectContext'
+import { AuthGate } from './components/AuthGate'
 
 // Error Boundary to catch runtime errors
-class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null}> {
-  constructor(props: {children: React.ReactNode}) {
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean, error: Error | null }> {
+  constructor(props: { children: React.ReactNode }) {
     super(props);
     this.state = { hasError: false, error: null };
   }
@@ -33,7 +36,13 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <App />
+      <AuthProvider>
+        <AuthGate>
+          <ProjectProvider>
+            <App />
+          </ProjectProvider>
+        </AuthGate>
+      </AuthProvider>
     </ErrorBoundary>
   </React.StrictMode>,
 )

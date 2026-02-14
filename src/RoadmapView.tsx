@@ -14,6 +14,7 @@ interface RoadmapViewProps {
   onEditObjective: (objectiveId: string, newTitle: string, newDescription?: string) => void;
   onEditStrategy: (strategyId: string, newTitle: string) => void;
   onDeleteObjective: (objectiveId: string) => void;
+  onDeleteStrategy: (strategyId: string) => void;
   onSelectExperiment: (exp: Experiment) => void;
 }
 
@@ -36,7 +37,8 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
   onEditObjective,
   onEditStrategy,
   onSelectExperiment,
-  onDeleteObjective
+  onDeleteObjective,
+  onDeleteStrategy
 }) => {
   const [modalState, setModalState] = useState<ModalState>({ type: 'none' });
   // Safety check: Strategy-First Empty State
@@ -67,6 +69,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
   
   // Strategy form state
   const [strategyTitle, setStrategyTitle] = useState('');
+  const [strategyDescription, setStrategyDescription] = useState('');
 
   const calculateProgress = () => {
     return calcProgress(northStar.currentValue, northStar.targetValue);
@@ -95,12 +98,16 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
       return;
     }
     
+    // Derive unit from metric type
+    const unitMap: Record<MetricType, string> = { currency: '$', percentage: '%', numeric: '#' };
+    
     onUpdateNorthStar({
       ...northStar,
       name: nsMetricName.trim(),
       currentValue: current,
       targetValue: target,
-      type: nsMetricType
+      type: nsMetricType,
+      unit: unitMap[nsMetricType] || '$'
     });
     
     setModalState({ type: 'none' });
@@ -123,6 +130,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
 
   const handleOpenStrategyModal = (objectiveId: string) => {
     setStrategyTitle('');
+    setStrategyDescription('');
     setModalState({ type: 'strategy', objectiveId });
   };
 
@@ -148,6 +156,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
     const strat = strategies.find(s => s.id === strategyId);
     if (strat) {
       setStrategyTitle(strat.title);
+      setStrategyDescription('');
       setModalState({ type: 'edit-strategy', strategyId });
     }
   };
@@ -306,27 +315,6 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
               </div>
             </div>
 
-            <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px' }}>
-                Description
-              </label>
-              <textarea
-                value={objectiveDescription}
-                onChange={(e) => setObjectiveDescription(e.target.value)}
-                placeholder="Describe what this growth lever aims to achieve..."
-                rows={3}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  outline: 'none',
-                  fontFamily: 'inherit',
-                  resize: 'vertical'
-                }}
-              />
-            </div>
 
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <button
@@ -430,8 +418,8 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                 Description
               </label>
               <textarea
-                value={objectiveDescription}
-                onChange={(e) => setObjectiveDescription(e.target.value)}
+                value={strategyDescription}
+                onChange={(e) => setStrategyDescription(e.target.value)}
                 placeholder="Describe what this growth lever aims to achieve..."
                 rows={3}
                 style={{
@@ -549,8 +537,8 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                 Description
               </label>
               <textarea
-                value={objectiveDescription}
-                onChange={(e) => setObjectiveDescription(e.target.value)}
+                value={strategyDescription}
+                onChange={(e) => setStrategyDescription(e.target.value)}
                 placeholder="Describe what this growth lever aims to achieve..."
                 rows={3}
                 style={{
@@ -668,8 +656,8 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                 Description
               </label>
               <textarea
-                value={objectiveDescription}
-                onChange={(e) => setObjectiveDescription(e.target.value)}
+                value={strategyDescription}
+                onChange={(e) => setStrategyDescription(e.target.value)}
                 placeholder="Describe what this growth lever aims to achieve..."
                 rows={3}
                 style={{
@@ -786,8 +774,8 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                 Description
               </label>
               <textarea
-                value={objectiveDescription}
-                onChange={(e) => setObjectiveDescription(e.target.value)}
+                value={strategyDescription}
+                onChange={(e) => setStrategyDescription(e.target.value)}
                 placeholder="Describe what this growth lever aims to achieve..."
                 rows={3}
                 style={{
@@ -1222,24 +1210,53 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                               {linkedCount} {linkedCount === 1 ? 'Experiment' : 'Experiments'}
                             </div>
                           </div>
-                          <button
-                            onClick={() => handleOpenEditStrategy(strategy.id)}
-                            style={{
-                              background: 'transparent',
-                              border: 'none',
-                              cursor: 'pointer',
-                              padding: '4px',
-                              color: '#6b7280',
-                              display: 'flex',
-                              alignItems: 'center',
-                              transition: 'color 0.2s'
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = '#4f46e5'}
-                            onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}
-                            title="Edit strategy"
-                          >
-                            <Edit2 size={14} />
-                          </button>
+                          <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                            <button
+                              onClick={() => handleOpenEditStrategy(strategy.id)}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: '4px',
+                                color: '#6b7280',
+                                display: 'flex',
+                                alignItems: 'center',
+                                transition: 'color 0.2s'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.color = '#4f46e5'}
+                              onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}
+                              title="Edit initiative"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                const linked = experiments.filter(exp => exp.linkedStrategyId === strategy.id);
+                                let msg = `Delete initiative "${strategy.title}"?`;
+                                if (linked.length > 0) {
+                                  msg += `\n\n⚠️ ${linked.length} experiment${linked.length === 1 ? ' is' : 's are'} linked. The link will be removed.`;
+                                }
+                                if (window.confirm(msg)) {
+                                  onDeleteStrategy(strategy.id);
+                                }
+                              }}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: '4px',
+                                color: '#6b7280',
+                                display: 'flex',
+                                alignItems: 'center',
+                                transition: 'color 0.2s'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.color = '#dc2626'}
+                              onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}
+                              title="Delete initiative"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
                         </div>
                         <div style={{
                           background: linkedCount > 0 ? '#dcfce7' : '#f3f4f6',

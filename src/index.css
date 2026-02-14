@@ -97,7 +97,7 @@ button {
 .kanban-board {
   display: flex;
   gap: 20px;
-  padding: 24px 32px;
+  padding: 24px 32px 24px 32px;
   overflow-x: auto;
   align-items: flex-start;
 }
@@ -132,6 +132,7 @@ button {
   flex-direction: column;
   gap: 12px;
   cursor: pointer;
+  overflow: hidden;
 }
 
 .experiment-card:hover {
@@ -149,6 +150,8 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  min-height: 28px;
 }
 
 /* Table */

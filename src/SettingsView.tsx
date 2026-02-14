@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, Mail, Trash2, Users, Shield, Edit2, Briefcase } from 'lucide-react';
+import { X, Plus, Mail, Trash2, Users, Shield, Edit2, Briefcase, LogOut } from 'lucide-react';
 import type { TeamMember, Project } from './types';
 
 interface SettingsViewProps {
@@ -10,6 +10,8 @@ interface SettingsViewProps {
   onAddMember: (member: TeamMember) => void;
   onRemoveMember: (memberId: string) => void;
   onUpdateMember: (memberId: string, updates: Partial<TeamMember>) => void;
+  onResetData?: () => void;
+  onSignOut?: () => void;
 }
 
 const ROLE_COLORS = {
@@ -27,11 +29,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   projects,
   onAddMember,
   onRemoveMember,
-  onUpdateMember
+  onUpdateMember,
+  onResetData,
+  onSignOut
 }) => {
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
-  
+
   // Add Member Form State
   const [newMemberName, setNewMemberName] = useState('');
   const [newMemberEmail, setNewMemberEmail] = useState('');
@@ -62,7 +66,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     };
 
     onAddMember(newMember);
-    
+
     // Reset form
     setNewMemberName('');
     setNewMemberEmail('');
@@ -230,7 +234,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '20px' }}>
                 {editingMember ? 'Edit Team Member' : 'Add New Team Member'}
               </h3>
-              
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                 <div>
                   <label style={{
@@ -364,10 +368,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                   {projects.map(project => {
-                    const isAssigned = editingMember 
+                    const isAssigned = editingMember
                       ? editProjectIds.includes(project.metadata.id)
                       : newMemberProjectIds.includes(project.metadata.id);
-                    
+
                     return (
                       <label
                         key={project.metadata.id}
@@ -487,14 +491,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <tbody>
                   {teamMembers.map((member, index) => {
                     const memberProjects = projects.filter(p => member.projectIds?.includes(p.metadata.id));
-                    
+
                     return (
                       <tr key={member.id} style={{
                         borderBottom: index < teamMembers.length - 1 ? '1px solid #f3f4f6' : 'none',
                         transition: 'background 0.2s'
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
                       >
                         <td style={{ padding: '16px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -630,8 +634,54 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           alignItems: 'center',
           background: '#f9fafb'
         }}>
-          <div style={{ fontSize: '13px', color: '#6b7280' }}>
-            {teamMembers.length} team member{teamMembers.length !== 1 ? 's' : ''}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '13px', color: '#6b7280' }}>
+              {teamMembers.length} team member{teamMembers.length !== 1 ? 's' : ''}
+            </span>
+            {onResetData && (
+              <button
+                onClick={onResetData}
+                style={{
+                  padding: '8px 14px',
+                  border: '1px solid #fecaca',
+                  borderRadius: '8px',
+                  background: '#fef2f2',
+                  color: '#dc2626',
+                  fontWeight: 600,
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <Trash2 size={14} />
+                Reset Data
+              </button>
+            )}
+            {onSignOut && (
+              <button
+                onClick={onSignOut}
+                style={{
+                  padding: '8px 14px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  background: 'white',
+                  color: '#374151',
+                  fontWeight: 600,
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <LogOut size={14} />
+                Sign Out
+              </button>
+            )}
           </div>
           <button
             onClick={onClose}
