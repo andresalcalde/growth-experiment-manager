@@ -811,11 +811,18 @@ const App: React.FC = () => {
   // Portfolio View - Show when no project is selected or view is 'portfolio'
   if (view === 'portfolio') {
     return (
-      <PortfolioView
-        projects={projects}
-        onSelectProject={handleSelectProjectFromPortfolio}
-        onCreateProject={() => setIsCreateProjectOpen(true)}
-      />
+      <>
+        <PortfolioView
+          projects={projects}
+          onSelectProject={handleSelectProjectFromPortfolio}
+          onCreateProject={() => setIsCreateProjectOpen(true)}
+        />
+        <CreateProjectModal
+          isOpen={isCreateProjectOpen}
+          onClose={() => setIsCreateProjectOpen(false)}
+          onSave={handleCreateProject}
+        />
+      </>
     );
   }
 
