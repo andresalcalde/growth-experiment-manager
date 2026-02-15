@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { X, ChevronRight, ChevronLeft, Check, Target, Building2 } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Check, Target, Building2, Loader2 } from 'lucide-react';
 import type { Project, NorthStarMetric } from './types';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (project: Project) => void;
+  onSave: (project: Project) => Promise<void> | void;
 }
 
 type Step = 1 | 2 | 3;
@@ -23,6 +23,7 @@ const INDUSTRIES = [
 
 export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose, onSave }) => {
   const [step, setStep] = useState<Step>(1);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Step 1: Basic Info
   const [projectName, setProjectName] = useState('');
@@ -46,9 +47,11 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
     setTargetValue(1000000);
     setUnit('$');
     setUseTemplate(true);
+    setIsSaving(false);
   };
 
   const handleClose = () => {
+    if (isSaving) return; // Prevent closing while saving
     handleReset();
     onClose();
   };
@@ -65,7 +68,10 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
     }
   };
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
+    if (isSaving) return; // Prevent double-click
+    setIsSaving(true);
+
     // ✅ NO generar ID aquí - Supabase lo generará automáticamente
 
     const northStar: NorthStarMetric = {
@@ -206,8 +212,14 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
       experiments
     };
 
-    onSave(newProject);
-    handleClose();
+    try {
+      await onSave(newProject);
+      handleReset();
+      onClose();
+    } catch (err) {
+      console.error('Error saving project:', err);
+      setIsSaving(false);
+    }
   };
 
   const isStep1Valid = projectName.trim().length > 0;
@@ -687,26 +699,42 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
           ) : (
             <button
               onClick={handleFinish}
+              disabled={isSaving}
               style={{
                 padding: '10px 24px',
                 border: 'none',
                 borderRadius: '8px',
-                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                background: isSaving
+                  ? 'linear-gradient(135deg, #9ca3af 0%, #6b7280 100%)'
+                  : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                 color: 'white',
                 fontWeight: 600,
                 fontSize: '14px',
-                cursor: 'pointer',
+                cursor: isSaving ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px'
+                gap: '6px',
+                opacity: isSaving ? 0.8 : 1
               }}
             >
-              <Check size={16} />
-              Crear Proyecto
+              {isSaving ? (
+                <>
+                  <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                  Guardando...
+                </>
+              ) : (
+                <>
+                  <Check size={16} />
+                  Crear Proyecto
+                </>
+              )}
             </button>
           )}
         </div>
       </div>
+      {isSaving && (
+        <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      )}
     </div>
   );
 };
