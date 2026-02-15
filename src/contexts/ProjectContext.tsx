@@ -435,6 +435,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
             .from('experiments')
             .insert({
                 project_id: activeProjectId,
+                owner_id: user!.id,
                 title: exp.title,
                 status: exp.status,
                 owner_name: exp.owner.name,
@@ -473,7 +474,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
                 ? { ...p, experiments: [...p.experiments, newExp] }
                 : p
         ))
-    }, [activeProjectId])
+    }, [activeProjectId, user])
 
     const updateExperiment = useCallback(async (id: string, updates: Partial<Experiment>) => {
         // Optimistic update
@@ -634,6 +635,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
                             .from('experiments')
                             .insert({
                                 project_id: newProjectId,
+                                owner_id: user!.id,
                                 title: exp.title,
                                 status: exp.status || 'Idea',
                                 owner_name: exp.owner?.name || '',
@@ -665,7 +667,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         if (newProjectId) {
             setActiveProjectId(newProjectId)
         }
-    }, [fetchProjects, setActiveProjectId])
+    }, [fetchProjects, setActiveProjectId, user])
 
     const deleteProject = useCallback(async (id: string) => {
         const { error } = await supabase.from('projects').delete().eq('id', id)
