@@ -101,28 +101,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const onboardingDone = useRef(false)
 
     useEffect(() => {
+        let cancelled = false
+
         // Get initial session
         supabase.auth.getSession().then(async ({ data: { session: existingSession } }) => {
+            if (cancelled) return
             setSession(existingSession)
             if (existingSession?.user) {
                 const p = await fetchProfile(existingSession.user.id)
+                if (cancelled) return
                 setProfile(p)
                 if (!onboardingDone.current) {
                     onboardingDone.current = true
                     await checkOnboarding(existingSession.user.id)
                 }
             }
-            setLoading(false)
+            if (!cancelled) setLoading(false)
+        }).catch((err) => {
+            // Handle AbortError from React StrictMode double-mounting
+            if (err?.name === 'AbortError') {
+                console.log('Auth init aborted (StrictMode remount)')
+                return
+            }
+            console.error('Error getting session:', err)
+            if (!cancelled) setLoading(false)
         })
 
         // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, newSession) => {
+                if (cancelled) return
                 console.log('🔐 Auth event:', event)
                 setSession(newSession)
 
                 if (newSession?.user) {
                     const p = await fetchProfile(newSession.user.id)
+                    if (cancelled) return
                     setProfile(p)
 
                     if (event === 'SIGNED_IN' && !onboardingDone.current) {
@@ -133,10 +147,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     setProfile(null)
                     onboardingDone.current = false
                 }
+
+                if (!cancelled) setLoading(false)
             }
         )
 
-        return () => subscription.unsubscribe()
+        return () => {
+            cancelled = true
+            subscription.unsubscribe()
+        }
     }, [])
 
     const signIn = async (email: string, password: string) => {
