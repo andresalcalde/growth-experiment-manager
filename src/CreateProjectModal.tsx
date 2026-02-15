@@ -250,10 +250,10 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
         }}>
           <div>
             <h2 style={{ fontSize: '20px', fontWeight: 700, margin: 0 }}>
-              Create New Project
+              Crear Nuevo Proyecto
             </h2>
             <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0 0 0' }}>
-              Step {step} of 3
+              Paso {step} de 3
             </p>
           </div>
           <button
@@ -310,10 +310,10 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                 <Building2 size={24} color="#7C3AED" />
                 <div>
                   <h3 style={{ fontSize: '16px', fontWeight: 600, margin: 0, color: '#4F46E5' }}>
-                    Basic Information
+                    Información Básica
                   </h3>
                   <p style={{ fontSize: '13px', color: '#6b7280', margin: '4px 0 0 0' }}>
-                    Set up your project's identity
+                    Configura la identidad de tu proyecto
                   </p>
                 </div>
               </div>
@@ -326,13 +326,13 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                   color: '#374151',
                   marginBottom: '8px'
                 }}>
-                  Project Name *
+                  Nombre del Proyecto *
                 </label>
                 <input
                   type="text"
                   value={projectName}
                   onChange={(e) => setProjectName(e.target.value)}
-                  placeholder="e.g., My Growth Project"
+                  placeholder="ej: Mi Proyecto de Growth"
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -355,7 +355,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                   color: '#374151',
                   marginBottom: '8px'
                 }}>
-                  Project Logo (Emoji)
+                  Logo del Proyecto (Emoji)
                 </label>
                 <input
                   type="text"
@@ -385,7 +385,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                   color: '#374151',
                   marginBottom: '8px'
                 }}>
-                  Industry
+                  Industria
                 </label>
                 <select
                   value={industry}
@@ -428,7 +428,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                     North Star Metric
                   </h3>
                   <p style={{ fontSize: '13px', color: '#6b7280', margin: '4px 0 0 0' }}>
-                    Define your primary success metric
+                    Define tu métrica principal de éxito
                   </p>
                 </div>
               </div>
@@ -441,13 +441,13 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                   color: '#374151',
                   marginBottom: '8px'
                 }}>
-                  Metric Name *
+                  Nombre de la Métrica *
                 </label>
                 <input
                   type="text"
                   value={metricName}
                   onChange={(e) => setMetricName(e.target.value)}
-                  placeholder="e.g., Revenue, Active Users, GMV"
+                  placeholder="ej: Revenue, Active Users, GMV"
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -470,7 +470,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                     color: '#374151',
                     marginBottom: '8px'
                   }}>
-                    Target Value *
+                    Valor Target *
                   </label>
                   <input
                     type="number"
@@ -498,7 +498,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                     color: '#374151',
                     marginBottom: '8px'
                   }}>
-                    Unit
+                    Unidad
                   </label>
                   <select
                     value={unit}
@@ -516,10 +516,10 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                     onFocus={(e) => e.currentTarget.style.borderColor = '#4F46E5'}
                     onBlur={(e) => e.currentTarget.style.borderColor = '#d1d5db'}
                   >
-                    <option value="$">$ (Dollars)</option>
+                    <option value="$">$ (Dólares)</option>
                     <option value="€">€ (Euros)</option>
-                    <option value="#"># (Count)</option>
-                    <option value="%">% (Percentage)</option>
+                    <option value="#"># (Cantidad)</option>
+                    <option value="%">% (Porcentaje)</option>
                   </select>
                 </div>
               </div>
@@ -531,13 +531,13 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                 border: '1px solid #e5e7eb'
               }}>
                 <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
-                  Preview:
+                  Vista previa:
                 </div>
                 <div style={{ fontSize: '24px', fontWeight: 700, color: '#4F46E5' }}>
                   {unit}{targetValue.toLocaleString()}
                 </div>
                 <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '4px' }}>
-                  Target {metricName}
+                  Target de {metricName}
                 </div>
               </div>
             </div>
@@ -557,10 +557,10 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                 <Check size={24} color="#7C3AED" />
                 <div>
                   <h3 style={{ fontSize: '16px', fontWeight: 600, margin: 0, color: '#4F46E5' }}>
-                    Initialize Your Project
+                    Inicializa tu Proyecto
                   </h3>
                   <p style={{ fontSize: '13px', color: '#6b7280', margin: '4px 0 0 0' }}>
-                    Choose how to start your growth journey
+                    Elige cómo comenzar tu journey de growth
                   </p>
                 </div>
               </div>
@@ -587,10 +587,10 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                   />
                   <div>
                     <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>
-                      🎯 Start with Reforge Standard Template
+                      🎯 Comenzar con Reforge Standard Template
                     </div>
                     <div style={{ fontSize: '13px', color: '#6b7280' }}>
-                      Pre-loaded with industry-standard growth levers:<br />
+                      Pre-cargado con growth levers estándar de la industria:<br />
                       • 3 Core Objectives (Acquisition, Activation, Retention)<br />
                       • 6 High-Impact Strategies
                     </div>
@@ -620,10 +620,10 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                   />
                   <div>
                     <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>
-                      📋 Start from Scratch
+                      📋 Comenzar desde Cero
                     </div>
                     <div style={{ fontSize: '13px', color: '#6b7280' }}>
-                      Begin with a blank canvas and build your own framework
+                      Empieza con un lienzo en blanco y construye tu propio framework
                     </div>
                   </div>
                 </label>
@@ -659,7 +659,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
             }}
           >
             <ChevronLeft size={16} />
-            Back
+            Atrás
           </button>
 
           {step < 3 ? (
@@ -681,7 +681,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                 opacity: ((step === 1 && !isStep1Valid) || (step === 2 && !isStep2Valid)) ? 0.5 : 1
               }}
             >
-              Next
+              Siguiente
               <ChevronRight size={16} />
             </button>
           ) : (
@@ -702,7 +702,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
               }}
             >
               <Check size={16} />
-              Create Project
+              Crear Proyecto
             </button>
           )}
         </div>

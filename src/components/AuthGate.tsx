@@ -40,7 +40,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                         animation: 'spin 1s linear infinite',
                     }} />
                     <span style={{ color: 'white', fontSize: '16px', fontWeight: 500, opacity: 0.9 }}>
-                        Initializing Growth Lab...
+                        Inicializando Growth Lab...
                     </span>
                 </div>
                 <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -69,12 +69,12 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                 if (error) {
                     setError(error.message)
                 } else {
-                    setSuccessMessage('Account created! Check your email to confirm, then sign in.')
+                    setSuccessMessage('¡Cuenta creada! Revisa tu email para confirmar y luego inicia sesión.')
                     setMode('login')
                 }
             }
         } catch (err: any) {
-            setError(err.message || 'An unexpected error occurred')
+            setError(err.message || 'Ocurrió un error inesperado')
         } finally {
             setSubmitting(false)
         }
@@ -123,7 +123,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                         color: '#6b7280',
                         margin: 0,
                     }}>
-                        {mode === 'login' ? 'Sign in to your workspace' : 'Create your account'}
+                        {mode === 'login' ? 'Inicia sesión en tu workspace' : 'Crea tu cuenta'}
                     </p>
                 </div>
 
@@ -159,12 +159,12 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     {mode === 'signup' && (
                         <div>
-                            <label style={labelStyle}>Full Name</label>
+                            <label style={labelStyle}>Nombre completo</label>
                             <input
                                 type="text"
                                 value={fullName}
                                 onChange={(e) => setFullName(e.target.value)}
-                                placeholder="Your full name"
+                                placeholder="Tu nombre completo"
                                 style={inputStyle}
                             />
                         </div>
@@ -181,7 +181,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                         />
                     </div>
                     <div>
-                        <label style={labelStyle}>Password</label>
+                        <label style={labelStyle}>Contraseña</label>
                         <input
                             type="password"
                             value={password}
@@ -203,8 +203,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                         }}
                     >
                         {submitting
-                            ? (mode === 'login' ? 'Signing in...' : 'Creating account...')
-                            : (mode === 'login' ? 'Sign In' : 'Create Account')
+                            ? (mode === 'login' ? 'Iniciando sesión...' : 'Creando cuenta...')
+                            : (mode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta')
                         }
                     </button>
                 </form>
@@ -212,7 +212,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                 {/* Toggle mode */}
                 <div style={{ textAlign: 'center', marginTop: '24px' }}>
                     <span style={{ fontSize: '13px', color: '#6b7280' }}>
-                        {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
+                        {mode === 'login' ? '¿No tienes cuenta? ' : '¿Ya tienes cuenta? '}
                     </span>
                     <button
                         onClick={() => {
@@ -230,7 +230,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                             textDecoration: 'underline',
                         }}
                     >
-                        {mode === 'login' ? 'Sign Up' : 'Sign In'}
+                        {mode === 'login' ? 'Crear Cuenta' : 'Iniciar Sesión'}
                     </button>
                 </div>
             </div>

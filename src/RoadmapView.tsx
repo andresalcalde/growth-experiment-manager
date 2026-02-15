@@ -94,7 +94,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
     const target = parseFloat(nsTargetValue.replace(/,/g, ''));
 
     if (!nsMetricName.trim() || isNaN(current) || isNaN(target)) {
-      alert('Please complete all fields with valid values');
+      alert('Por favor completa todos los campos con valores válidos');
       return;
     }
 
@@ -209,7 +209,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
             boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ fontSize: '24px', fontWeight: 700, margin: 0 }}>Edit North Star Metric</h2>
+              <h2 style={{ fontSize: '24px', fontWeight: 700, margin: 0 }}>Editar North Star Metric</h2>
               <button
                 onClick={closeModal}
                 style={{
@@ -225,13 +225,13 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
 
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px' }}>
-                Metric Name
+                Nombre de la Métrica
               </label>
               <input
                 type="text"
                 value={nsMetricName}
                 onChange={(e) => setNsMetricName(e.target.value)}
-                placeholder="e.g. Monthly Active Users, Annual Revenue, Retention Rate"
+                placeholder="Ej: Monthly Active Users, Annual Revenue, Retention Rate"
                 autoFocus
                 style={{
                   width: '100%',
@@ -246,7 +246,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
 
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px' }}>
-                Metric Type
+                Tipo de Métrica
               </label>
               <select
                 value={nsMetricType}
@@ -262,16 +262,16 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                   background: 'white'
                 }}
               >
-                <option value="currency">Currency ($) - e.g., $6,500,000</option>
-                <option value="count">Numeric (#) - e.g., 50,000 Users</option>
-                <option value="percentage">Percentage (%) - e.g., 85% Retention</option>
+                <option value="currency">Moneda ($) - Ej: $6,500,000</option>
+                <option value="count">Numérico (#) - Ej: 50,000 Usuarios</option>
+                <option value="percentage">Porcentaje (%) - Ej: 85% Retención</option>
               </select>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px' }}>
-                  Current Value ({getUnitLabel(nsMetricType)})
+                  Valor Actual ({getUnitLabel(nsMetricType)})
                 </label>
                 <input
                   type="number"
@@ -291,7 +291,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
 
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px' }}>
-                  Target Value ({getUnitLabel(nsMetricType)})
+                  Valor Objetivo ({getUnitLabel(nsMetricType)})
                 </label>
                 <input
                   type="number"
@@ -329,7 +329,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                   fontSize: '14px'
                 }}
               >
-                Cancel
+                Cancelar
               </button>
               <button
                 onClick={handleSaveNorthStar}
@@ -344,7 +344,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                   fontSize: '14px'
                 }}
               >
-                Save Changes
+                Guardar Cambios
               </button>
             </div>
           </div>
@@ -373,7 +373,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
             boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ fontSize: '24px', fontWeight: 700, margin: 0 }}>New Objective</h2>
+              <h2 style={{ fontSize: '24px', fontWeight: 700, margin: 0 }}>Nuevo Objective</h2>
               <button
                 onClick={closeModal}
                 style={{
@@ -389,7 +389,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
 
             <div style={{ marginBottom: '24px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px' }}>
-                Objective Title
+                Título del Objective
               </label>
               <input
                 type="text"
@@ -400,7 +400,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                     handleSaveObjective();
                   }
                 }}
-                placeholder="e.g. Expand to Brazil Market"
+                placeholder="Ej: Expandirse al Mercado de Brasil"
                 autoFocus
                 style={{
                   width: '100%',
@@ -415,12 +415,12 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
 
             <div style={{ marginBottom: '24px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px' }}>
-                Description
+                Descripción
               </label>
               <textarea
                 value={strategyDescription}
                 onChange={(e) => setStrategyDescription(e.target.value)}
-                placeholder="Describe what this growth lever aims to achieve..."
+                placeholder="Describe lo que esta palanca de growth busca lograr..."
                 rows={3}
                 style={{
                   width: '100%',
@@ -448,7 +448,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                   fontSize: '14px'
                 }}
               >
-                Cancel
+                Cancelar
               </button>
               <button
                 onClick={handleSaveObjective}
@@ -463,7 +463,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                   fontSize: '14px'
                 }}
               >
-                Create Objective
+                Crear Objective
               </button>
             </div>
           </div>
@@ -492,7 +492,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
             boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ fontSize: '24px', fontWeight: 700, margin: 0 }}>Add Initiative</h2>
+              <h2 style={{ fontSize: '24px', fontWeight: 700, margin: 0 }}>Agregar Initiative</h2>
               <button
                 onClick={closeModal}
                 style={{
@@ -508,7 +508,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
 
             <div style={{ marginBottom: '24px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px' }}>
-                Initiative Title
+                Título de la Initiative
               </label>
               <input
                 type="text"
@@ -519,7 +519,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                     handleSaveStrategy();
                   }
                 }}
-                placeholder="e.g. SEO Optimization"
+                placeholder="Ej: SEO Optimization"
                 autoFocus
                 style={{
                   width: '100%',
@@ -534,12 +534,12 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
 
             <div style={{ marginBottom: '24px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px' }}>
-                Description
+                Descripción
               </label>
               <textarea
                 value={strategyDescription}
                 onChange={(e) => setStrategyDescription(e.target.value)}
-                placeholder="Describe what this growth lever aims to achieve..."
+                placeholder="Describe lo que esta palanca de growth busca lograr..."
                 rows={3}
                 style={{
                   width: '100%',
@@ -567,7 +567,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                   fontSize: '14px'
                 }}
               >
-                Cancel
+                Cancelar
               </button>
               <button
                 onClick={handleSaveStrategy}
@@ -582,7 +582,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                   fontSize: '14px'
                 }}
               >
-                Add Initiative
+                Agregar Initiative
               </button>
             </div>
           </div>
@@ -612,7 +612,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
             boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ fontSize: '24px', fontWeight: 700, margin: 0 }}>Edit Objective</h2>
+              <h2 style={{ fontSize: '24px', fontWeight: 700, margin: 0 }}>Editar Objective</h2>
               <button
                 onClick={closeModal}
                 style={{
@@ -628,7 +628,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
 
             <div style={{ marginBottom: '24px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px' }}>
-                Objective Title
+                Título del Objective
               </label>
               <input
                 type="text"
@@ -653,12 +653,12 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
 
             <div style={{ marginBottom: '24px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px' }}>
-                Description
+                Descripción
               </label>
               <textarea
                 value={strategyDescription}
                 onChange={(e) => setStrategyDescription(e.target.value)}
-                placeholder="Describe what this growth lever aims to achieve..."
+                placeholder="Describe lo que esta palanca de growth busca lograr..."
                 rows={3}
                 style={{
                   width: '100%',
@@ -686,7 +686,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                   fontSize: '14px'
                 }}
               >
-                Cancel
+                Cancelar
               </button>
               <button
                 onClick={handleSaveEditObjective}
@@ -701,7 +701,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                   fontSize: '14px'
                 }}
               >
-                Save Changes
+                Guardar Cambios
               </button>
             </div>
           </div>
@@ -730,7 +730,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
             boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ fontSize: '24px', fontWeight: 700, margin: 0 }}>Edit Initiative</h2>
+              <h2 style={{ fontSize: '24px', fontWeight: 700, margin: 0 }}>Editar Initiative</h2>
               <button
                 onClick={closeModal}
                 style={{
@@ -746,7 +746,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
 
             <div style={{ marginBottom: '24px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px' }}>
-                Initiative Title
+                Título de la Initiative
               </label>
               <input
                 type="text"
@@ -771,12 +771,12 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
 
             <div style={{ marginBottom: '24px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px' }}>
-                Description
+                Descripción
               </label>
               <textarea
                 value={strategyDescription}
                 onChange={(e) => setStrategyDescription(e.target.value)}
-                placeholder="Describe what this growth lever aims to achieve..."
+                placeholder="Describe lo que esta palanca de growth busca lograr..."
                 rows={3}
                 style={{
                   width: '100%',
@@ -804,7 +804,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                   fontSize: '14px'
                 }}
               >
-                Cancel
+                Cancelar
               </button>
               <button
                 onClick={handleSaveEditStrategy}
@@ -819,7 +819,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                   fontSize: '14px'
                 }}
               >
-                Save Changes
+                Guardar Cambios
               </button>
             </div>
           </div>
@@ -927,7 +927,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                 opacity: 0.75,
                 fontWeight: 600
               }}>
-                Achieved
+                Alcanzado
               </div>
             </div>
 
@@ -953,7 +953,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                 e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
                 e.currentTarget.style.transform = 'scale(1)';
               }}
-              title="Edit North Star Metric"
+              title="Editar North Star Metric"
             >
               <Edit2 size={14} />
             </button>
@@ -1000,7 +1000,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
           onMouseLeave={(e) => e.currentTarget.style.background = '#4f46e5'}
         >
           <Plus size={18} />
-          New Objective
+          Nuevo Objective
         </button>
       </div>
 
@@ -1011,9 +1011,9 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
             <div style={{ background: '#f3f4f6', width: '48px', height: '48px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
               <Target size={24} style={{ color: '#9ca3af' }} />
             </div>
-            <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#111827', marginBottom: '8px' }}>No Objectives Yet</h3>
+            <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#111827', marginBottom: '8px' }}>Aún no hay Objectives</h3>
             <p style={{ color: '#6b7280', fontSize: '14px', maxWidth: '400px', margin: '0 auto 24px' }}>
-              Click the button above to create your first strategic objective.
+              Haz clic en el botón de arriba para crear tu primer objective estratégico.
             </p>
             <button
               onClick={handleOpenObjectiveModal}
@@ -1027,7 +1027,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                 cursor: 'pointer'
               }}
             >
-              Create First Objective
+              Crear Primer Objective
             </button>
           </div>
         )}
@@ -1080,7 +1080,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                       }}
                       onMouseEnter={(e) => e.currentTarget.style.color = '#4f46e5'}
                       onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}
-                      title="Edit objective"
+                      title="Editar objective"
                     >
                       <Edit2 size={16} />
                     </button>
@@ -1113,7 +1113,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                     }}
                   >
                     <Plus size={14} />
-                    Add Initiative
+                    Agregar Initiative
                   </button>
                   <button
                     onClick={() => onDeleteObjective(objective.id)}
@@ -1141,7 +1141,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                     }}
                   >
                     <Trash2 size={14} />
-                    Delete
+                    Eliminar
                   </button>
                 </div>
               </div>
@@ -1157,7 +1157,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                 }}>
                   <Lightbulb size={20} style={{ color: '#9ca3af', marginBottom: '8px' }} />
                   <p style={{ fontSize: '13px', color: '#6b7280', margin: 0 }}>
-                    No strategies added yet. Click "Add Initiative" to create one.
+                    Aún no hay strategies añadidas. Haz clic en "Agregar Initiative" para crear una.
                   </p>
                 </div>
               ) : (
@@ -1207,7 +1207,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                               display: 'inline-block',
                               fontWeight: 600
                             }}>
-                              {linkedCount} {linkedCount === 1 ? 'Experiment' : 'Experiments'}
+                              {linkedCount} {linkedCount === 1 ? 'Experimento' : 'Experimentos'}
                             </div>
                           </div>
                           <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
@@ -1225,16 +1225,16 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                               }}
                               onMouseEnter={(e) => e.currentTarget.style.color = '#4f46e5'}
                               onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}
-                              title="Edit initiative"
+                              title="Editar initiative"
                             >
                               <Edit2 size={14} />
                             </button>
                             <button
                               onClick={() => {
                                 const linked = experiments.filter(exp => exp.linkedStrategyId === strategy.id);
-                                let msg = `Delete initiative "${strategy.title}"?`;
+                                let msg = `¿Eliminar initiative "${strategy.title}"?`;
                                 if (linked.length > 0) {
-                                  msg += `\n\n⚠️ ${linked.length} experiment${linked.length === 1 ? ' is' : 's are'} linked. The link will be removed.`;
+                                  msg += `\n\n⚠️ ${linked.length} experimento${linked.length === 1 ? ' está' : 's están'} vinculado${linked.length === 1 ? '' : 's'}. El vínculo será eliminado.`;
                                 }
                                 if (window.confirm(msg)) {
                                   onDeleteStrategy(strategy.id);
@@ -1252,7 +1252,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                               }}
                               onMouseEnter={(e) => e.currentTarget.style.color = '#dc2626'}
                               onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}
-                              title="Delete initiative"
+                              title="Eliminar initiative"
                             >
                               <Trash2 size={14} />
                             </button>

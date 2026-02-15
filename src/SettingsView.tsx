@@ -52,7 +52,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const handleAddMember = () => {
     if (!newMemberName.trim() || !newMemberEmail.trim()) {
-      alert('Please fill in all required fields');
+      alert('Por favor completa todos los campos requeridos');
       return;
     }
 
@@ -154,10 +154,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <Users size={24} color="#4F46E5" />
             <div>
               <h2 style={{ fontSize: '20px', fontWeight: 700, margin: 0 }}>
-                Team Management
+                Gestión del Equipo
               </h2>
               <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0 0 0' }}>
-                Manage team members, roles, and project access
+                Administra miembros del equipo, roles y acceso a proyectos
               </p>
             </div>
           </div>
@@ -218,7 +218,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               }}
             >
               <Plus size={18} />
-              Invite Team Member
+              Invitar Miembro del Equipo
             </button>
           )}
 
@@ -232,7 +232,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               marginBottom: '24px'
             }}>
               <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '20px' }}>
-                {editingMember ? 'Edit Team Member' : 'Add New Team Member'}
+                {editingMember ? 'Editar Miembro del Equipo' : 'Agregar Nuevo Miembro'}
               </h3>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
@@ -244,7 +244,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     color: '#374151',
                     marginBottom: '8px'
                   }}>
-                    Name *
+                    Nombre *
                   </label>
                   <input
                     type="text"
@@ -329,7 +329,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     color: '#374151',
                     marginBottom: '8px'
                   }}>
-                    Role
+                    Rol
                   </label>
                   <select
                     value={editingMember ? editRole : newMemberRole}
@@ -345,9 +345,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       background: 'white'
                     }}
                   >
-                    <option value="Viewer">Viewer - Can view experiments</option>
-                    <option value="Lead">Lead - Can create and manage experiments</option>
-                    <option value="Admin">Admin - Full access to all features</option>
+                    <option value="Viewer">Viewer - Puede ver experimentos</option>
+                    <option value="Lead">Lead - Puede crear y gestionar experimentos</option>
+                    <option value="Admin">Admin - Acceso completo a todas las funciones</option>
                   </select>
                 </div>
               </div>
@@ -364,7 +364,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   marginBottom: '12px'
                 }}>
                   <Briefcase size={16} />
-                  Project Access
+                  Acceso a Proyectos
                 </label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                   {projects.map(project => {
@@ -429,7 +429,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     cursor: 'pointer'
                   }}
                 >
-                  Cancel
+                  Cancelar
                 </button>
                 <button
                   onClick={editingMember ? handleSaveEdit : handleAddMember}
@@ -447,10 +447,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     gap: '6px'
                   }}
                 >
-                  {editingMember ? 'Save Changes' : (
+                  {editingMember ? 'Guardar Cambios' : (
                     <>
                       <Plus size={16} />
-                      Add Member
+                      Agregar Miembro
                     </>
                   )}
                 </button>
@@ -472,7 +472,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <thead>
                   <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
                     <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '13px', fontWeight: 600, color: '#6b7280' }}>
-                      Member
+                      Miembro
                     </th>
                     <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '13px', fontWeight: 600, color: '#6b7280' }}>
                       Email
@@ -481,10 +481,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       Role
                     </th>
                     <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '13px', fontWeight: 600, color: '#6b7280' }}>
-                      Projects
+                      Proyectos
                     </th>
                     <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: 600, color: '#6b7280' }}>
-                      Actions
+                      Acciones
                     </th>
                   </tr>
                 </thead>
@@ -554,7 +554,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                               </div>
                             )) : (
                               <span style={{ fontSize: '13px', color: '#9ca3af', fontStyle: 'italic' }}>
-                                No projects assigned
+                                Sin proyectos asignados
                               </span>
                             )}
                           </div>
@@ -582,7 +582,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                             </button>
                             <button
                               onClick={() => {
-                                if (window.confirm(`Remove ${member.name} from the team?`)) {
+                                if (window.confirm(`¿Eliminar a ${member.name} del equipo?`)) {
                                   onRemoveMember(member.id);
                                 }
                               }}
@@ -620,7 +620,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               color: '#9ca3af'
             }}>
               <Shield size={48} style={{ margin: '0 auto 16px', opacity: 0.5 }} />
-              <p style={{ fontSize: '14px' }}>No team members yet. Add your first member to get started!</p>
+              <p style={{ fontSize: '14px' }}>Aún no hay miembros en el equipo. ¡Agrega tu primer miembro para comenzar!</p>
             </div>
           )}
         </div>
@@ -636,7 +636,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <span style={{ fontSize: '13px', color: '#6b7280' }}>
-              {teamMembers.length} team member{teamMembers.length !== 1 ? 's' : ''}
+              {teamMembers.length} miembro{teamMembers.length !== 1 ? 's' : ''} del equipo
             </span>
             {onResetData && (
               <button
@@ -657,7 +657,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 }}
               >
                 <Trash2 size={14} />
-                Reset Data
+                Reiniciar Datos
               </button>
             )}
             {onSignOut && (
@@ -679,7 +679,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 }}
               >
                 <LogOut size={14} />
-                Sign Out
+                Cerrar Sesión
               </button>
             )}
           </div>
@@ -696,7 +696,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               cursor: 'pointer'
             }}
           >
-            Done
+            Listo
           </button>
         </div>
       </div>

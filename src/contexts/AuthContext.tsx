@@ -48,8 +48,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [profile, setProfile] = useState<Profile | null>(null)
     const [loading, setLoading] = useState(true)
 
+    // Helper: check if error is an abort (safe to ignore)
+    const isAbortError = (err: any) =>
+        err?.name === 'AbortError' || err?.message?.includes('abort')
+
     // Fetch profile from profiles table
-    const fetchProfile = async (userId: string) => {
+    const fetchProfile = async (userId: string): Promise<Profile | null> => {
         try {
             const { data, error } = await supabase
                 .from('profiles')
@@ -62,13 +66,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 return null
             }
             return data as Profile
-        } catch (err) {
+        } catch (err: any) {
+            if (isAbortError(err)) return null
             console.error('Error fetching profile:', err)
             return null
         }
     }
 
-    // Check for demo onboarding
+    // Check for demo onboarding (runs in background, never blocks loading)
     const checkOnboarding = async (userId: string) => {
         try {
             const { count, error } = await supabase
@@ -92,7 +97,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     console.log('✅ Demo project cloned:', data)
                 }
             }
-        } catch (err) {
+        } catch (err: any) {
+            if (isAbortError(err)) return
             console.error('Error in onboarding:', err)
         }
     }
@@ -103,28 +109,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         let cancelled = false
 
+        // Safety timeout: force loading=false after 10s no matter what
+        const safetyTimer = setTimeout(() => {
+            if (!cancelled) {
+                console.warn('⏱️ Auth init safety timeout – forcing load complete')
+                setLoading(false)
+            }
+        }, 10_000)
+
+        const finishLoading = () => {
+            if (!cancelled) {
+                setLoading(false)
+                clearTimeout(safetyTimer)
+            }
+        }
+
         // Get initial session
         supabase.auth.getSession().then(async ({ data: { session: existingSession } }) => {
             if (cancelled) return
             setSession(existingSession)
             if (existingSession?.user) {
-                const p = await fetchProfile(existingSession.user.id)
-                if (cancelled) return
-                setProfile(p)
+                try {
+                    const p = await fetchProfile(existingSession.user.id)
+                    if (cancelled) return
+                    setProfile(p)
+                } catch (err: any) {
+                    if (isAbortError(err)) return
+                    console.error('Profile fetch failed:', err)
+                }
+                // Fire onboarding in background – don't block loading
                 if (!onboardingDone.current) {
                     onboardingDone.current = true
-                    await checkOnboarding(existingSession.user.id)
+                    checkOnboarding(existingSession.user.id).catch(() => {})
                 }
             }
-            if (!cancelled) setLoading(false)
+            finishLoading()
         }).catch((err) => {
-            // Handle AbortError from React StrictMode double-mounting
-            if (err?.name === 'AbortError') {
+            if (isAbortError(err)) {
                 console.log('Auth init aborted (StrictMode remount)')
                 return
             }
             console.error('Error getting session:', err)
-            if (!cancelled) setLoading(false)
+            finishLoading()
         })
 
         // Listen for auth changes
@@ -135,25 +161,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setSession(newSession)
 
                 if (newSession?.user) {
-                    const p = await fetchProfile(newSession.user.id)
-                    if (cancelled) return
-                    setProfile(p)
+                    try {
+                        const p = await fetchProfile(newSession.user.id)
+                        if (cancelled) return
+                        setProfile(p)
+                    } catch (err: any) {
+                        if (isAbortError(err)) return
+                        console.error('Profile fetch failed on auth change:', err)
+                    }
 
+                    // Fire onboarding in background – don't block loading
                     if (event === 'SIGNED_IN' && !onboardingDone.current) {
                         onboardingDone.current = true
-                        await checkOnboarding(newSession.user.id)
+                        checkOnboarding(newSession.user.id).catch(() => {})
                     }
                 } else {
                     setProfile(null)
                     onboardingDone.current = false
                 }
 
-                if (!cancelled) setLoading(false)
+                finishLoading()
             }
         )
 
         return () => {
             cancelled = true
+            clearTimeout(safetyTimer)
             subscription.unsubscribe()
         }
     }, [])

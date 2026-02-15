@@ -63,7 +63,7 @@ const ProjectCard = ({
     const totalExperiments = project.experiments.length;
     const isDemo = project.metadata.name.toLowerCase().includes('demo');
     const northStarValue = project.northStar?.currentValue ?? 0;
-    const northStarName = project.northStar?.name ?? 'Not set';
+    const northStarName = project.northStar?.name ?? 'Sin configurar';
     const northStarUnit = project.northStar?.unit ?? '';
     const gradient = CARD_GRADIENTS[index % CARD_GRADIENTS.length];
 
@@ -209,7 +209,7 @@ const ProjectCard = ({
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <Beaker size={14} color="#9CA3AF" />
                         <span style={{ fontSize: '13px', color: '#6B7280' }}>
-                            <span style={{ fontWeight: 700, color: '#374151' }}>{activeExperiments}</span> active
+                            <span style={{ fontWeight: 700, color: '#374151' }}>{activeExperiments}</span> activos
                             <span style={{ color: '#D1D5DB', margin: '0 4px' }}>·</span>
                             {totalExperiments} total
                         </span>
@@ -296,7 +296,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                 <div style={{ marginBottom: '32px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
                         <h1 style={{ fontSize: '32px', fontWeight: 800, margin: 0, color: '#111827', letterSpacing: '-0.5px' }}>
-                            Your Projects
+                            Tus Proyectos
                         </h1>
                         <span style={{
                             fontSize: '13px', fontWeight: 600, padding: '4px 10px',
@@ -306,7 +306,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                         </span>
                     </div>
                     <p style={{ fontSize: '15px', color: '#6B7280', margin: 0 }}>
-                        {totalActive} active experiments across {projects.length} projects · {totalExperiments} total experiments
+                        {totalActive} experimentos activos en {projects.length} proyectos · {totalExperiments} experimentos en total
                     </p>
                 </div>
 
@@ -327,7 +327,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                         <Search size={16} color="#9CA3AF" />
                         <input
                             type="text"
-                            placeholder="Search projects..."
+                            placeholder="Buscar proyectos..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             style={{
@@ -349,7 +349,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                         onMouseLeave={(e) => { e.currentTarget.style.background = '#4F46E5'; }}
                     >
                         <Plus size={16} />
-                        New Project
+                        Nuevo Proyecto
                     </button>
                 </div>
 
@@ -360,8 +360,8 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                         color: '#9CA3AF',
                     }}>
                         <Search size={40} color="#D1D5DB" style={{ marginBottom: '16px' }} />
-                        <p style={{ fontSize: '16px', fontWeight: 500 }}>No projects match "{searchQuery}"</p>
-                        <p style={{ fontSize: '13px' }}>Try a different search term</p>
+                        <p style={{ fontSize: '16px', fontWeight: 500 }}>Ningún proyecto coincide con "{searchQuery}"</p>
+                        <p style={{ fontSize: '13px' }}>Intenta con un término diferente</p>
                     </div>
                 ) : (
                     <div style={{
@@ -417,8 +417,8 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                                 }}>
                                     <Plus size={24} />
                                 </div>
-                                <span style={{ fontSize: '15px', fontWeight: 600 }}>Create New Project</span>
-                                <span style={{ fontSize: '12px', opacity: 0.7 }}>Start tracking growth experiments</span>
+                                <span style={{ fontSize: '15px', fontWeight: 600 }}>Crear Nuevo Proyecto</span>
+                                <span style={{ fontSize: '12px', opacity: 0.7 }}>Comienza a trackear tus growth experiments</span>
                             </div>
                         )}
                     </div>

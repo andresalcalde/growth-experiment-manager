@@ -31,14 +31,14 @@ export const SECTION_GUIDES: Record<string, SectionGuideConfig> = {
         id: 'portfolio',
         emoji: '📊',
         title: 'Portfolio Overview',
-        subtitle: 'Your growth command center',
-        description: 'This is your central dashboard showing all active projects. Each card represents a growth project with its North Star Metric progress, active experiments, and team activity.',
+        subtitle: 'Tu centro de comando de growth',
+        description: 'Este es tu dashboard central con todos los proyectos activos. Cada tarjeta representa un proyecto de growth con el progreso de su North Star Metric, experimentos activos y actividad del equipo.',
         steps: [
-            { icon: '🎯', title: 'Select a Project', description: 'Click any project card to dive into its growth roadmap and experiments.' },
-            { icon: '➕', title: 'Create New Project', description: 'Use the "New Project" button to start a fresh growth initiative with a defined North Star Metric.' },
-            { icon: '📈', title: 'Monitor Progress', description: 'Each card shows real-time progress toward your North Star Metric target.' },
+            { icon: '🎯', title: 'Selecciona un Proyecto', description: 'Haz clic en cualquier tarjeta para acceder a su Growth Roadmap y experimentos.' },
+            { icon: '➕', title: 'Crear Nuevo Proyecto', description: 'Usa el botón "Nuevo Proyecto" para iniciar una nueva iniciativa de growth con una North Star Metric definida.' },
+            { icon: '📈', title: 'Monitorea el Progreso', description: 'Cada tarjeta muestra el progreso en tiempo real hacia tu North Star Metric target.' },
         ],
-        proTip: 'Star your most important projects to keep them at the top. Think of each project as a growth "bet" your team is making.',
+        proTip: 'Piensa en cada proyecto como una "apuesta" de growth que tu equipo está haciendo. Enfócate en máximo 2-3 proyectos activos a la vez.',
         accentColor: '#4F46E5',
         accentGradient: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)',
     },
@@ -47,14 +47,14 @@ export const SECTION_GUIDES: Record<string, SectionGuideConfig> = {
         id: 'roadmap',
         emoji: '🗺️',
         title: '01. Design — Growth Roadmap',
-        subtitle: 'Define your growth strategy',
-        description: 'Design your growth engine using the Reforge framework: Start with your North Star Metric, then define Growth Objectives (levers) and Strategic Initiatives (actions) that will move it.',
+        subtitle: 'Define tu estrategia de growth',
+        description: 'Diseña tu motor de crecimiento usando el framework de Reforge: empieza con tu North Star Metric, luego define Growth Objectives (levers) y Strategic Initiatives (acciones) que la muevan.',
         steps: [
-            { icon: '⭐', title: 'Set Your North Star', description: 'Define the single most important metric that represents your company\'s core value delivery. Click the North Star card to edit it.' },
-            { icon: '🎯', title: 'Add Growth Objectives', description: 'These are the high-impact "levers" that influence your North Star. Think of them as strategic focus areas (e.g., "Increase Conversion Rate", "Reduce Churn").' },
-            { icon: '⚡', title: 'Define Initiatives', description: 'Under each objective, add specific actionable strategies — these are the concrete actions your team will take (e.g., "A/B Test Landing Page", "Email Onboarding Sequence").' },
+            { icon: '⭐', title: 'Define tu North Star', description: 'Define la métrica más importante que representa el core value de tu compañía. Haz clic en la tarjeta de North Star para editarla.' },
+            { icon: '🎯', title: 'Agrega Growth Objectives', description: 'Son los "levers" de alto impacto que influyen en tu North Star. Piensa en ellos como áreas de enfoque estratégico (ej: "Aumentar Conversion Rate", "Reducir Churn").' },
+            { icon: '⚡', title: 'Define Initiatives', description: 'Bajo cada objetivo, agrega estrategias accionables específicas: las acciones concretas que tu equipo ejecutará (ej: "A/B Test en Landing Page", "Secuencia de Email Onboarding").' },
         ],
-        proTip: 'A good North Star has 3–5 Growth Objectives. Each Objective should have 2–4 Initiatives. This creates a focused, manageable growth roadmap.',
+        proTip: 'Una buena North Star tiene 3–5 Growth Objectives. Cada Objective debería tener 2–4 Initiatives. Esto crea un roadmap de growth enfocado y manejable.',
         accentColor: '#4F46E5',
         accentGradient: 'linear-gradient(135deg, #4F46E5 0%, #6366F1 100%)',
     },
@@ -63,14 +63,14 @@ export const SECTION_GUIDES: Record<string, SectionGuideConfig> = {
         id: 'table',
         emoji: '🔬',
         title: '02. Explore — Experiment Backlog',
-        subtitle: 'Prioritize your experiments scientifically',
-        description: 'This is your experiment prioritization table. All experiments start here as "Ideas". Use ICE scoring (Impact × Confidence × Ease) to objectively rank which experiments to run first.',
+        subtitle: 'Prioriza tus experimentos científicamente',
+        description: 'Esta es tu tabla de priorización de experimentos. Todos los experimentos comienzan aquí como "Ideas". Usa ICE scoring (Impact × Confidence × Ease) para rankear objetivamente cuáles ejecutar primero.',
         steps: [
-            { icon: '💡', title: 'Add Experiment Ideas', description: 'Click "New Experiment" to add ideas. Include a clear hypothesis, the strategy it\'s linked to, and its funnel stage.' },
-            { icon: '🎲', title: 'Score with ICE', description: 'Rate each experiment 1–10 on Impact, Confidence, and Ease. The ICE Score (I×C×E) automatically ranks them. Click any score cell to edit inline.' },
-            { icon: '🚀', title: 'Promote to Committed', description: 'Change status from "Idea" → "Prioritized" to commit to running an experiment. It will then appear in the Be Agile board.' },
+            { icon: '💡', title: 'Agrega Ideas', description: 'Haz clic en "Nuevo Experimento" para agregar ideas. Incluye una hipótesis clara, la strategy vinculada y su funnel stage.' },
+            { icon: '🎲', title: 'Evalúa con ICE', description: 'Califica cada experimento del 1–10 en Impact, Confidence y Ease. El ICE Score (I×C×E) los rankea automáticamente. Haz clic en cualquier celda para editar inline.' },
+            { icon: '🚀', title: 'Promueve a Committed', description: 'Cambia el status de "Idea" → "Prioritized" para comprometerte a ejecutar un experimento. Aparecerá en el board de Be Agile.' },
         ],
-        proTip: 'Sort by ICE Score descending to see your highest-priority experiments first. Focus your team\'s bandwidth on the top 3–5 experiments at any time.',
+        proTip: 'Ordena por ICE Score descendente para ver tus experimentos de mayor prioridad primero. Enfoca el bandwidth de tu equipo en los top 3–5 experimentos en cualquier momento.',
         accentColor: '#0EA5E9',
         accentGradient: 'linear-gradient(135deg, #0EA5E9 0%, #38BDF8 100%)',
     },
@@ -79,15 +79,15 @@ export const SECTION_GUIDES: Record<string, SectionGuideConfig> = {
         id: 'board',
         emoji: '🏃',
         title: '03. Be Agile — Kanban Board',
-        subtitle: 'Track committed experiments in real-time',
-        description: 'This Kanban board shows only committed experiments (Prioritized → Live Testing → Analysis). Drag and drop cards to update their status as they progress through your growth sprint.',
+        subtitle: 'Sigue tus experimentos committed en tiempo real',
+        description: 'Este Kanban board muestra solo los experimentos committed (Prioritized → Live Testing → Analysis). Arrastra y suelta las tarjetas para actualizar su status conforme avanzan en tu growth sprint.',
         steps: [
-            { icon: '📋', title: 'Prioritized', description: 'Experiments that are approved and ready to build. Your team should pick from here for the current sprint.' },
-            { icon: '🔨', title: 'Building', description: 'Experiments currently being developed — creative assets, landing pages, technical implementation, etc.' },
-            { icon: '🧪', title: 'Live Testing', description: 'Experiments that are live and collecting data. Monitor these actively and define success criteria.' },
-            { icon: '📊', title: 'Analysis', description: 'Experiments where testing is complete. Analyze results and mark as Winner, Loser, or Inconclusive.' },
+            { icon: '📋', title: 'Prioritized', description: 'Experimentos aprobados y listos para construir. Tu equipo debería tomar de aquí para el sprint actual.' },
+            { icon: '🔨', title: 'Building', description: 'Experimentos en desarrollo — assets creativos, landing pages, implementación técnica, etc.' },
+            { icon: '🧪', title: 'Live Testing', description: 'Experimentos en vivo recolectando datos. Monitoréalos activamente y define los success criteria.' },
+            { icon: '📊', title: 'Analysis', description: 'Experimentos donde el testing terminó. Analiza resultados y márcalos como Winner, Loser o Inconclusive.' },
         ],
-        proTip: 'When you move an experiment to "Finished", you\'ll be prompted to record Key Learnings. This builds your team\'s institutional knowledge over time.',
+        proTip: 'Cuando muevas un experimento a "Finished", se te pedirá registrar Key Learnings. Esto construye el conocimiento institucional de tu equipo con el tiempo.',
         accentColor: '#10B981',
         accentGradient: 'linear-gradient(135deg, #10B981 0%, #34D399 100%)',
     },
@@ -96,14 +96,14 @@ export const SECTION_GUIDES: Record<string, SectionGuideConfig> = {
         id: 'library',
         emoji: '📚',
         title: '04. Learning — Knowledge Library',
-        subtitle: 'Your institutional growth memory',
-        description: 'The Learning Library is where completed experiments live as "case studies". Each card captures the hypothesis, results, and key learnings — building your team\'s compounding growth knowledge.',
+        subtitle: 'Tu memoria institucional de growth',
+        description: 'La Learning Library es donde los experimentos completados viven como "case studies". Cada tarjeta captura la hipótesis, resultados y key learnings — construyendo el conocimiento compuesto de growth de tu equipo.',
         steps: [
-            { icon: '✅', title: 'Winners', description: 'Experiments that validated their hypothesis. These are proven playbooks to scale and replicate.' },
-            { icon: '❌', title: 'Losers', description: 'Experiments that disproved their hypothesis. Equally valuable — they prevent repeating failed approaches.' },
-            { icon: '🔍', title: 'Filter & Search', description: 'Use the filters to browse by outcome (Winners/Losers) or funnel stage (Acquisition, Activation, etc.).' },
+            { icon: '✅', title: 'Winners', description: 'Experimentos que validaron su hipótesis. Son playbooks probados para escalar y replicar.' },
+            { icon: '❌', title: 'Losers', description: 'Experimentos que refutaron su hipótesis. Igualmente valiosos — previenen repetir enfoques fallidos.' },
+            { icon: '🔍', title: 'Filtra y Busca', description: 'Usa los filtros para navegar por resultado (Winners/Losers) o funnel stage (Acquisition, Activation, etc.).' },
         ],
-        proTip: 'The most successful growth teams treat "losers" as some of their most valuable data. A failed experiment with a clear learning is worth more than a winner you can\'t explain.',
+        proTip: 'Los mejores equipos de growth tratan los "losers" como datos sumamente valiosos. Un experimento fallido con un learning claro vale más que un winner que no puedes explicar.',
         accentColor: '#8B5CF6',
         accentGradient: 'linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%)',
     },
@@ -112,12 +112,12 @@ export const SECTION_GUIDES: Record<string, SectionGuideConfig> = {
         id: 'settings',
         emoji: '⚙️',
         title: 'Settings — Team & Project Config',
-        subtitle: 'Manage your workspace',
-        description: 'Configure your team members, project access, and workspace settings. Team members added here will be available as experiment owners throughout the platform.',
+        subtitle: 'Administra tu workspace',
+        description: 'Configura los miembros de tu equipo, acceso a proyectos y ajustes del workspace. Los miembros agregados aquí estarán disponibles como owners de experimentos en toda la plataforma.',
         steps: [
-            { icon: '👥', title: 'Team Members', description: 'Add and manage team members. Each member can be assigned as an experiment owner.' },
-            { icon: '🔐', title: 'Project Access', description: 'Control which projects each team member can access and their role (Admin, Lead, Viewer).' },
-            { icon: '🔄', title: 'Data Management', description: 'Reset or export your data as needed.' },
+            { icon: '👥', title: 'Team Members', description: 'Agrega y administra miembros del equipo. Cada miembro puede ser asignado como owner de un experimento.' },
+            { icon: '🔐', title: 'Project Access', description: 'Controla a qué proyectos puede acceder cada miembro y su rol (Admin, Lead, Viewer).' },
+            { icon: '🔄', title: 'Data Management', description: 'Reinicia o exporta tus datos según sea necesario.' },
         ],
         accentColor: '#6B7280',
         accentGradient: 'linear-gradient(135deg, #6B7280 0%, #9CA3AF 100%)',
@@ -213,10 +213,10 @@ export const SectionGuide: React.FC<SectionGuideProps> = ({ guideId, variant = '
                     e.currentTarget.style.color = '#9CA3AF';
                     e.currentTarget.style.background = 'white';
                 }}
-                title="Show section guide"
+                title="Mostrar guía de sección"
             >
                 <HelpCircle size={14} />
-                <span>How it works</span>
+                <span>Cómo funciona</span>
             </button>
         );
     }
@@ -265,7 +265,7 @@ export const SectionGuide: React.FC<SectionGuideProps> = ({ guideId, variant = '
                     }}
                 >
                     <Lightbulb size={12} />
-                    <span>Guide</span>
+                    <span>Guía</span>
                 </button>
 
                 {isExpanded && (
@@ -385,7 +385,7 @@ export const SectionGuide: React.FC<SectionGuideProps> = ({ guideId, variant = '
                                 borderRadius: '12px',
                             }}>
                                 <BookOpen size={12} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
-                                How it works
+                                Cómo funciona
                             </span>
                         )}
                         <ChevronRight
@@ -531,7 +531,7 @@ export const SectionGuide: React.FC<SectionGuideProps> = ({ guideId, variant = '
                                 }}
                             >
                                 <X size={12} />
-                                Got it, don't show again
+                                Entendido, no mostrar de nuevo
                             </button>
                         </div>
                     </div>

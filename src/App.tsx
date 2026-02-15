@@ -227,7 +227,7 @@ const EditableCell = ({ value, onChange }: { value: number; onChange: (v: number
     <div
       onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
       style={{ cursor: 'text', padding: '4px', border: '1px solid transparent', display: 'inline-block' }}
-      title="Click to edit"
+      title="Haz clic para editar"
     >
       {value}
     </div>
@@ -382,7 +382,7 @@ const CaseStudyModal = ({ experiment, onClose }: { experiment: Experiment; onClo
                   ))}
                   {(!experiment.visualProof || experiment.visualProof.length === 0) && (
                     <div style={{ aspectRatio: '16/9', background: '#f3f4f6', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed var(--border-subtle)', gridColumn: 'span 2' }}>
-                      <span style={{ fontSize: '12px', color: 'var(--text-subtle)' }}>No visual evidence attached</span>
+                      <span style={{ fontSize: '12px', color: 'var(--text-subtle)' }}>Sin evidencia visual adjunta</span>
                     </div>
                   )}
                 </div>
@@ -857,7 +857,7 @@ const App: React.FC = () => {
             textTransform: 'uppercase',
             letterSpacing: '0.5px'
           }}>
-            Active Project
+            Proyecto Activo
           </label>
           <select
             value={activeProjectId || ''}
@@ -891,7 +891,7 @@ const App: React.FC = () => {
               </option>
             ))}
             <option value="__create_new__" style={{ color: '#4F46E5', fontWeight: 700 }}>
-              + Create New Project
+              + Crear Nuevo Proyecto
             </option>
           </select>
         </div>
@@ -914,7 +914,7 @@ const App: React.FC = () => {
           onClick={() => setIsNewModalOpen(true)}
         >
           <Plus size={18} />
-          New Experiment
+          Nuevo Experimento
         </button>
 
         {/* Back to Portfolio - Prominent */}
@@ -940,7 +940,7 @@ const App: React.FC = () => {
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg>
-          <span>All Projects</span>
+          <span>Todos los Proyectos</span>
         </button>
 
         <button
@@ -1048,7 +1048,7 @@ const App: React.FC = () => {
             }}
           >
             <HelpCircle size={16} />
-            Methodology Guide
+            Guía Metodológica
           </button>
         </div>
       </nav>
@@ -1067,7 +1067,7 @@ const App: React.FC = () => {
               <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input
                 className="input"
-                placeholder="Search experiments..."
+                placeholder="Buscar experimentos..."
                 style={{ paddingLeft: '36px', width: '240px' }}
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
@@ -1119,7 +1119,7 @@ const App: React.FC = () => {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th style={{ width: '35%' }}>Title</th>
+                  <th style={{ width: '35%' }}>Título</th>
                   <th style={{ width: '12%' }}>Status</th>
                   <th style={{ width: '8%' }}>Impact</th>
                   <th style={{ width: '8%' }}>Confidence</th>
@@ -1147,7 +1147,7 @@ const App: React.FC = () => {
                       </span>
                     </div>
                   </th>
-                  <th style={{ width: '15%' }}>Stage</th>
+                  <th style={{ width: '15%' }}>Funnel Stage</th>
                 </tr>
               </thead>
               <tbody>
@@ -1277,7 +1277,7 @@ const App: React.FC = () => {
                     background: 'none', border: 'none'
                   }}
                 >
-                  {f}
+                  {f === 'All' ? 'Todos' : f}
                 </button>
               ))}
               <div style={{ width: '1px', background: 'var(--border-subtle)', margin: '0 8px' }}></div>
@@ -1287,7 +1287,7 @@ const App: React.FC = () => {
                 onChange={e => setLibraryFilterStage(e.target.value)}
                 style={{ border: 'none', background: 'none', color: 'var(--text-muted)', fontWeight: 600, outline: 'none' }}
               >
-                <option value="All">All Stages</option>
+                <option value="All">Todos los Stages</option>
                 <option value="Acquisition">Acquisition</option>
                 <option value="Activation">Activation</option>
                 <option value="Retention">Retention</option>
@@ -1301,9 +1301,9 @@ const App: React.FC = () => {
                 <div style={{ width: '80px', height: '80px', borderRadius: '20px', background: 'linear-gradient(135deg, #EEF2FF, #E0E7FF)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '24px' }}>
                   <Book size={36} style={{ color: '#818CF8' }} />
                 </div>
-                <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#374151', marginBottom: '8px' }}>No learnings yet</h3>
+                <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#374151', marginBottom: '8px' }}>Aún no hay learnings</h3>
                 <p style={{ fontSize: '14px', color: '#9CA3AF', lineHeight: 1.6, marginBottom: '24px' }}>
-                  Finish experiments by marking them as <strong style={{ color: '#10B981' }}>Winner</strong>, <strong style={{ color: '#EF4444' }}>Loser</strong>, or <strong style={{ color: '#6B7280' }}>Inconclusive</strong> in the Explore tab.
+                  Finaliza experimentos marcándolos como <strong style={{ color: '#10B981' }}>Winner</strong>, <strong style={{ color: '#EF4444' }}>Loser</strong>, o <strong style={{ color: '#6B7280' }}>Inconclusive</strong> en la pestaña Explore.
                 </p>
                 <button
                   onClick={() => setView('table')}
@@ -1315,7 +1315,7 @@ const App: React.FC = () => {
                   }}
                 >
                   <TableIcon size={16} />
-                  Go to Explore
+                  Ir a Explore
                 </button>
               </div>
             ) : (
@@ -1404,7 +1404,7 @@ const App: React.FC = () => {
         onRemoveMember={handleRemoveTeamMember}
         onUpdateMember={handleUpdateTeamMember}
         onResetData={() => {
-          if (window.confirm('⚠️ Reset all data to defaults? This cannot be undone.')) {
+          if (window.confirm('⚠️ ¿Reiniciar todos los datos a los valores predeterminados? Esta acción no se puede deshacer.')) {
             localStorage.removeItem('lastActiveProjectId');
             refetchAll();
           }

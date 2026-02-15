@@ -37,18 +37,18 @@ const ScoreSlider = ({ label, value, onChange }: { label: string, value: number,
         {value} <span style={{ color: 'var(--text-subtle)', fontWeight: 400 }}>/ 10</span>
       </div>
     </div>
-    <input 
-      type="range" 
-      min="1" 
-      max="10" 
+    <input
+      type="range"
+      min="1"
+      max="10"
       step="1"
-      value={value} 
+      value={value}
       onChange={(e) => onChange(parseInt(e.target.value))}
-      style={{ 
-        width: '100%', 
+      style={{
+        width: '100%',
         accentColor: 'var(--accent)',
-        cursor: 'pointer' 
-      }} 
+        cursor: 'pointer'
+      }}
     />
   </div>
 );
@@ -74,8 +74,8 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({ isOpen, onClos
 
   const handleSave = () => {
     // Basic validation
-    if (!formData.title) formData.title = "Untitled Hypothesis"; 
-    
+    if (!formData.title) formData.title = "Hipótesis sin título";
+
     // ICE Score Logic: Impact * Confidence * Ease
     const calculatedIce = formData.impact * formData.confidence * formData.ease;
     onSave({ ...formData, iceScore: calculatedIce });
@@ -84,14 +84,14 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({ isOpen, onClos
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" style={{ maxWidth: '800px', padding: '0', borderRadius: '12px', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
-        
+
         {/* Header */}
         <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ background: 'var(--accent)', padding: '8px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-               <Lightbulb size={20} color="white" />
+              <Lightbulb size={20} color="white" />
             </div>
-            <h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0 }}>New Hypothesis</h2>
+            <h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0 }}>Nueva Hipótesis</h2>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
             <X size={24} color="var(--text-subtle)" />
@@ -100,48 +100,48 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({ isOpen, onClos
 
         {/* Scrollable Body */}
         <div style={{ padding: '32px', overflowY: 'auto', flex: 1 }}>
-          
-           {/* Title Input */}
-           <div className="form-group" style={{ marginBottom: '24px' }}>
-            <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>Hypothesis Title</label>
-            <input 
-              value={formData.title} 
-              onChange={e => setFormData({...formData, title: e.target.value})}
-              placeholder="E.g. One-Click Checkout"
+
+          {/* Title Input */}
+          <div className="form-group" style={{ marginBottom: '24px' }}>
+            <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>Título de la Hipótesis</label>
+            <input
+              value={formData.title}
+              onChange={e => setFormData({ ...formData, title: e.target.value })}
+              placeholder="Ej: One-Click Checkout"
               style={{ fontSize: '16px', fontWeight: 500 }}
             />
           </div>
 
           {/* Observation */}
           <div className="form-group" style={{ marginBottom: '24px' }}>
-            <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>Based on Observation</label>
-            <input 
-              value={formData.observation} 
-              onChange={e => setFormData({...formData, observation: e.target.value})}
-              placeholder="Type to search observations..."
+            <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>Basado en la Observación</label>
+            <input
+              value={formData.observation}
+              onChange={e => setFormData({ ...formData, observation: e.target.value })}
+              placeholder="Escribe para buscar observaciones..."
             />
           </div>
 
           {/* Hypothesis */}
           <div className="form-group" style={{ marginBottom: '24px' }}>
-            <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>I Expect That (Hypothesis)</label>
-            <textarea 
+            <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>Espero que (Hipótesis)</label>
+            <textarea
               rows={3}
-              value={formData.hypothesis} 
-              onChange={e => setFormData({...formData, hypothesis: e.target.value})}
-              placeholder="What is the solution to the problem? E.g. Reduce number of form fields..."
+              value={formData.hypothesis}
+              onChange={e => setFormData({ ...formData, hypothesis: e.target.value })}
+              placeholder="¿Cuál es la solución al problema? Ej: Reducir el número de campos del formulario..."
               style={{ resize: 'vertical', width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', outline: 'none' }}
             />
           </div>
 
           {/* Problem */}
           <div className="form-group" style={{ marginBottom: '32px' }}>
-            <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>Will Address (Problem)</label>
-            <textarea 
+            <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>Resolverá (Problema)</label>
+            <textarea
               rows={3}
-              value={formData.problem} 
-              onChange={e => setFormData({...formData, problem: e.target.value})}
-              placeholder="What is the problem that you are trying to solve? E.g. visitors are not completing..."
+              value={formData.problem}
+              onChange={e => setFormData({ ...formData, problem: e.target.value })}
+              placeholder="¿Cuál es el problema que intentas resolver? Ej: Los visitantes no están completando..."
               style={{ resize: 'vertical', width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', outline: 'none' }}
             />
           </div>
@@ -149,31 +149,31 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({ isOpen, onClos
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '48px' }}>
             {/* ICE Scores - SLIDERS 1-10 */}
             <div>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', marginBottom: '16px' }}>Prioritization Score (ICE)</div>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', marginBottom: '16px' }}>Priorización (ICE Score)</div>
               <div style={{ background: 'var(--bg-app)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
-                 <ScoreSlider label="Confidence" value={formData.confidence} onChange={(v) => setFormData({...formData, confidence: v})} />
-                 <ScoreSlider label="Importance (Impact)" value={formData.impact} onChange={(v) => setFormData({...formData, impact: v})} />
-                 <ScoreSlider label="Ease" value={formData.ease} onChange={(v) => setFormData({...formData, ease: v})} />
-                 
-                 <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border-strong)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 600, fontSize: '14px' }}>Total ICE Score</span>
-                    <span style={{ fontWeight: 800, fontSize: '18px', color: 'var(--accent)' }}>{formData.confidence * formData.impact * formData.ease}</span>
-                 </div>
+                <ScoreSlider label="Confidence" value={formData.confidence} onChange={(v) => setFormData({ ...formData, confidence: v })} />
+                <ScoreSlider label="Impact" value={formData.impact} onChange={(v) => setFormData({ ...formData, impact: v })} />
+                <ScoreSlider label="Ease" value={formData.ease} onChange={(v) => setFormData({ ...formData, ease: v })} />
+
+                <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border-strong)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: 600, fontSize: '14px' }}>Total ICE Score</span>
+                  <span style={{ fontWeight: 800, fontSize: '18px', color: 'var(--accent)' }}>{formData.confidence * formData.impact * formData.ease}</span>
+                </div>
               </div>
             </div>
 
             {/* Meta Data */}
             <div>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', marginBottom: '16px' }}>Meta Data</div>
-              
+              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', marginBottom: '16px' }}>Metadata</div>
+
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px', display: 'block' }}>Strategic Context</label>
-                <select 
+                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px', display: 'block' }}>Contexto Estratégico</label>
+                <select
                   value={formData.linkedStrategyId}
-                  onChange={e => setFormData({...formData, linkedStrategyId: e.target.value})}
+                  onChange={e => setFormData({ ...formData, linkedStrategyId: e.target.value })}
                   style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}
                 >
-                  <option value="">Select Strategy...</option>
+                  <option value="">Seleccionar Strategy...</option>
                   {strategies.map(s => (
                     <option key={s.id} value={s.id}>{s.title}</option>
                   ))}
@@ -182,10 +182,10 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({ isOpen, onClos
 
               {/* Experiment Lead */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px', display: 'block' }}>Experiment Lead</label>
-                <select 
+                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px', display: 'block' }}>Líder del Experimento</label>
+                <select
                   value={formData.ownerId}
-                  onChange={e => setFormData({...formData, ownerId: e.target.value})}
+                  onChange={e => setFormData({ ...formData, ownerId: e.target.value })}
                   style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}
                 >
                   {teamMembers.map(member => (
@@ -196,12 +196,12 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({ isOpen, onClos
                 </select>
               </div>
 
-               {/* Funnel Stage */}
+              {/* Funnel Stage */}
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px', display: 'block' }}>Funnel Stage</label>
-                <select 
+                <select
                   value={formData.funnelStage}
-                  onChange={e => setFormData({...formData, funnelStage: e.target.value as FunnelStage})}
+                  onChange={e => setFormData({ ...formData, funnelStage: e.target.value as FunnelStage })}
                   style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}
                 >
                   {['Acquisition', 'Activation', 'Retention', 'Referral', 'Revenue'].map(stage => (
@@ -211,31 +211,31 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({ isOpen, onClos
               </div>
 
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px', display: 'block' }}>Source</label>
-                <input 
-                  value={formData.source} 
-                  onChange={e => setFormData({...formData, source: e.target.value})}
-                  placeholder="E.g. https://app.vwo.com"
+                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px', display: 'block' }}>Fuente</label>
+                <input
+                  value={formData.source}
+                  onChange={e => setFormData({ ...formData, source: e.target.value })}
+                  placeholder="Ej: https://app.vwo.com"
                 />
               </div>
 
-               <div style={{ marginBottom: '16px' }}>
-                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px', display: 'block' }}>Attachments</label>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px', display: 'block' }}>Archivos Adjuntos</label>
                 <button style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }}>
-                   <Upload size={16} />
-                   Upload files
+                  <Upload size={16} />
+                  Subir archivos
                 </button>
                 <p style={{ fontSize: '11px', color: 'var(--text-subtle)', marginTop: '8px', lineHeight: '1.4' }}>
-                  Supported: png, jpg, pdf, docx. Max 5MB.
+                  Soportados: png, jpg, pdf, docx. Máx 5MB.
                 </p>
               </div>
-              
-               <div style={{ marginBottom: '16px' }}>
-                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px', display: 'block' }}>Labels</label>
-                <input 
-                  value={formData.labels.join(', ')} 
-                  onChange={e => setFormData({...formData, labels: e.target.value.split(',').map(s => s.trim())})}
-                  placeholder="E.g. Homepage, Mobile"
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px', display: 'block' }}>Etiquetas</label>
+                <input
+                  value={formData.labels.join(', ')}
+                  onChange={e => setFormData({ ...formData, labels: e.target.value.split(',').map(s => s.trim()) })}
+                  placeholder="Ej: Homepage, Mobile"
                 />
               </div>
 
@@ -245,39 +245,39 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({ isOpen, onClos
 
         {/* Footer */}
         <div style={{ padding: '20px 24px', borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'flex-end', gap: '12px', background: '#f9fafb' }}>
-           <button 
-             onClick={onClose}
-             style={{ 
-               padding: '10px 16px', 
-               background: 'white', 
-               border: '1px solid var(--border-subtle)', 
-               borderRadius: '8px', 
-               fontWeight: 600, 
-               color: 'var(--text-primary)',
-               cursor: 'pointer'
-             }}
-           >
-             Cancel
-           </button>
-           <button 
-             onClick={handleSave}
-             style={{ 
-               padding: '10px 16px', 
-               background: 'var(--accent)', 
-               border: 'none', 
-               borderRadius: '8px', 
-               fontWeight: 600, 
-               color: 'white',
-               cursor: 'pointer',
-               display: 'flex',
-               alignItems: 'center',
-               gap: '8px',
-               boxShadow: 'var(--shadow-sm)'
-             }}
-           >
-             <Plus size={18} />
-             Create
-           </button>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '10px 16px',
+              background: 'white',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: '8px',
+              fontWeight: 600,
+              color: 'var(--text-primary)',
+              cursor: 'pointer'
+            }}
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleSave}
+            style={{
+              padding: '10px 16px',
+              background: 'var(--accent)',
+              border: 'none',
+              borderRadius: '8px',
+              fontWeight: 600,
+              color: 'white',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              boxShadow: 'var(--shadow-sm)'
+            }}
+          >
+            <Plus size={18} />
+            Crear
+          </button>
         </div>
 
       </div>
