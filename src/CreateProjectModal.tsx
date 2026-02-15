@@ -23,17 +23,17 @@ const INDUSTRIES = [
 
 export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose, onSave }) => {
   const [step, setStep] = useState<Step>(1);
-  
+
   // Step 1: Basic Info
   const [projectName, setProjectName] = useState('');
   const [projectLogo, setProjectLogo] = useState('🚀');
   const [industry, setIndustry] = useState(INDUSTRIES[0]);
-  
+
   // Step 2: North Star
   const [metricName, setMetricName] = useState('Revenue');
   const [targetValue, setTargetValue] = useState(1000000);
   const [unit, setUnit] = useState('$');
-  
+
   // Step 3: Template
   const [useTemplate, setUseTemplate] = useState(true);
 
@@ -67,19 +67,19 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
 
   const handleFinish = () => {
     // ✅ NO generar ID aquí - Supabase lo generará automáticamente
-    
+
     const northStar: NorthStarMetric = {
       name: metricName,
       currentValue: 0,
       targetValue: targetValue,
       unit: unit,
-      type: unit === '$' || unit === '€' ? 'currency' : unit === '%' ? 'percentage' : 'numeric'
+      type: unit === '$' || unit === '€' ? 'currency' : unit === '%' ? 'percentage' : 'count'
     };
 
     let objectives: any[] = [];
     let strategies: any[] = [];
     let experiments: any[] = [];
-    
+
     // Reforge Standard Template (E-commerce Growth Model)
     if (useTemplate) {
       objectives = [
@@ -154,7 +154,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
           iceScore: 84,
           funnelStage: 'Acquisition',
           northStarMetric: metricName,
-          linkedStrategy: strategies[2].id,
+          linkedStrategyId: strategies[2].id,
           owner: { id: 'template-owner', name: 'Growth Team', avatar: '👥' }
         },
         {
@@ -170,7 +170,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
           iceScore: 88,
           funnelStage: 'Activation',
           northStarMetric: metricName,
-          linkedStrategy: strategies[3].id,
+          linkedStrategyId: strategies[3].id,
           owner: { id: 'template-owner', name: 'Growth Team', avatar: '👥' }
         },
         {
@@ -186,7 +186,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
           iceScore: 91,
           funnelStage: 'Retention',
           northStarMetric: metricName,
-          linkedStrategy: strategies[4].id,
+          linkedStrategyId: strategies[4].id,
           owner: { id: 'template-owner', name: 'Growth Team', avatar: '👥' }
         }
       ];
@@ -577,7 +577,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                   transition: 'all 0.2s',
                   background: useTemplate ? '#eff6ff' : 'white'
                 }}
-                onClick={() => setUseTemplate(true)}
+                  onClick={() => setUseTemplate(true)}
                 >
                   <input
                     type="radio"
@@ -610,7 +610,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                   transition: 'all 0.2s',
                   background: !useTemplate ? '#eff6ff' : 'white'
                 }}
-                onClick={() => setUseTemplate(false)}
+                  onClick={() => setUseTemplate(false)}
                 >
                   <input
                     type="radio"

@@ -9,8 +9,8 @@ import type { MetricType } from '../types';
  * @returns Formatted string
  */
 export function formatMetricValue(
-  value: number, 
-  type: MetricType, 
+  value: number,
+  type: MetricType,
   includeLabel: boolean = false,
   metricName?: string
 ): string {
@@ -22,11 +22,12 @@ export function formatMetricValue(
         minimumFractionDigits: 0,
         maximumFractionDigits: 0,
       }).format(value);
-    
+
     case 'percentage':
       return `${value.toLocaleString('en-US')}%`;
-    
-    case 'numeric':
+
+    case 'count':
+    case 'ratio':
     default:
       const formatted = value.toLocaleString('en-US');
       if (includeLabel && metricName) {
@@ -48,7 +49,8 @@ export function getUnitLabel(type: MetricType): string {
       return '$';
     case 'percentage':
       return '%';
-    case 'numeric':
+    case 'count':
+    case 'ratio':
     default:
       return 'Units';
   }
@@ -63,7 +65,8 @@ export function getMetricTypeDisplay(type: MetricType): string {
       return 'Currency ($)';
     case 'percentage':
       return 'Percentage (%)';
-    case 'numeric':
+    case 'count':
+    case 'ratio':
     default:
       return 'Numeric (#)';
   }

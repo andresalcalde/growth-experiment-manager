@@ -18,16 +18,16 @@ interface RoadmapViewProps {
   onSelectExperiment: (exp: Experiment) => void;
 }
 
-type ModalState = 
-  | { type: 'none' } 
-  | { type: 'northstar' } 
-  | { type: 'objective' } 
-  | { type: 'edit-objective'; objectiveId: string } 
+type ModalState =
+  | { type: 'none' }
+  | { type: 'northstar' }
+  | { type: 'objective' }
+  | { type: 'edit-objective'; objectiveId: string }
   | { type: 'strategy'; objectiveId: string }
   | { type: 'edit-strategy'; strategyId: string };
 
-export const RoadmapView: React.FC<RoadmapViewProps> = ({ 
-  northStar, 
+export const RoadmapView: React.FC<RoadmapViewProps> = ({
+  northStar,
   onUpdateNorthStar,
   objectives,
   strategies,
@@ -56,17 +56,17 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
       </div>
     );
   }
-  
+
   // North Star form state
   const [nsMetricName, setNsMetricName] = useState('');
   const [nsCurrentValue, setNsCurrentValue] = useState('');
   const [nsTargetValue, setNsTargetValue] = useState('');
   const [nsMetricType, setNsMetricType] = useState<MetricType>('currency');
-  
+
   // Objective form state
   const [objectiveTitle, setObjectiveTitle] = useState('');
   const [objectiveDescription, setObjectiveDescription] = useState('');
-  
+
   // Strategy form state
   const [strategyTitle, setStrategyTitle] = useState('');
   const [strategyDescription, setStrategyDescription] = useState('');
@@ -92,15 +92,15 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
   const handleSaveNorthStar = () => {
     const current = parseFloat(nsCurrentValue.replace(/,/g, ''));
     const target = parseFloat(nsTargetValue.replace(/,/g, ''));
-    
+
     if (!nsMetricName.trim() || isNaN(current) || isNaN(target)) {
       alert('Please complete all fields with valid values');
       return;
     }
-    
+
     // Derive unit from metric type
-    const unitMap: Record<MetricType, string> = { currency: '$', percentage: '%', numeric: '#' };
-    
+    const unitMap: Record<MetricType, string> = { currency: '$', percentage: '%', count: '#', ratio: '×' };
+
     onUpdateNorthStar({
       ...northStar,
       name: nsMetricName.trim(),
@@ -109,7 +109,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
       type: nsMetricType,
       unit: unitMap[nsMetricType] || '$'
     });
-    
+
     setModalState({ type: 'none' });
   };
 
@@ -123,7 +123,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
       alert('Por favor ingresa un título');
       return;
     }
-    
+
     onAddObjective(objectiveTitle.trim());
     setModalState({ type: 'none' });
   };
@@ -170,12 +170,12 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
 
   const handleSaveStrategy = () => {
     if (modalState.type !== 'strategy') return;
-    
+
     if (!strategyTitle.trim()) {
       alert('Por favor ingresa un título');
       return;
     }
-    
+
     onAddStrategy(modalState.objectiveId, strategyTitle.trim());
     setModalState({ type: 'none' });
   };
@@ -186,7 +186,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
 
   return (
     <div style={{ padding: '32px', overflowY: 'auto', height: '100%', position: 'relative' }}>
-      
+
       {/* North Star Modal */}
       {modalState.type === 'northstar' && (
         <div style={{
@@ -210,7 +210,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h2 style={{ fontSize: '24px', fontWeight: 700, margin: 0 }}>Edit North Star Metric</h2>
-              <button 
+              <button
                 onClick={closeModal}
                 style={{
                   background: 'transparent',
@@ -263,7 +263,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                 }}
               >
                 <option value="currency">Currency ($) - e.g., $6,500,000</option>
-                <option value="numeric">Numeric (#) - e.g., 50,000 Users</option>
+                <option value="count">Numeric (#) - e.g., 50,000 Users</option>
                 <option value="percentage">Percentage (%) - e.g., 85% Retention</option>
               </select>
             </div>
@@ -374,7 +374,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h2 style={{ fontSize: '24px', fontWeight: 700, margin: 0 }}>New Objective</h2>
-              <button 
+              <button
                 onClick={closeModal}
                 style={{
                   background: 'transparent',
@@ -493,7 +493,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h2 style={{ fontSize: '24px', fontWeight: 700, margin: 0 }}>Add Initiative</h2>
-              <button 
+              <button
                 onClick={closeModal}
                 style={{
                   background: 'transparent',
@@ -613,7 +613,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h2 style={{ fontSize: '24px', fontWeight: 700, margin: 0 }}>Edit Objective</h2>
-              <button 
+              <button
                 onClick={closeModal}
                 style={{
                   background: 'transparent',
@@ -731,7 +731,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h2 style={{ fontSize: '24px', fontWeight: 700, margin: 0 }}>Edit Initiative</h2>
-              <button 
+              <button
                 onClick={closeModal}
                 style={{
                   background: 'transparent',
@@ -827,9 +827,9 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
       )}
 
       {/* North Star Metric - Compact High-Density Header */}
-      <div style={{ 
+      <div style={{
         background: 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)',
-        borderRadius: '12px', 
+        borderRadius: '12px',
         padding: '20px 24px 0 24px',
         color: 'white',
         marginBottom: '24px',
@@ -838,42 +838,42 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
         overflow: 'hidden'
       }}>
         {/* Main Content Row */}
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
           alignItems: 'center',
           paddingBottom: '16px'
         }}>
           {/* Left: Label + Current Value */}
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
             <div>
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '6px', 
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
                 marginBottom: '4px',
                 opacity: 0.85
               }}>
                 <TrendingUp size={14} />
-                <span style={{ 
-                  textTransform: 'uppercase', 
-                  letterSpacing: '0.8px', 
-                  fontSize: '10px', 
-                  fontWeight: 700 
+                <span style={{
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.8px',
+                  fontSize: '10px',
+                  fontWeight: 700
                 }}>
                   North Star Metric
                 </span>
               </div>
-              <div style={{ 
-                fontSize: '28px', 
-                fontWeight: 800, 
+              <div style={{
+                fontSize: '28px',
+                fontWeight: 800,
                 lineHeight: 1,
                 letterSpacing: '-0.5px'
               }}>
                 {formatMetricValue(northStar.currentValue, northStar.type || 'currency', true, northStar.name)}
               </div>
-              <div style={{ 
-                fontSize: '11px', 
+              <div style={{
+                fontSize: '11px',
                 opacity: 0.7,
                 marginTop: '2px',
                 fontWeight: 500
@@ -886,8 +886,8 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
           {/* Right: Target + Progress + Edit */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ 
-                fontSize: '11px', 
+              <div style={{
+                fontSize: '11px',
                 textTransform: 'uppercase',
                 letterSpacing: '0.5px',
                 opacity: 0.7,
@@ -896,8 +896,8 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
               }}>
                 Target
               </div>
-              <div style={{ 
-                fontSize: '20px', 
+              <div style={{
+                fontSize: '20px',
                 fontWeight: 700,
                 lineHeight: 1
               }}>
@@ -905,23 +905,23 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
               </div>
             </div>
 
-            <div style={{ 
+            <div style={{
               height: '40px',
               width: '1px',
               background: 'rgba(255,255,255,0.2)'
             }} />
 
             <div style={{ textAlign: 'center' }}>
-              <div style={{ 
-                fontSize: '24px', 
+              <div style={{
+                fontSize: '24px',
                 fontWeight: 800,
                 lineHeight: 1,
                 marginBottom: '2px'
               }}>
                 {calculateProgress()}%
               </div>
-              <div style={{ 
-                fontSize: '10px', 
+              <div style={{
+                fontSize: '10px',
                 textTransform: 'uppercase',
                 letterSpacing: '0.5px',
                 opacity: 0.75,
@@ -931,13 +931,13 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
               </div>
             </div>
 
-            <button 
+            <button
               onClick={handleOpenNorthStarModal}
-              style={{ 
-                background: 'rgba(255,255,255,0.15)', 
-                border: 'none', 
-                borderRadius: '6px', 
-                padding: '6px', 
+              style={{
+                background: 'rgba(255,255,255,0.15)',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '6px',
                 cursor: 'pointer',
                 color: 'white',
                 transition: 'all 0.2s',
@@ -961,16 +961,16 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
         </div>
 
         {/* Premium Progress Bar - Full Width at Bottom */}
-        <div style={{ 
+        <div style={{
           position: 'relative',
           height: '5px',
           background: 'rgba(255,255,255,0.15)',
           borderRadius: '0',
           overflow: 'hidden'
         }}>
-          <div style={{ 
-            width: `${calculateProgress()}%`, 
-            height: '100%', 
+          <div style={{
+            width: `${calculateProgress()}%`,
+            height: '100%',
             background: 'linear-gradient(90deg, #60a5fa 0%, #a78bfa 50%, #f472b6 100%)',
             transition: 'width 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
             boxShadow: '0 0 10px rgba(168, 85, 247, 0.4)'
@@ -981,18 +981,18 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
       {/* Growth Strategy System Section */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <h2 style={{ fontSize: '24px', fontWeight: 700 }}>Growth Strategy System</h2>
-        <button 
+        <button
           onClick={handleOpenObjectiveModal}
-          style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '8px', 
-            background: '#4f46e5', 
-            color: 'white', 
-            border: 'none', 
-            borderRadius: '8px', 
-            padding: '10px 16px', 
-            fontWeight: 600, 
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: '#4f46e5',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '10px 16px',
+            fontWeight: 600,
             cursor: 'pointer',
             transition: 'background 0.2s'
           }}
@@ -1015,15 +1015,15 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
             <p style={{ color: '#6b7280', fontSize: '14px', maxWidth: '400px', margin: '0 auto 24px' }}>
               Click the button above to create your first strategic objective.
             </p>
-            <button 
+            <button
               onClick={handleOpenObjectiveModal}
-              style={{ 
-                background: '#4f46e5', 
-                color: 'white', 
-                padding: '10px 20px', 
-                borderRadius: '8px', 
-                border: 'none', 
-                fontWeight: 600, 
+              style={{
+                background: '#4f46e5',
+                color: 'white',
+                padding: '10px 20px',
+                borderRadius: '8px',
+                border: 'none',
+                fontWeight: 600,
                 cursor: 'pointer'
               }}
             >
@@ -1031,16 +1031,16 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
             </button>
           </div>
         )}
-        
+
         {objectives.map(objective => {
           const objectiveStrategies = strategies.filter(s => s.parentObjectiveId === objective.id);
-          
+
           return (
-            <div key={objective.id} style={{ 
-              border: '1px solid #e5e7eb', 
-              borderRadius: '12px', 
-              padding: '24px', 
-              background: 'white', 
+            <div key={objective.id} style={{
+              border: '1px solid #e5e7eb',
+              borderRadius: '12px',
+              padding: '24px',
+              background: 'white',
               boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
             }}>
               {/* Objective Header */}
@@ -1054,10 +1054,10 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                       <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#6b7280', fontWeight: 700, letterSpacing: '0.5px' }}>Growth Lever</div>
                       <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: '#111827' }}>{objective.title}</h3>
                       {objective.description && (
-                        <p style={{ 
-                          fontSize: '13px', 
-                          color: '#6b7280', 
-                          margin: '6px 0 0 0', 
+                        <p style={{
+                          fontSize: '13px',
+                          color: '#6b7280',
+                          margin: '6px 0 0 0',
                           lineHeight: '1.5',
                           fontStyle: 'italic',
                           maxWidth: '600px'
@@ -1148,10 +1148,10 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
 
               {/* Strategies List */}
               {objectiveStrategies.length === 0 ? (
-                <div style={{ 
-                  padding: '24px', 
-                  background: '#f9fafb', 
-                  borderRadius: '8px', 
+                <div style={{
+                  padding: '24px',
+                  background: '#f9fafb',
+                  borderRadius: '8px',
                   border: '1px dashed #d1d5db',
                   textAlign: 'center'
                 }}>
@@ -1164,9 +1164,9 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {objectiveStrategies.map(strategy => {
                     const linkedCount = countLinkedExperiments(strategy.id);
-                    
+
                     return (
-                      <div 
+                      <div
                         key={strategy.id}
                         style={{
                           padding: '16px',
@@ -1198,8 +1198,8 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                                 </span>
                               )}
                             </div>
-                            <div style={{ 
-                              fontSize: '12px', 
+                            <div style={{
+                              fontSize: '12px',
                               background: linkedCount > 0 ? '#dcfce7' : '#f3f4f6',
                               color: linkedCount > 0 ? '#166534' : '#6b7280',
                               padding: '4px 8px',

@@ -1,18 +1,18 @@
-export type Status = 
-  | 'Idea' 
-  | 'Prioritized' 
-  | 'Building' 
-  | 'Live Testing' 
-  | 'Analysis' 
-  | 'Finished - Winner' 
-  | 'Finished - Loser' 
+export type Status =
+  | 'Idea'
+  | 'Prioritized'
+  | 'Building'
+  | 'Live Testing'
+  | 'Analysis'
+  | 'Finished - Winner'
+  | 'Finished - Loser'
   | 'Finished - Inconclusive';
 
 export type FunnelStage = 'Acquisition' | 'Activation' | 'Retention' | 'Referral' | 'Revenue';
 
 
 
-export type MetricType = 'currency' | 'numeric' | 'percentage';
+export type MetricType = 'currency' | 'count' | 'percentage' | 'ratio';
 
 export interface NorthStarMetric {
   name: string;
@@ -34,7 +34,7 @@ export interface Strategy {
   id: string;
   title: string;
   parentObjectiveId: string;
-  targetMetric?:  string; // Input metric this initiative targets (e.g., "CVR", "CAC", "Velocity")
+  targetMetric?: string; // Input metric this initiative targets (e.g., "CVR", "CAC", "Velocity")
 }
 
 export interface Experiment {
@@ -62,7 +62,7 @@ export interface Experiment {
   successCriteria?: string;
   targetMetric?: string;
 }
- 
+
 export const _runtime_types_marker = true;
 
 // Multi-Project Architecture Types

@@ -546,7 +546,6 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         ))
     }, [activeProjectId])
 
-    // Project CRUD
     const createProject = useCallback(async (project: Project) => {
         const { data, error } = await supabase.rpc('create_project_with_membership', {
             p_name: project.metadata.name,
@@ -564,12 +563,107 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
             throw error
         }
 
-        // Refetch to get the full project with correct ID
+        const newProjectId = data as string
+
+        // Insert template objectives, strategies, and experiments if provided
+        if (project.objectives && project.objectives.length > 0) {
+            const objectiveIdMap: Record<string, string> = {} // tempId -> realId
+
+            // Insert objectives one by one to get their real IDs
+            for (const obj of project.objectives) {
+                const { data: objData, error: objError } = await supabase
+                    .from('objectives')
+                    .insert({
+                        project_id: newProjectId,
+                        title: obj.title,
+                        description: obj.description || null,
+                        status: obj.status || 'Active',
+                        progress: obj.progress || 0,
+                    })
+                    .select('id')
+                    .single()
+
+                if (objError) {
+                    console.error('Error inserting objective:', objError)
+                    continue
+                }
+                if (objData) {
+                    objectiveIdMap[obj.id] = objData.id
+                }
+            }
+
+            // Insert strategies with mapped objective IDs
+            if (project.strategies && project.strategies.length > 0) {
+                const strategyIdMap: Record<string, string> = {} // tempId -> realId
+
+                for (const strat of project.strategies) {
+                    const realObjectiveId = objectiveIdMap[strat.parentObjectiveId]
+                    if (!realObjectiveId) {
+                        console.warn('Skipping strategy - no matching objective:', strat.title)
+                        continue
+                    }
+
+                    const { data: stratData, error: stratError } = await supabase
+                        .from('strategies')
+                        .insert({
+                            project_id: newProjectId,
+                            objective_id: realObjectiveId,
+                            title: strat.title,
+                            target_metric: strat.targetMetric || null,
+                        })
+                        .select('id')
+                        .single()
+
+                    if (stratError) {
+                        console.error('Error inserting strategy:', stratError)
+                        continue
+                    }
+                    if (stratData) {
+                        strategyIdMap[strat.id] = stratData.id
+                    }
+                }
+
+                // Insert experiments with mapped strategy IDs
+                if (project.experiments && project.experiments.length > 0) {
+                    for (const exp of project.experiments) {
+                        const linkedStrategyId = exp.linkedStrategyId
+                            ? strategyIdMap[exp.linkedStrategyId] || null
+                            : null
+
+                        const { error: expError } = await supabase
+                            .from('experiments')
+                            .insert({
+                                project_id: newProjectId,
+                                title: exp.title,
+                                status: exp.status || 'Idea',
+                                owner_name: exp.owner?.name || '',
+                                owner_avatar: exp.owner?.avatar || '',
+                                hypothesis: exp.hypothesis || '',
+                                observation: exp.observation || null,
+                                problem: exp.problem || null,
+                                impact: exp.impact || 5,
+                                confidence: exp.confidence || 5,
+                                ease: exp.ease || 5,
+                                ice_score: exp.iceScore || 125,
+                                funnel_stage: exp.funnelStage || 'Acquisition',
+                                north_star_metric: exp.northStarMetric || null,
+                                linked_strategy_id: linkedStrategyId,
+                            })
+
+                        if (expError) {
+                            console.error('Error inserting experiment:', expError)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Refetch to get the full project with correct IDs
         await fetchProjects()
 
         // Set the new project as active
-        if (data) {
-            setActiveProjectId(data as string)
+        if (newProjectId) {
+            setActiveProjectId(newProjectId)
         }
     }, [fetchProjects, setActiveProjectId])
 
