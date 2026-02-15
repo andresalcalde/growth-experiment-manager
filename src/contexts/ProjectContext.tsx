@@ -550,24 +550,45 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     const createProject = useCallback(async (project: Project) => {
         console.log('🚀 [1/7] Starting createProject...')
         try {
-            const { data, error } = await supabase.rpc('create_project_with_membership', {
-                p_name: project.metadata.name,
-                p_nsm_name: project.northStar.name,
-                p_nsm_value: project.northStar.currentValue,
-                p_nsm_target: project.northStar.targetValue,
-                p_nsm_unit: project.northStar.unit,
-                p_nsm_type: project.northStar.type,
-                p_logo: project.metadata.logo || null,
-                p_industry: project.metadata.industry || null,
-            })
+            // Direct insert instead of RPC to avoid PostgREST hang
+            const { data: projectData, error: projectError } = await supabase
+                .from('projects')
+                .insert({
+                    name: project.metadata.name,
+                    nsm_name: project.northStar.name,
+                    nsm_value: project.northStar.currentValue,
+                    nsm_target: project.northStar.targetValue,
+                    nsm_unit: project.northStar.unit,
+                    nsm_type: project.northStar.type,
+                    logo: project.metadata.logo || null,
+                    industry: project.metadata.industry || null,
+                })
+                .select('id')
+                .single()
 
-            if (error) {
-                console.error('❌ [1/7] RPC error:', error)
-                throw error
+            if (projectError) {
+                console.error('❌ [1/7] Project insert error:', projectError)
+                throw projectError
             }
 
-            const newProjectId = data as string
-            console.log('✅ [2/7] Project created with ID:', newProjectId)
+            const newProjectId = projectData.id as string
+            console.log('✅ [1.5/7] Project created with ID:', newProjectId)
+
+            // Add user as admin member
+            const { error: memberError } = await supabase
+                .from('project_members')
+                .insert({
+                    project_id: newProjectId,
+                    user_id: user!.id,
+                    role: 'admin',
+                })
+
+            if (memberError) {
+                console.error('❌ [2/7] Membership insert error:', memberError)
+                // Don't throw - project was created, membership is secondary
+            }
+
+            console.log('✅ [2/7] Project + membership created')
 
             // Insert template objectives, strategies, and experiments if provided
             if (project.objectives && project.objectives.length > 0) {
