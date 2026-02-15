@@ -548,124 +548,140 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     }, [activeProjectId])
 
     const createProject = useCallback(async (project: Project) => {
-        const { data, error } = await supabase.rpc('create_project_with_membership', {
-            p_name: project.metadata.name,
-            p_nsm_name: project.northStar.name,
-            p_nsm_value: project.northStar.currentValue,
-            p_nsm_target: project.northStar.targetValue,
-            p_nsm_unit: project.northStar.unit,
-            p_nsm_type: project.northStar.type,
-            p_logo: project.metadata.logo || null,
-            p_industry: project.metadata.industry || null,
-        })
+        console.log('🚀 [1/7] Starting createProject...')
+        try {
+            const { data, error } = await supabase.rpc('create_project_with_membership', {
+                p_name: project.metadata.name,
+                p_nsm_name: project.northStar.name,
+                p_nsm_value: project.northStar.currentValue,
+                p_nsm_target: project.northStar.targetValue,
+                p_nsm_unit: project.northStar.unit,
+                p_nsm_type: project.northStar.type,
+                p_logo: project.metadata.logo || null,
+                p_industry: project.metadata.industry || null,
+            })
 
-        if (error) {
-            console.error('Error creating project:', error)
-            throw error
-        }
-
-        const newProjectId = data as string
-
-        // Insert template objectives, strategies, and experiments if provided
-        if (project.objectives && project.objectives.length > 0) {
-            const objectiveIdMap: Record<string, string> = {} // tempId -> realId
-
-            // Insert objectives one by one to get their real IDs
-            for (const obj of project.objectives) {
-                const { data: objData, error: objError } = await supabase
-                    .from('objectives')
-                    .insert({
-                        project_id: newProjectId,
-                        title: obj.title,
-                        description: obj.description || null,
-                        status: obj.status || 'Active',
-                        progress: obj.progress || 0,
-                    })
-                    .select('id')
-                    .single()
-
-                if (objError) {
-                    console.error('Error inserting objective:', objError)
-                    continue
-                }
-                if (objData) {
-                    objectiveIdMap[obj.id] = objData.id
-                }
+            if (error) {
+                console.error('❌ [1/7] RPC error:', error)
+                throw error
             }
 
-            // Insert strategies with mapped objective IDs
-            if (project.strategies && project.strategies.length > 0) {
-                const strategyIdMap: Record<string, string> = {} // tempId -> realId
+            const newProjectId = data as string
+            console.log('✅ [2/7] Project created with ID:', newProjectId)
 
-                for (const strat of project.strategies) {
-                    const realObjectiveId = objectiveIdMap[strat.parentObjectiveId]
-                    if (!realObjectiveId) {
-                        console.warn('Skipping strategy - no matching objective:', strat.title)
-                        continue
-                    }
+            // Insert template objectives, strategies, and experiments if provided
+            if (project.objectives && project.objectives.length > 0) {
+                const objectiveIdMap: Record<string, string> = {} // tempId -> realId
+                console.log(`📋 [3/7] Inserting ${project.objectives.length} objectives...`)
 
-                    const { data: stratData, error: stratError } = await supabase
-                        .from('strategies')
+                // Insert objectives one by one to get their real IDs
+                for (const obj of project.objectives) {
+                    const { data: objData, error: objError } = await supabase
+                        .from('objectives')
                         .insert({
                             project_id: newProjectId,
-                            objective_id: realObjectiveId,
-                            title: strat.title,
-                            target_metric: strat.targetMetric || null,
+                            title: obj.title,
+                            description: obj.description || null,
+                            status: obj.status || 'Active',
+                            progress: obj.progress || 0,
                         })
                         .select('id')
                         .single()
 
-                    if (stratError) {
-                        console.error('Error inserting strategy:', stratError)
+                    if (objError) {
+                        console.error('❌ Error inserting objective:', objError)
                         continue
                     }
-                    if (stratData) {
-                        strategyIdMap[strat.id] = stratData.id
+                    if (objData) {
+                        objectiveIdMap[obj.id] = objData.id
                     }
                 }
+                console.log('✅ [3/7] Objectives inserted:', Object.keys(objectiveIdMap).length)
 
-                // Insert experiments with mapped strategy IDs
-                if (project.experiments && project.experiments.length > 0) {
-                    for (const exp of project.experiments) {
-                        const linkedStrategyId = exp.linkedStrategyId
-                            ? strategyIdMap[exp.linkedStrategyId] || null
-                            : null
+                // Insert strategies with mapped objective IDs
+                if (project.strategies && project.strategies.length > 0) {
+                    const strategyIdMap: Record<string, string> = {} // tempId -> realId
+                    console.log(`📋 [4/7] Inserting ${project.strategies.length} strategies...`)
 
-                        const { error: expError } = await supabase
-                            .from('experiments')
+                    for (const strat of project.strategies) {
+                        const realObjectiveId = objectiveIdMap[strat.parentObjectiveId]
+                        if (!realObjectiveId) {
+                            console.warn('Skipping strategy - no matching objective:', strat.title)
+                            continue
+                        }
+
+                        const { data: stratData, error: stratError } = await supabase
+                            .from('strategies')
                             .insert({
                                 project_id: newProjectId,
-                                owner_id: user!.id,
-                                title: exp.title,
-                                status: exp.status || 'Idea',
-                                owner_name: exp.owner?.name || '',
-                                owner_avatar: exp.owner?.avatar || '',
-                                hypothesis: exp.hypothesis || '',
-                                observation: exp.observation || null,
-                                problem: exp.problem || null,
-                                impact: exp.impact || 5,
-                                confidence: exp.confidence || 5,
-                                ease: exp.ease || 5,
-                                ice_score: exp.iceScore || 125,
-                                funnel_stage: exp.funnelStage || 'Acquisition',
-                                north_star_metric: exp.northStarMetric || null,
-                                linked_strategy_id: linkedStrategyId,
+                                objective_id: realObjectiveId,
+                                title: strat.title,
+                                target_metric: strat.targetMetric || null,
                             })
+                            .select('id')
+                            .single()
 
-                        if (expError) {
-                            console.error('Error inserting experiment:', expError)
+                        if (stratError) {
+                            console.error('❌ Error inserting strategy:', stratError)
+                            continue
                         }
+                        if (stratData) {
+                            strategyIdMap[strat.id] = stratData.id
+                        }
+                    }
+                    console.log('✅ [4/7] Strategies inserted:', Object.keys(strategyIdMap).length)
+
+                    // Insert experiments with mapped strategy IDs
+                    if (project.experiments && project.experiments.length > 0) {
+                        console.log(`📋 [5/7] Inserting ${project.experiments.length} experiments...`)
+                        for (const exp of project.experiments) {
+                            const linkedStrategyId = exp.linkedStrategyId
+                                ? strategyIdMap[exp.linkedStrategyId] || null
+                                : null
+
+                            const { error: expError } = await supabase
+                                .from('experiments')
+                                .insert({
+                                    project_id: newProjectId,
+                                    owner_id: user!.id,
+                                    title: exp.title,
+                                    status: exp.status || 'Idea',
+                                    owner_name: exp.owner?.name || '',
+                                    owner_avatar: exp.owner?.avatar || '',
+                                    hypothesis: exp.hypothesis || '',
+                                    observation: exp.observation || null,
+                                    problem: exp.problem || null,
+                                    impact: exp.impact || 5,
+                                    confidence: exp.confidence || 5,
+                                    ease: exp.ease || 5,
+                                    ice_score: exp.iceScore || 125,
+                                    funnel_stage: exp.funnelStage || 'Acquisition',
+                                    north_star_metric: exp.northStarMetric || null,
+                                    linked_strategy_id: linkedStrategyId,
+                                })
+
+                            if (expError) {
+                                console.error('❌ Error inserting experiment:', expError)
+                            }
+                        }
+                        console.log('✅ [5/7] Experiments inserted')
                     }
                 }
             }
-        }
 
-        // Refetch to get the full project with correct IDs
-        await fetchProjects()
+            // Refetch to get the full project with correct IDs
+            console.log('📋 [6/7] Fetching projects...')
+            await fetchProjects()
+            console.log('✅ [6/7] Projects fetched')
 
-        // Set the new project as active
-        if (newProjectId) {
-            setActiveProjectId(newProjectId)
+            // Set the new project as active
+            if (newProjectId) {
+                setActiveProjectId(newProjectId)
+            }
+            console.log('✅ [7/7] createProject complete!')
+        } catch (err) {
+            console.error('❌ createProject FAILED:', err)
+            throw err
         }
     }, [fetchProjects, setActiveProjectId, user])
 
