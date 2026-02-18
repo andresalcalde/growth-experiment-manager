@@ -1,160 +1,202 @@
--- Growth Experiment Manager - Supabase Schema
+-- Growth Experiment Manager - Supabase Schema (Updated to match Codebase)
 -- Run this SQL in your Supabase SQL Editor
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Projects Table
-CREATE TABLE IF NOT EXISTS projects (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name TEXT NOT NULL,
-  logo TEXT,
-  industry TEXT,
+-- 1. Profiles (Extends auth.users)
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  full_name TEXT,
+  avatar_url TEXT,
+  global_role TEXT DEFAULT 'user' CHECK (global_role IN ('superadmin', 'user')),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- North Star Metrics Table
-CREATE TABLE IF NOT EXISTS north_star_metrics (
+-- Trigger to create profile on signup
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, full_name, avatar_url)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    NEW.raw_user_meta_data->>'full_name',
+    NEW.raw_user_meta_data->>'avatar_url'
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- 2. Projects (Includes North Star Metric fields)
+CREATE TABLE IF NOT EXISTS public.projects (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
-  current_value NUMERIC NOT NULL DEFAULT 0,
-  target_value NUMERIC NOT NULL DEFAULT 0,
-  unit TEXT NOT NULL,
-  type TEXT NOT NULL CHECK (type IN ('currency', 'numeric', 'percentage')),
+  industry TEXT,
+  logo TEXT,
+  -- Embedded North Star Metric
+  nsm_name TEXT,
+  nsm_value NUMERIC DEFAULT 0,
+  nsm_target NUMERIC DEFAULT 0,
+  nsm_unit TEXT,
+  nsm_type TEXT, -- 'currency', 'percentage', 'count', etc.
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(project_id)
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Objectives Table
-CREATE TABLE IF NOT EXISTS objectives (
+-- 3. Project Members (Access Control)
+CREATE TABLE IF NOT EXISTS public.project_members (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  role TEXT NOT NULL DEFAULT 'viewer' CHECK (role IN ('admin', 'editor', 'viewer')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(project_id, user_id)
+);
+
+-- 4. Objectives
+CREATE TABLE IF NOT EXISTS public.objectives (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   description TEXT,
-  status TEXT NOT NULL DEFAULT 'Active' CHECK (status IN ('Active', 'Paused', 'Completed')),
-  progress INTEGER NOT NULL DEFAULT 0 CHECK (progress >= 0 AND progress <= 100),
+  status TEXT DEFAULT 'Active',
+  progress INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Strategies Table
-CREATE TABLE IF NOT EXISTS strategies (
+-- 5. Strategies
+CREATE TABLE IF NOT EXISTS public.strategies (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  objective_id UUID NOT NULL REFERENCES objectives(id) ON DELETE CASCADE,
+  project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
+  objective_id UUID REFERENCES public.objectives(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   target_metric TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Team Members Table
-CREATE TABLE IF NOT EXISTS team_members (
+-- 6. Experiments
+CREATE TABLE IF NOT EXISTS public.experiments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name TEXT NOT NULL,
-  email TEXT NOT NULL UNIQUE,
-  avatar TEXT NOT NULL,
-  role TEXT NOT NULL CHECK (role IN ('Admin', 'Lead', 'Viewer')),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Team Member Projects Junction Table (Many-to-Many)
-CREATE TABLE IF NOT EXISTS team_member_projects (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  team_member_id UUID NOT NULL REFERENCES team_members(id) ON DELETE CASCADE,
-  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(team_member_id, project_id)
-);
-
--- Experiments Table
-CREATE TABLE IF NOT EXISTS experiments (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
+  owner_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL, -- Use profiles/users
+  
+  -- Core Data
   title TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'Idea' CHECK (status IN (
-    'Idea', 'Prioritized', 'Building', 'Live Testing', 'Analysis',
-    'Finished - Winner', 'Finished - Loser', 'Finished - Inconclusive'
-  )),
-  owner_id UUID NOT NULL REFERENCES team_members(id) ON DELETE RESTRICT,
-  hypothesis TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'Idea',
+  
+  -- Context
+  hypothesis TEXT,
   observation TEXT,
   problem TEXT,
-  impact INTEGER NOT NULL CHECK (impact >= 0 AND impact <= 10),
-  confidence INTEGER NOT NULL CHECK (confidence >= 0 AND confidence <= 10),
-  ease INTEGER NOT NULL CHECK (ease >= 0 AND ease <= 10),
-  ice_score INTEGER NOT NULL,
-  funnel_stage TEXT NOT NULL CHECK (funnel_stage IN ('Acquisition', 'Activation', 'Retention', 'Referral', 'Revenue')),
-  north_star_metric TEXT NOT NULL,
-  linked_strategy_id UUID REFERENCES strategies(id) ON DELETE SET NULL,
+  source TEXT,
+  labels TEXT[], -- Array of strings
+  
+  -- Scoring
+  impact INTEGER DEFAULT 5,
+  confidence INTEGER DEFAULT 5,
+  ease INTEGER DEFAULT 5,
+  ice_score INTEGER GENERATED ALWAYS AS (impact * confidence * ease) STORED,
+  
+  -- Metadata
+  funnel_stage TEXT,
+  north_star_metric TEXT, -- Snapshot of NSM name
+  linked_strategy_id UUID REFERENCES public.strategies(id) ON DELETE SET NULL,
+  
+  -- Execution
   start_date DATE,
   end_date DATE,
   test_url TEXT,
   success_criteria TEXT,
   target_metric TEXT,
+  
+  -- Results
   key_learnings TEXT,
-  visual_proof JSONB,
-  source TEXT,
+  visual_proof JSONB, -- Array of URLs
+  
+  -- Denormalized Snapshot Data (optional, based on code usage)
+  owner_name TEXT,
+  owner_avatar TEXT,
+
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Indexes for better query performance
-CREATE INDEX IF NOT EXISTS idx_north_star_project ON north_star_metrics(project_id);
-CREATE INDEX IF NOT EXISTS idx_objectives_project ON objectives(project_id);
-CREATE INDEX IF NOT EXISTS idx_strategies_project ON strategies(project_id);
-CREATE INDEX IF NOT EXISTS idx_strategies_objective ON strategies(objective_id);
-CREATE INDEX IF NOT EXISTS idx_experiments_project ON experiments(project_id);
-CREATE INDEX IF NOT EXISTS idx_experiments_owner ON experiments(owner_id);
-CREATE INDEX IF NOT EXISTS idx_experiments_strategy ON experiments(linked_strategy_id);
-CREATE INDEX IF NOT EXISTS idx_team_member_projects_member ON team_member_projects(team_member_id);
-CREATE INDEX IF NOT EXISTS idx_team_member_projects_project ON team_member_projects(project_id);
+-- RLS Policies
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.project_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.objectives ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.strategies ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.experiments ENABLE ROW LEVEL SECURITY;
 
--- Enable Row Level Security (RLS)
-ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
-ALTER TABLE north_star_metrics ENABLE ROW LEVEL SECURITY;
-ALTER TABLE objectives ENABLE ROW LEVEL SECURITY;
-ALTER TABLE strategies ENABLE ROW LEVEL SECURITY;
-ALTER TABLE team_members ENABLE ROW LEVEL SECURITY;
-ALTER TABLE team_member_projects ENABLE ROW LEVEL SECURITY;
-ALTER TABLE experiments ENABLE ROW LEVEL SECURITY;
+-- Simple permissive policies for authenticated users (Refine for production)
+-- Project access checks should ideally use "EXISTS (SELECT 1 FROM project_members ...)"
+-- For now, allowing authenticated users to see everything or refined:
 
--- RLS Policies (Allow all for now - configure based on your auth setup)
-CREATE POLICY "Allow all operations on projects" ON projects FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all operations on north_star_metrics" ON north_star_metrics FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all operations on objectives" ON objectives FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all operations on strategies" ON strategies FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all operations on team_members" ON team_members FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all operations on team_member_projects" ON team_member_projects FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all operations on experiments" ON experiments FOR ALL USING (true) WITH CHECK (true);
+-- Profile: Users can read all profiles (to add team members), update own.
+CREATE POLICY "Public profiles are viewable by everyone" ON public.profiles FOR SELECT USING (true);
+CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
--- Trigger to update updated_at timestamp
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+-- Projects: Accessible if member
+CREATE POLICY "Projects Viewable by Members" ON public.projects
+FOR SELECT USING (
+  EXISTS (
+    SELECT 1 FROM public.project_members 
+    WHERE project_members.project_id = projects.id 
+    AND project_members.user_id = auth.uid()
+  )
+);
 
-CREATE TRIGGER update_projects_updated_at BEFORE UPDATE ON projects
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE POLICY "Projects Editable by Admin/Editor" ON public.projects
+FOR UPDATE USING (
+  EXISTS (
+    SELECT 1 FROM public.project_members 
+    WHERE project_members.project_id = projects.id 
+    AND project_members.user_id = auth.uid()
+    AND project_members.role IN ('admin', 'editor')
+  )
+);
 
-CREATE TRIGGER update_north_star_metrics_updated_at BEFORE UPDATE ON north_star_metrics
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE POLICY "Projects Created by Users" ON public.projects FOR INSERT WITH CHECK (true); 
+-- Note: Creator must immediately add themselves as admin in transaction or via trigger
 
-CREATE TRIGGER update_objectives_updated_at BEFORE UPDATE ON objectives
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- Project Members:
+CREATE POLICY "Members Viewable by Project Members" ON public.project_members
+FOR SELECT USING (
+  EXISTS (
+    SELECT 1 FROM public.project_members pm
+    WHERE pm.project_id = project_members.project_id
+    AND pm.user_id = auth.uid()
+  )
+);
 
-CREATE TRIGGER update_strategies_updated_at BEFORE UPDATE ON strategies
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- Objectives/Strategies/Experiments: Inherit from Project
+CREATE POLICY "Objectives Viewable" ON public.objectives FOR SELECT USING (
+  EXISTS (SELECT 1 FROM public.project_members WHERE project_id = objectives.project_id AND user_id = auth.uid())
+);
+CREATE POLICY "Strategies Viewable" ON public.strategies FOR SELECT USING (
+  EXISTS (SELECT 1 FROM public.project_members WHERE project_id = strategies.project_id AND user_id = auth.uid())
+);
+CREATE POLICY "Experiments Viewable" ON public.experiments FOR SELECT USING (
+  EXISTS (SELECT 1 FROM public.project_members WHERE project_id = experiments.project_id AND user_id = auth.uid())
+);
 
-CREATE TRIGGER update_team_members_updated_at BEFORE UPDATE ON team_members
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_experiments_updated_at BEFORE UPDATE ON experiments
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- Allow Insert/Update for members (simplified)
+CREATE POLICY "Objectives Editable" ON public.objectives FOR ALL USING (
+  EXISTS (SELECT 1 FROM public.project_members WHERE project_id = objectives.project_id AND user_id = auth.uid())
+);
+CREATE POLICY "Strategies Editable" ON public.strategies FOR ALL USING (
+  EXISTS (SELECT 1 FROM public.project_members WHERE project_id = strategies.project_id AND user_id = auth.uid())
+);
+CREATE POLICY "Experiments Editable" ON public.experiments FOR ALL USING (
+  EXISTS (SELECT 1 FROM public.project_members WHERE project_id = experiments.project_id AND user_id = auth.uid())
+);

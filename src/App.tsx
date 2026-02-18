@@ -9,6 +9,12 @@ import {
   GitBranch,
   X,
   CheckCircle2,
+  Calendar,
+  ExternalLink,
+  ImageIcon,
+  Lightbulb,
+  Image as ImageIcon2,
+  TrendingUp,
   HelpCircle,
   Settings
 } from 'lucide-react';
@@ -21,6 +27,7 @@ import {
   useSensor,
   useSensors,
   DragOverlay,
+  defaultDropAnimationSideEffects,
   useDroppable
 } from '@dnd-kit/core';
 import type {
@@ -36,7 +43,7 @@ import {
   useSortable
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { Status, Experiment, NorthStarMetric, FunnelStage, Project, TeamMember } from './types';
+import type { Status, Experiment, Objective, Strategy, NorthStarMetric, FunnelStage, Project, TeamMember } from './types';
 import { CreateProjectModal } from './CreateProjectModal';
 import { SettingsView } from './SettingsView';
 import { PortfolioView } from './PortfolioView';
@@ -45,9 +52,8 @@ import { RoadmapView } from './RoadmapView';
 import { ExperimentModal } from './ExperimentModal';
 import type { ExperimentFormData } from './ExperimentModal';
 import { KeyLearningModal } from './KeyLearningModal';
+import { POLANCO_NORTH_STAR, POLANCO_OBJECTIVES, POLANCO_STRATEGIES, POLANCO_EXPERIMENTS } from './laboratorioPolancoData';
 import { useProjectContext } from './contexts/ProjectContext';
-import { useAuth } from './contexts/AuthContext';
-import { SectionGuide } from './components/SectionGuide';
 
 
 // Original MOCK_EXPERIMENTS replaced with Laboratorio Polanco data
@@ -56,6 +62,10 @@ import { SectionGuide } from './components/SectionGuide';
 // Board only shows these columns
 const BOARD_COLUMNS: Status[] = ['Prioritized', 'Building', 'Live Testing', 'Analysis'];
 
+const ALL_STATUSES: Status[] = [
+  'Idea', 'Prioritized', 'Building', 'Live Testing', 'Analysis',
+  'Finished - Winner', 'Finished - Loser', 'Finished - Inconclusive'
+];
 
 const getStatusColor = (status: Status) => {
   switch (status) {
@@ -114,7 +124,7 @@ const ExperimentCard = ({
     <div className="card-title">{experiment.title}</div>
     <div className="card-footer">
       <IceBadge impact={experiment.impact} confidence={experiment.confidence} ease={experiment.ease} score={experiment.iceScore} />
-      <img src={experiment.owner.avatar} alt="" style={{ width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0, objectFit: 'cover', border: '2px solid #f0f0f0' }} />
+      <img src={experiment.owner.avatar} alt="" style={{ width: '20px', height: '20px', borderRadius: '50%' }} />
     </div>
   </div>
 );
@@ -227,7 +237,7 @@ const EditableCell = ({ value, onChange }: { value: number; onChange: (v: number
     <div
       onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
       style={{ cursor: 'text', padding: '4px', border: '1px solid transparent', display: 'inline-block' }}
-      title="Haz clic para editar"
+      title="Click to edit"
     >
       {value}
     </div>
@@ -241,7 +251,7 @@ const EditableCell = ({ value, onChange }: { value: number; onChange: (v: number
 const LibraryCard = ({ experiment, onClick }: { experiment: Experiment; onClick: () => void }) => {
   const isWinner = experiment.status === 'Finished - Winner';
   const isLoser = experiment.status === 'Finished - Loser';
-
+  const isInconclusive = experiment.status === 'Finished - Inconclusive';
 
   let badgeColor = '#9CA3AF'; // gray
   let badgeText = 'INCONCLUSIVE';
@@ -278,11 +288,11 @@ const LibraryCard = ({ experiment, onClick }: { experiment: Experiment; onClick:
       {/* Hero Image */}
       <div style={{ height: '160px', background: '#f3f4f6', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {hasImage ? (
-          <img src={experiment.visualProof![0]} alt={experiment.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        ) : (
-          <div style={{ width: '100%', height: '100%', background: 'linear-gradient(45deg, #f3f4f6, #e5e7eb)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="m21 15-5-5L5 21" /></svg>
+          <div style={{ width: '100%', height: '100%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>
+            <ImageIcon2 size={32} />
           </div>
+        ) : (
+          <div style={{ width: '100%', height: '100%', background: 'linear-gradient(45deg, #f3f4f6, #e5e7eb)' }} />
         )}
 
         {/* Result Badge */}
@@ -311,7 +321,7 @@ const LibraryCard = ({ experiment, onClick }: { experiment: Experiment; onClick:
           {experiment.keyLearnings || experiment.hypothesis}
         </p>
 
-        <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-subtle)', borderTop: '1px solid var(--border-subtle)', paddingTop: '12px' }}>
+        <div style={{ marginTop: 'auto', display: 'flex', items: 'center', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-subtle)', borderTop: '1px solid var(--border-subtle)', paddingTop: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Target size={14} />
             {experiment.funnelStage}
@@ -331,8 +341,6 @@ const CaseStudyModal = ({ experiment, onClose }: { experiment: Experiment; onClo
   let highlightColor = '#F3F4F6'; // gray
   if (isWinner) highlightColor = 'rgba(74, 222, 128, 0.2)';
   if (isLoser) highlightColor = '#FEE2E2';
-
-  const [lightboxImage, setLightboxImage] = React.useState<string | null>(null);
 
   return (
     <div className="drawer-overlay" style={{ alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
@@ -370,36 +378,24 @@ const CaseStudyModal = ({ experiment, onClose }: { experiment: Experiment; onClo
                 <h3 style={{ fontSize: '14px', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-subtle)', marginBottom: '12px' }}>The Evidence</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   {experiment.visualProof?.map((proof, i) => (
-                    <div key={i} style={{ aspectRatio: '16/9', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
-                      {proof.startsWith('data:') ? (
-                        <img src={proof} alt={'Evidence ' + (i + 1)} style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); setLightboxImage(proof); }} />
-                      ) : (
-                        <div style={{ width: '100%', height: '100%', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <span style={{ fontSize: '12px', color: 'var(--text-subtle)' }}>{proof}</span>
-                        </div>
-                      )}
+                    <div key={i} style={{ aspectRatio: '16/9', background: '#f3f4f6', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-subtle)' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-subtle)' }}>{proof}</span>
                     </div>
                   ))}
                   {(!experiment.visualProof || experiment.visualProof.length === 0) && (
                     <div style={{ aspectRatio: '16/9', background: '#f3f4f6', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed var(--border-subtle)', gridColumn: 'span 2' }}>
-                      <span style={{ fontSize: '12px', color: 'var(--text-subtle)' }}>Sin evidencia visual adjunta</span>
+                      <span style={{ fontSize: '12px', color: 'var(--text-subtle)' }}>No visual evidence attached</span>
                     </div>
                   )}
                 </div>
               </div>
 
               <div>
-                <h3 style={{ fontSize: '14px', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-subtle)', marginBottom: '12px' }}>Key Learnings</h3>
+                <h3 style={{ fontSize: '14px', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-subtle)', marginBottom: '12px' }}>The Verdict</h3>
                 <div style={{ background: highlightColor, padding: '24px', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.05)' }}>
-                  {experiment.keyLearnings ? (
-                    <p style={{ fontSize: '18px', fontWeight: 500, lineHeight: '1.5', margin: 0 }}>
-                      {experiment.keyLearnings}
-                    </p>
-                  ) : (
-                    <p style={{ fontSize: '16px', color: 'var(--text-muted)', fontStyle: 'italic', margin: 0 }}>
-                      No key learnings recorded yet.
-                    </p>
-                  )}
+                  <p style={{ fontSize: '18px', fontWeight: 500, lineHeight: '1.5' }}>
+                    {experiment.keyLearnings || "No key learnings recorded."}
+                  </p>
                 </div>
               </div>
             </div>
@@ -438,28 +434,6 @@ const CaseStudyModal = ({ experiment, onClose }: { experiment: Experiment; onClo
           </div>
         </div>
       </div>
-
-      {/* Lightbox */}
-      {lightboxImage && (
-        <div onClick={(e) => { e.stopPropagation(); setLightboxImage(null); }} style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.85)', zIndex: 2000,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: 'zoom-out', padding: '40px'
-        }}>
-          <img src={lightboxImage} alt="Evidence enlarged" style={{
-            maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain',
-            borderRadius: '8px', boxShadow: '0 25px 50px rgba(0,0,0,0.5)'
-          }} />
-          <button onClick={(e) => { e.stopPropagation(); setLightboxImage(null); }} style={{
-            position: 'absolute', top: '20px', right: '20px',
-            background: 'rgba(255,255,255,0.2)', border: 'none',
-            color: 'white', width: '40px', height: '40px', borderRadius: '50%',
-            fontSize: '20px', cursor: 'pointer', display: 'flex',
-            alignItems: 'center', justifyContent: 'center'
-          }}>x</button>
-        </div>
-      )}
     </div>
   );
 };
@@ -467,36 +441,44 @@ const CaseStudyModal = ({ experiment, onClose }: { experiment: Experiment; onClo
 
 
 const App: React.FC = () => {
+  console.log("App rendering");
   const [view, setView] = useState<'portfolio' | 'board' | 'table' | 'library' | 'roadmap'>('portfolio');
 
-  // ── Auth & Project Context (Supabase-backed) ─────────────────────────────
-  const { signOut } = useAuth();
+  // Multi-Project State Management via Context
   const {
     projects,
+    projectsLoading,
+    teamMembers,
     activeProjectId,
+    activeProject,
     setActiveProjectId,
     northStar,
     objectives,
     strategies,
     experiments,
-    updateNorthStar: ctxUpdateNorthStar,
-    addObjective: ctxAddObjective,
-    editObjective: ctxEditObjective,
-    deleteObjective: ctxDeleteObjective,
-    addStrategy: ctxAddStrategy,
-    editStrategy: ctxEditStrategy,
-    deleteStrategy: ctxDeleteStrategy,
-    addExperiment: ctxAddExperiment,
-    updateExperiment: ctxUpdateExperiment,
+    updateNorthStar,
+    addObjective,
+    editObjective,
+    deleteObjective,
+    addStrategy,
+    editStrategy,
+    deleteStrategy,
+    addExperiment,
+    updateExperiment,
     setExperiments,
     createProject: ctxCreateProject,
-    refetchAll,
+    addTeamMember: ctxAddTeamMember,
+    updateTeamMemberRole: ctxUpdateTeamMemberRole,
+    removeTeamMember: ctxRemoveTeamMember,
+    refetchAll
   } = useProjectContext();
 
-  // Team members (still local until team_members table is connected)
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>(INITIAL_TEAM_MEMBERS);
+  // const setNorthStar = updateNorthStar; // Removed alias
+  // Wrappers for state setters to match old API where possible, or replace usage
+  // Note: setObjectives, setStrategies are complex because they took updater functions.
+  // We need to update handlers to use context methods directly.
 
-  // Modal States
+  // UI State (Modals)
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -566,21 +548,23 @@ const App: React.FC = () => {
 
 
   const updateFunnelStage = (id: string, stage: FunnelStage) => {
-    ctxUpdateExperiment(id, { funnelStage: stage });
+    setExperiments(prev => prev.map(e => e.id === id ? { ...e, funnelStage: stage } : e));
   };
   const updateIceScore = (id: string, field: 'impact' | 'confidence' | 'ease', val: number) => {
-    const exp = experiments.find(e => e.id === id);
-    if (!exp) return;
-    const updated = { ...exp, [field]: val };
-    updated.iceScore = updated.impact * updated.confidence * updated.ease;
-    ctxUpdateExperiment(id, { [field]: val, iceScore: updated.iceScore });
+    setExperiments(prev => prev.map(e => {
+      if (e.id !== id) return e;
+      const updated = { ...e, [field]: val };
+
+      updated.iceScore = updated.impact * updated.confidence * updated.ease;
+      return updated;
+    }));
 
     if (selectedExperiment && selectedExperiment.id === id) {
       setSelectedExperiment(prev => {
         if (!prev) return null;
-        const u = { ...prev, [field]: val };
-        u.iceScore = u.impact * u.confidence * u.ease;
-        return u;
+        const updated = { ...prev, [field]: val };
+        updated.iceScore = updated.impact * updated.confidence * updated.ease;
+        return updated;
       });
     }
   };
@@ -593,17 +577,22 @@ const App: React.FC = () => {
       setIsLearningModalOpen(true);
     } else {
       // Just update
-      ctxUpdateExperiment(id, { status: newStatus });
+      setExperiments(prev => prev.map(e => e.id === id ? { ...e, status: newStatus } : e));
     }
   };
 
   const handleLearningSave = (learning: string) => {
     if (pendingExperimentId && pendingStatus) {
-      ctxUpdateExperiment(pendingExperimentId, {
-        status: pendingStatus,
-        keyLearnings: learning,
-        endDate: new Date().toISOString().split('T')[0],
-      });
+      setExperiments(prev => prev.map(e =>
+        e.id === pendingExperimentId
+          ? {
+            ...e,
+            status: pendingStatus,
+            keyLearnings: learning,
+            endDate: new Date().toISOString().split('T')[0]
+          }
+          : e
+      ));
       setIsLearningModalOpen(false);
       setPendingExperimentId(null);
       setPendingStatus(null);
@@ -612,20 +601,14 @@ const App: React.FC = () => {
   };
 
   const handleExperimentUpdate = (id: string, updates: Partial<Experiment>) => {
-    ctxUpdateExperiment(id, updates);
+    setExperiments(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
     if (selectedExperiment && selectedExperiment.id === id) {
       setSelectedExperiment(prev => prev ? { ...prev, ...updates } : null);
     }
   };
 
-  // Track the original status of the experiment when drag starts
-  const dragStartStatusRef = React.useRef<string | null>(null);
-
   const handleDragStart = (event: DragStartEvent) => {
-    const experimentId = event.active.id as string;
-    const experiment = experiments.find(e => e.id === experimentId);
-    dragStartStatusRef.current = experiment?.status || null;
-    setActiveId(experimentId);
+    setActiveId(event.active.id as string);
   };
 
 
@@ -678,17 +661,8 @@ const App: React.FC = () => {
   };
 
 
-  const handleDragEnd = (_event: DragEndEvent) => {
-    // Persist status change to Supabase if the dragged experiment's status changed
-    if (activeId) {
-      const draggedExperiment = experiments.find(e => e.id === activeId);
-      // We stored the original status in dragStartStatus ref
-      if (draggedExperiment && draggedExperiment.status !== dragStartStatusRef.current) {
-        ctxUpdateExperiment(activeId as string, { status: draggedExperiment.status });
-      }
-    }
+  const handleDragEnd = (event: DragEndEvent) => {
     setActiveId(null);
-    dragStartStatusRef.current = null;
   };
 
 
@@ -696,7 +670,10 @@ const App: React.FC = () => {
     // Find the selected team member
     const selectedMember = teamMembers.find(m => m.id === formData.ownerId) || teamMembers[0];
 
-    const newExperiment: Omit<Experiment, 'id'> = {
+    // Use context addExperiment
+    // We pass the full object except ID (DB generates ID)
+    addExperiment({
+      // id: We pass undefined or let context ignore it
       title: formData.title,
       status: formData.status,
       owner: { name: selectedMember.name, avatar: selectedMember.avatar },
@@ -712,60 +689,38 @@ const App: React.FC = () => {
       funnelStage: formData.funnelStage,
       northStarMetric: northStar.name,
       linkedStrategyId: formData.linkedStrategyId,
-      startDate: new Date().toISOString().split('T')[0],
-    };
+      startDate: new Date().toISOString().split('T')[0]
+    });
 
-    ctxAddExperiment(newExperiment as any);
+    setIsNewModalOpen(false);
   };
 
   const handleAddObjective = (title: string) => {
-    ctxAddObjective(title);
+    addObjective(title);
   };
 
   const handleUpdateNorthStar = (updatedNorthStar: NorthStarMetric) => {
-    ctxUpdateNorthStar(updatedNorthStar);
+    updateNorthStar(updatedNorthStar);
   };
 
   const handleAddStrategy = (objectiveId: string, title: string) => {
-    ctxAddStrategy(objectiveId, title);
+    addStrategy(objectiveId, title);
   };
 
   const handleDeleteObjective = (objectiveId: string) => {
-    // Count linked strategies
     const linkedStrategies = strategies.filter(s => s.parentObjectiveId === objectiveId);
-
-    // Count experiments linked to those strategies
-    const linkedExperiments = experiments.filter(exp =>
-      linkedStrategies.some(strat => strat.id === exp.linkedStrategyId)
-    );
-
-    // Build confirmation message
-    let message = `Are you sure you want to delete this objective?`;
     if (linkedStrategies.length > 0) {
-      message += `\n\nThis will also delete ${linkedStrategies.length} strateg${linkedStrategies.length === 1 ? 'y' : 'ies'}.`;
+      if (!window.confirm(`Delete objective and its ${linkedStrategies.length} strategies?`)) return;
     }
-    if (linkedExperiments.length > 0) {
-      message += `\n\n⚠️ Warning: ${linkedExperiments.length} experiment${linkedExperiments.length === 1 ? ' is' : 's are'} linked to ${linkedExperiments.length === 1 ? 'this strategy' : 'these strategies'}. The link will be removed.`;
-    }
-
-    if (!window.confirm(message)) {
-      return;
-    }
-
-    // DB cascade handles strategies; context handles local state
-    ctxDeleteObjective(objectiveId);
+    deleteObjective(objectiveId);
   };
 
   const handleEditObjective = (objectiveId: string, newTitle: string, newDescription?: string) => {
-    ctxEditObjective(objectiveId, newTitle, newDescription);
+    editObjective(objectiveId, newTitle, newDescription);
   };
 
   const handleEditStrategy = (strategyId: string, newTitle: string) => {
-    ctxEditStrategy(strategyId, newTitle);
-  };
-
-  const handleDeleteStrategy = (strategyId: string) => {
-    ctxDeleteStrategy(strategyId);
+    editStrategy(strategyId, newTitle);
   };
 
   // ============================================================================
@@ -775,32 +730,43 @@ const App: React.FC = () => {
   const handleSelectProjectFromPortfolio = (projectId: string) => {
     console.log('📂 Selected project from portfolio:', projectId);
     setActiveProjectId(projectId);
-    setView('roadmap'); // Navigate to Design/Roadmap view
+    setView('roadmap');
   };
 
+  const handleBackToPortfolio = () => {
+    console.log('🏠 Returning to portfolio');
+    // We can't set activeProjectId to null if the type doesn't allow it, 
+    // but context.setActiveProjectId takes string.
+    // However, we can handle view state.
+    // Ideally we switch to a 'no project selected' state or just 'portfolio' view.
+    setView('portfolio');
+  };
 
   // Project Management Handlers
   const handleCreateProject = async (newProject: Project) => {
     try {
       await ctxCreateProject(newProject);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error creating project:', err);
+      // Ensure we alert the user so they know why it "hung" or failed
+      alert(`Error creating project: ${err.message || 'Unknown error'}`);
+      throw err;
     }
   };
 
   // Team Management Handlers
   const handleAddTeamMember = (member: TeamMember) => {
-    setTeamMembers(prev => [...prev, member]);
+    ctxAddTeamMember(member.email, member.role);
   };
 
   const handleRemoveTeamMember = (memberId: string) => {
-    setTeamMembers(prev => prev.filter(m => m.id !== memberId));
+    ctxRemoveTeamMember(memberId);
   };
 
   const handleUpdateTeamMember = (memberId: string, updates: Partial<TeamMember>) => {
-    setTeamMembers(prev => prev.map(m =>
-      m.id === memberId ? { ...m, ...updates } : m
-    ));
+    if (updates.role) {
+      ctxUpdateTeamMemberRole(memberId, updates.role);
+    }
   };
 
 
@@ -812,18 +778,11 @@ const App: React.FC = () => {
   // Portfolio View - Show when no project is selected or view is 'portfolio'
   if (view === 'portfolio') {
     return (
-      <>
-        <PortfolioView
-          projects={projects}
-          onSelectProject={handleSelectProjectFromPortfolio}
-          onCreateProject={() => setIsCreateProjectOpen(true)}
-        />
-        <CreateProjectModal
-          isOpen={isCreateProjectOpen}
-          onClose={() => setIsCreateProjectOpen(false)}
-          onSave={handleCreateProject}
-        />
-      </>
+      <PortfolioView
+        projects={projects}
+        onSelectProject={handleSelectProjectFromPortfolio}
+        onCreateProject={() => setIsCreateProjectOpen(true)}
+      />
     );
   }
 
@@ -832,7 +791,7 @@ const App: React.FC = () => {
     <div className="app-container">
       {/* Sidebar - Simplified for brevity in this view */}
       <nav className="sidebar">
-        <div className="logo-area" style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div className="logo-area" style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={handleBackToPortfolio}>
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" fill="#4F46E5" stroke="#4F46E5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             <circle cx="12" cy="12" r="10" stroke="#4F46E5" strokeWidth="1" strokeDasharray="2 2" />
@@ -857,7 +816,7 @@ const App: React.FC = () => {
             textTransform: 'uppercase',
             letterSpacing: '0.5px'
           }}>
-            Proyecto Activo
+            Active Project
           </label>
           <select
             value={activeProjectId || ''}
@@ -865,9 +824,7 @@ const App: React.FC = () => {
               if (e.target.value === '__create_new__') {
                 setIsCreateProjectOpen(true);
                 // Reset to current project
-                if (activeProjectId) {
-                  setTimeout(() => e.target.value = activeProjectId, 0);
-                }
+                setTimeout(() => { if (activeProjectId) { (e.target as HTMLSelectElement).value = activeProjectId } }, 0);
               } else {
                 setActiveProjectId(e.target.value);
               }
@@ -891,7 +848,7 @@ const App: React.FC = () => {
               </option>
             ))}
             <option value="__create_new__" style={{ color: '#4F46E5', fontWeight: 700 }}>
-              + Crear Nuevo Proyecto
+              + Create New Project
             </option>
           </select>
         </div>
@@ -914,33 +871,7 @@ const App: React.FC = () => {
           onClick={() => setIsNewModalOpen(true)}
         >
           <Plus size={18} />
-          Nuevo Experimento
-        </button>
-
-        {/* Back to Portfolio - Prominent */}
-        <button
-          onClick={() => setView('portfolio')}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px',
-            borderRadius: '8px', width: '100%', textAlign: 'left',
-            border: '1px solid #E5E7EB',
-            cursor: 'pointer', background: '#F9FAFB', color: '#4F46E5',
-            marginBottom: '16px', fontSize: '13px', fontWeight: 600,
-            transition: 'all 0.2s',
-            letterSpacing: '-0.1px',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#EEF2FF';
-            e.currentTarget.style.borderColor = '#C7D2FE';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = '#F9FAFB';
-            e.currentTarget.style.borderColor = '#E5E7EB';
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg>
-          <span>Todos los Proyectos</span>
+          New Experiment
         </button>
 
         <button
@@ -949,8 +880,7 @@ const App: React.FC = () => {
           style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', background: view === 'roadmap' ? 'var(--accent-soft)' : 'transparent', color: view === 'roadmap' ? 'var(--accent)' : 'inherit' }}
         >
           <GitBranch size={18} />
-          <span style={{ fontWeight: 500, flex: 1 }}>01. Design</span>
-          <span style={{ fontSize: '11px', fontWeight: 600, color: '#9CA3AF', background: '#F3F4F6', padding: '2px 6px', borderRadius: '4px', lineHeight: '16px' }}>{objectives.length}</span>
+          <span style={{ fontWeight: 500 }}>01. Design</span>
         </button>
 
         <button
@@ -959,8 +889,7 @@ const App: React.FC = () => {
           style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', background: view === 'table' ? 'var(--accent-soft)' : 'transparent', color: view === 'table' ? 'var(--accent)' : 'inherit' }}
         >
           <TableIcon size={18} />
-          <span style={{ fontWeight: 500, flex: 1 }}>02. Explore</span>
-          <span style={{ fontSize: '11px', fontWeight: 600, color: '#9CA3AF', background: '#F3F4F6', padding: '2px 6px', borderRadius: '4px', lineHeight: '16px' }}>{experiments.length}</span>
+          <span style={{ fontWeight: 500 }}>02. Explore</span>
         </button>
 
         <button
@@ -969,8 +898,7 @@ const App: React.FC = () => {
           style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', background: view === 'board' ? 'var(--accent-soft)' : 'transparent', color: view === 'board' ? 'var(--accent)' : 'inherit' }}
         >
           <LayoutDashboard size={18} />
-          <span style={{ fontWeight: 500, flex: 1 }}>03. Be Agile</span>
-          <span style={{ fontSize: '11px', fontWeight: 600, color: '#9CA3AF', background: '#F3F4F6', padding: '2px 6px', borderRadius: '4px', lineHeight: '16px' }}>{experiments.filter(e => !e.status.startsWith('Finished') && e.status !== 'Idea').length}</span>
+          <span style={{ fontWeight: 500 }}>03. Be Agile</span>
         </button>
 
         <button
@@ -979,8 +907,7 @@ const App: React.FC = () => {
           style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', background: view === 'library' ? 'var(--accent-soft)' : 'transparent', color: view === 'library' ? 'var(--accent)' : 'inherit' }}
         >
           <Book size={18} />
-          <span style={{ fontWeight: 500, flex: 1 }}>04. Learning</span>
-          <span style={{ fontSize: '11px', fontWeight: 600, color: experiments.filter(e => e.status.startsWith('Finished')).length > 0 ? '#10B981' : '#9CA3AF', background: experiments.filter(e => e.status.startsWith('Finished')).length > 0 ? '#D1FAE5' : '#F3F4F6', padding: '2px 6px', borderRadius: '4px', lineHeight: '16px' }}>{experiments.filter(e => e.status.startsWith('Finished')).length}</span>
+          <span style={{ fontWeight: 500 }}>04. Learning</span>
         </button>
 
         <div style={{ marginTop: 'auto' }}>
@@ -1048,7 +975,7 @@ const App: React.FC = () => {
             }}
           >
             <HelpCircle size={16} />
-            Guía Metodológica
+            Methodology Guide
           </button>
         </div>
       </nav>
@@ -1067,7 +994,7 @@ const App: React.FC = () => {
               <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input
                 className="input"
-                placeholder="Buscar experimentos..."
+                placeholder="Search experiments..."
                 style={{ paddingLeft: '36px', width: '240px' }}
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
@@ -1078,14 +1005,6 @@ const App: React.FC = () => {
             </div>
           </div>
         </header>
-
-        {/* Section Guide — Contextual guide for each view */}
-        <div style={{ padding: '16px 24px 0 24px' }}>
-          {view === 'roadmap' && <SectionGuide guideId="roadmap" />}
-          {view === 'table' && <SectionGuide guideId="table" />}
-          {view === 'board' && <SectionGuide guideId="board" />}
-          {view === 'library' && <SectionGuide guideId="library" />}
-        </div>
 
         {view === 'board' ? (
           <div className="kanban-board">
@@ -1119,7 +1038,7 @@ const App: React.FC = () => {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th style={{ width: '35%' }}>Título</th>
+                  <th style={{ width: '35%' }}>Title</th>
                   <th style={{ width: '12%' }}>Status</th>
                   <th style={{ width: '8%' }}>Impact</th>
                   <th style={{ width: '8%' }}>Confidence</th>
@@ -1147,7 +1066,7 @@ const App: React.FC = () => {
                       </span>
                     </div>
                   </th>
-                  <th style={{ width: '15%' }}>Funnel Stage</th>
+                  <th style={{ width: '15%' }}>Stage</th>
                 </tr>
               </thead>
               <tbody>
@@ -1207,19 +1126,16 @@ const App: React.FC = () => {
                           <option value="Building">Building</option>
                           <option value="Live Testing">Live Testing</option>
                           <option value="Analysis">Analysis</option>
-                          <option value="Finished - Winner">✅ Winner</option>
-                          <option value="Finished - Loser">❌ Loser</option>
-                          <option value="Finished - Inconclusive">⚪ Inconclusive</option>
                         </select>
                       </td>
-                      <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
-                        <EditableCell value={exp.impact} onChange={(v) => updateIceScore(exp.id, 'impact', v)} />
+                      <td style={{ textAlign: 'center', fontWeight: 600, color: '#374151' }}>
+                        {exp.impact}
                       </td>
-                      <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
-                        <EditableCell value={exp.confidence} onChange={(v) => updateIceScore(exp.id, 'confidence', v)} />
+                      <td style={{ textAlign: 'center', fontWeight: 600, color: '#374151' }}>
+                        {exp.confidence}
                       </td>
-                      <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
-                        <EditableCell value={exp.ease} onChange={(v) => updateIceScore(exp.id, 'ease', v)} />
+                      <td style={{ textAlign: 'center', fontWeight: 600, color: '#374151' }}>
+                        {exp.ease}
                       </td>
                       <td style={{ textAlign: 'center' }}>
                         <div
@@ -1277,7 +1193,7 @@ const App: React.FC = () => {
                     background: 'none', border: 'none'
                   }}
                 >
-                  {f === 'All' ? 'Todos' : f}
+                  {f}
                 </button>
               ))}
               <div style={{ width: '1px', background: 'var(--border-subtle)', margin: '0 8px' }}></div>
@@ -1287,36 +1203,18 @@ const App: React.FC = () => {
                 onChange={e => setLibraryFilterStage(e.target.value)}
                 style={{ border: 'none', background: 'none', color: 'var(--text-muted)', fontWeight: 600, outline: 'none' }}
               >
-                <option value="All">Todos los Stages</option>
+                <option value="All">All Stages</option>
                 <option value="Acquisition">Acquisition</option>
                 <option value="Activation">Activation</option>
-                <option value="Retention">Retention</option>
-                <option value="Referral">Referral</option>
                 <option value="Revenue">Revenue</option>
               </select>
             </div>
 
             {libraryExperiments.length === 0 ? (
-              <div className="empty-state" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--text-subtle)', maxWidth: '420px', margin: '0 auto', textAlign: 'center' }}>
-                <div style={{ width: '80px', height: '80px', borderRadius: '20px', background: 'linear-gradient(135deg, #EEF2FF, #E0E7FF)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '24px' }}>
-                  <Book size={36} style={{ color: '#818CF8' }} />
-                </div>
-                <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#374151', marginBottom: '8px' }}>Aún no hay learnings</h3>
-                <p style={{ fontSize: '14px', color: '#9CA3AF', lineHeight: 1.6, marginBottom: '24px' }}>
-                  Finaliza experimentos marcándolos como <strong style={{ color: '#10B981' }}>Winner</strong>, <strong style={{ color: '#EF4444' }}>Loser</strong>, o <strong style={{ color: '#6B7280' }}>Inconclusive</strong> en la pestaña Explore.
-                </p>
-                <button
-                  onClick={() => setView('table')}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '8px',
-                    padding: '10px 20px', borderRadius: '8px',
-                    background: '#4F46E5', color: 'white', border: 'none',
-                    cursor: 'pointer', fontSize: '14px', fontWeight: 600,
-                  }}
-                >
-                  <TableIcon size={16} />
-                  Ir a Explore
-                </button>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--text-subtle)' }}>
+                <Book size={48} style={{ marginBottom: '16px', opacity: 0.5 }} />
+                <h3>No finished experiments found</h3>
+                <p>Try adjusting your filters or search query.</p>
               </div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px', paddingBottom: '32px' }}>
@@ -1342,7 +1240,7 @@ const App: React.FC = () => {
             onEditObjective={handleEditObjective}
             onEditStrategy={handleEditStrategy}
             onDeleteObjective={handleDeleteObjective}
-            onDeleteStrategy={handleDeleteStrategy}
+            onDeleteStrategy={deleteStrategy}
             onSelectExperiment={setSelectedExperiment}
           />
         ) : (
@@ -1403,13 +1301,6 @@ const App: React.FC = () => {
         onAddMember={handleAddTeamMember}
         onRemoveMember={handleRemoveTeamMember}
         onUpdateMember={handleUpdateTeamMember}
-        onResetData={() => {
-          if (window.confirm('⚠️ ¿Reiniciar todos los datos a los valores predeterminados? Esta acción no se puede deshacer.')) {
-            localStorage.removeItem('lastActiveProjectId');
-            refetchAll();
-          }
-        }}
-        onSignOut={signOut}
       />
     </div>
   );

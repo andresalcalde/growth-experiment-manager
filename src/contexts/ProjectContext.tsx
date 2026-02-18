@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './AuthContext'
-import type { Project, NorthStarMetric, Objective, Strategy, Experiment } from '../types'
+import type { Project, NorthStarMetric, Objective, Strategy, Experiment, TeamMember } from '../types'
 
 // ============================================================================
 // Types
@@ -16,6 +16,9 @@ interface ProjectContextValue {
     // Project list (for portfolio)
     projects: Project[]
     projectsLoading: boolean
+
+    // Team members of the active project
+    teamMembers: TeamMember[]
 
     // Active project
     activeProjectId: string | null
@@ -47,6 +50,11 @@ interface ProjectContextValue {
     deleteExperiment: (id: string) => void
     setExperiments: (updater: Experiment[] | ((prev: Experiment[]) => Experiment[])) => void
 
+    // Team Management
+    addTeamMember: (email: string, role: TeamMember['role']) => Promise<void>
+    updateTeamMemberRole: (userId: string, role: TeamMember['role']) => Promise<void>
+    removeTeamMember: (userId: string) => Promise<void>
+
     // Project CRUD
     createProject: (project: Project) => Promise<void>
     deleteProject: (id: string) => Promise<void>
@@ -61,6 +69,28 @@ const DEFAULT_NORTH_STAR: NorthStarMetric = {
     targetValue: 0,
     unit: '$',
     type: 'currency',
+}
+
+// ============================================================================
+// Helpers: Role Mapping
+// ============================================================================
+
+const dbRoleToFrontend = (role: string): TeamMember['role'] => {
+    switch (role) {
+        case 'admin': return 'Admin'
+        case 'editor': return 'Lead'
+        case 'viewer': return 'Viewer'
+        default: return 'Viewer'
+    }
+}
+
+const frontendRoleToDb = (role: TeamMember['role']): string => {
+    switch (role) {
+        case 'Admin': return 'admin'
+        case 'Lead': return 'editor'
+        case 'Viewer': return 'viewer'
+        default: return 'viewer'
+    }
 }
 
 // ============================================================================
@@ -166,6 +196,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 
     const [projects, setProjects] = useState<Project[]>([])
     const [projectsLoading, setProjectsLoading] = useState(true)
+    const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
 
     // Active project ID – persisted in localStorage
     const [activeProjectId, setActiveProjectIdState] = useState<string | null>(() => {
@@ -263,6 +294,62 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         }
     }, [authLoading, user, fetchProjects])
 
+    // ── Fetch Team Members for Active Project ─────────────────────────────────
+
+    const fetchTeamMembers = useCallback(async (projectId: string) => {
+        try {
+            // 1. Get member IDs and Roles
+            const { data: members, error: memberError } = await supabase
+                .from('project_members')
+                .select('user_id, role')
+                .eq('project_id', projectId)
+
+            if (memberError) throw memberError
+
+            if (!members || members.length === 0) {
+                setTeamMembers([])
+                return
+            }
+
+            const userIds = members.map(m => m.user_id)
+
+            // 2. Get profiles
+            const { data: profiles, error: profileError } = await supabase
+                .from('profiles')
+                .select('*')
+                .in('id', userIds)
+
+            if (profileError) throw profileError
+
+            // 3. Merge data
+            const merged: TeamMember[] = profiles.map(p => {
+                const memberInfo = members.find(m => m.user_id === p.id)
+                const rawRole = memberInfo?.role || 'viewer'
+                return {
+                    id: p.id,
+                    name: p.full_name || p.email || 'Unknown',
+                    email: p.email || '',
+                    avatar: p.avatar_url || '',
+                    role: dbRoleToFrontend(rawRole),
+                    projectIds: [projectId]
+                }
+            })
+
+            setTeamMembers(merged)
+        } catch (error) {
+            console.error('Error fetching team members:', error)
+            setTeamMembers([])
+        }
+    }, [])
+
+    useEffect(() => {
+        if (activeProjectId) {
+            fetchTeamMembers(activeProjectId)
+        } else {
+            setTeamMembers([])
+        }
+    }, [activeProjectId, fetchTeamMembers])
+
     // ── Derived state ─────────────────────────────────────────────────────────
 
     const activeProject = projects.find(p => p.metadata.id === activeProjectId) || projects[0] || null
@@ -272,6 +359,80 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     const experiments = activeProject?.experiments || []
 
     // ── Mutations ─────────────────────────────────────────────────────────────
+
+    // Team Management
+    const addTeamMember = useCallback(async (email: string, role: TeamMember['role']) => {
+        if (!activeProjectId) return
+
+        // 1. Find user by email
+        const { data: userProfile, error: profileError } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('email', email)
+            .single()
+
+        if (profileError || !userProfile) {
+            alert("Usuario no encontrado. Asegúrate de que se haya registrado en la plataforma.")
+            return
+        }
+
+        // 2. Add to project_members
+        const dbRole = frontendRoleToDb(role)
+        const { error: insertError } = await supabase
+            .from('project_members')
+            .insert({
+                project_id: activeProjectId,
+                user_id: userProfile.id,
+                role: dbRole
+            })
+
+        if (insertError) {
+            if (insertError.code === '23505') { // Unique violation
+                alert("Este usuario ya es miembro del proyecto.")
+            } else {
+                console.error('Error adding team member:', insertError)
+                alert("Error al agregar miembro.")
+            }
+            return
+        }
+
+        await fetchTeamMembers(activeProjectId)
+    }, [activeProjectId, fetchTeamMembers])
+
+    const updateTeamMemberRole = useCallback(async (userId: string, role: TeamMember['role']) => {
+        if (!activeProjectId) return
+
+        const dbRole = frontendRoleToDb(role)
+        const { error } = await supabase
+            .from('project_members')
+            .update({ role: dbRole })
+            .match({ project_id: activeProjectId, user_id: userId })
+
+        if (error) {
+            console.error('Error updating role:', error)
+            alert("Error al actualizar rol.")
+            return
+        }
+
+        await fetchTeamMembers(activeProjectId)
+    }, [activeProjectId, fetchTeamMembers])
+
+    const removeTeamMember = useCallback(async (userId: string) => {
+        if (!activeProjectId) return
+
+        const { error } = await supabase
+            .from('project_members')
+            .delete()
+            .match({ project_id: activeProjectId, user_id: userId })
+
+        if (error) {
+            console.error('Error removing member:', error)
+            alert("Error al eliminar miembro.")
+            return
+        }
+
+        await fetchTeamMembers(activeProjectId)
+    }, [activeProjectId, fetchTeamMembers])
 
     // North Star
     const updateNorthStar = useCallback(async (ns: NorthStarMetric) => {
@@ -548,9 +709,11 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     }, [activeProjectId])
 
     const createProject = useCallback(async (project: Project) => {
-        console.log('🚀 [1/7] Starting createProject...')
+        console.log('🚀 [Turbo] Starting optimized createProject...')
+        const startTime = Date.now()
+
         try {
-            // Direct insert instead of RPC to avoid PostgREST hang
+            // 1. Create Project
             const { data: projectData, error: projectError } = await supabase
                 .from('projects')
                 .insert({
@@ -566,140 +729,127 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
                 .select('id')
                 .single()
 
-            if (projectError) {
-                console.error('❌ [1/7] Project insert error:', projectError)
-                throw projectError
-            }
 
+            if (projectError) throw projectError
             const newProjectId = projectData.id as string
-            console.log('✅ [1.5/7] Project created with ID:', newProjectId)
 
-            // Add user as admin member
-            const { error: memberError } = await supabase
-                .from('project_members')
-                .insert({
-                    project_id: newProjectId,
-                    user_id: user!.id,
-                    role: 'admin',
-                })
+            // 2. Add Admin Member (Critical Step)
+            const { error: memberError } = await supabase.from('project_members').insert({
+                project_id: newProjectId,
+                user_id: user!.id,
+                role: 'admin',
+            })
 
             if (memberError) {
-                console.error('❌ [2/7] Membership insert error:', memberError)
-                // Don't throw - project was created, membership is secondary
+                console.error('❌ Error adding admin member, rolling back project...', memberError)
+                await supabase.from('projects').delete().eq('id', newProjectId)
+                throw memberError
             }
 
-            console.log('✅ [2/7] Project + membership created')
+            // 3. Insert Objectives (if any)
+            const objectivesToInsert = (project.objectives || []).map(obj => ({
+                project_id: newProjectId,
+                title: obj.title,
+                description: obj.description || null,
+                status: obj.status || 'Active',
+                progress: obj.progress || 0,
+            }))
 
-            // Insert template objectives, strategies, and experiments if provided
-            if (project.objectives && project.objectives.length > 0) {
-                const objectiveIdMap: Record<string, string> = {} // tempId -> realId
-                console.log(`📋 [3/7] Inserting ${project.objectives.length} objectives...`)
+            let newObjectives: any[] = []
+            if (objectivesToInsert.length > 0) {
+                const { data, error: objError } = await supabase.from('objectives').insert(objectivesToInsert).select('id')
+                if (objError) throw objError
+                newObjectives = data || []
+            }
 
-                // Insert objectives one by one to get their real IDs
-                for (const obj of project.objectives) {
-                    const { data: objData, error: objError } = await supabase
-                        .from('objectives')
-                        .insert({
-                            project_id: newProjectId,
-                            title: obj.title,
-                            description: obj.description || null,
-                            status: obj.status || 'Active',
-                            progress: obj.progress || 0,
-                        })
+            // Map old ID -> new ID for Objectives
+            const objectiveIdMap: Record<string, string> = {}
+            if (project.objectives) {
+                project.objectives.forEach((oldObj, index) => {
+                    if (newObjectives[index]) {
+                        objectiveIdMap[oldObj.id] = newObjectives[index].id
+                    }
+                })
+            }
+
+            // 4. Insert Strategies (Batch)
+            let strategyIdMap: Record<string, string> = {}
+            if (project.strategies && project.strategies.length > 0) {
+                const strategiesToInsert = project.strategies
+                    .filter(s => objectiveIdMap[s.parentObjectiveId]) // Only insert if parent exists
+                    .map(s => ({
+                        project_id: newProjectId,
+                        objective_id: objectiveIdMap[s.parentObjectiveId],
+                        title: s.title,
+                        target_metric: s.targetMetric || null,
+                    }))
+
+                if (strategiesToInsert.length > 0) {
+                    const { data: newStrategies, error: stratError } = await supabase
+                        .from('strategies')
+                        .insert(strategiesToInsert)
                         .select('id')
-                        .single()
 
-                    if (objError) {
-                        console.error('❌ Error inserting objective:', objError)
-                        continue
-                    }
-                    if (objData) {
-                        objectiveIdMap[obj.id] = objData.id
-                    }
-                }
-                console.log('✅ [3/7] Objectives inserted:', Object.keys(objectiveIdMap).length)
+                    if (stratError) throw stratError
 
-                // Insert strategies with mapped objective IDs
-                if (project.strategies && project.strategies.length > 0) {
-                    const strategyIdMap: Record<string, string> = {} // tempId -> realId
-                    console.log(`📋 [4/7] Inserting ${project.strategies.length} strategies...`)
-
-                    for (const strat of project.strategies) {
-                        const realObjectiveId = objectiveIdMap[strat.parentObjectiveId]
-                        if (!realObjectiveId) {
-                            console.warn('Skipping strategy - no matching objective:', strat.title)
-                            continue
+                    // Map old ID -> new ID for Strategies
+                    // We must filter the original list similarly to how we filtered the insert payload to maintain index alignment
+                    const validStrategies = project.strategies.filter(s => objectiveIdMap[s.parentObjectiveId])
+                    validStrategies.forEach((oldStrat, index) => {
+                        if (newStrategies && newStrategies[index]) {
+                            strategyIdMap[oldStrat.id] = newStrategies[index].id
                         }
-
-                        const { data: stratData, error: stratError } = await supabase
-                            .from('strategies')
-                            .insert({
-                                project_id: newProjectId,
-                                objective_id: realObjectiveId,
-                                title: strat.title,
-                                target_metric: strat.targetMetric || null,
-                            })
-                            .select('id')
-                            .single()
-
-                        if (stratError) {
-                            console.error('❌ Error inserting strategy:', stratError)
-                            continue
-                        }
-                        if (stratData) {
-                            strategyIdMap[strat.id] = stratData.id
-                        }
-                    }
-                    console.log('✅ [4/7] Strategies inserted:', Object.keys(strategyIdMap).length)
-
-                    // Insert experiments with mapped strategy IDs
-                    if (project.experiments && project.experiments.length > 0) {
-                        console.log(`📋 [5/7] Inserting ${project.experiments.length} experiments...`)
-                        for (const exp of project.experiments) {
-                            const linkedStrategyId = exp.linkedStrategyId
-                                ? strategyIdMap[exp.linkedStrategyId] || null
-                                : null
-
-                            const { error: expError } = await supabase
-                                .from('experiments')
-                                .insert({
-                                    project_id: newProjectId,
-                                    owner_id: user!.id,
-                                    title: exp.title,
-                                    status: exp.status || 'Idea',
-                                    owner_name: exp.owner?.name || '',
-                                    owner_avatar: exp.owner?.avatar || '',
-                                    hypothesis: exp.hypothesis || '',
-                                    observation: exp.observation || null,
-                                    problem: exp.problem || null,
-                                    impact: exp.impact || 5,
-                                    confidence: exp.confidence || 5,
-                                    ease: exp.ease || 5,
-                                    ice_score: exp.iceScore || 125,
-                                    funnel_stage: exp.funnelStage || 'Acquisition',
-                                    north_star_metric: exp.northStarMetric || null,
-                                    linked_strategy_id: linkedStrategyId,
-                                })
-
-                            if (expError) {
-                                console.error('❌ Error inserting experiment:', expError)
-                            }
-                        }
-                        console.log('✅ [5/7] Experiments inserted')
-                    }
+                    })
                 }
             }
 
-            // Refetch to get the full project with correct IDs
-            console.log('📋 [6/7] Fetching projects...')
+            // 5. Insert Experiments (Batch)
+            if (project.experiments && project.experiments.length > 0) {
+                const experimentsToInsert = project.experiments.map(exp => ({
+                    project_id: newProjectId,
+                    owner_id: user!.id,
+                    title: exp.title,
+                    status: exp.status || 'Idea',
+                    owner_name: exp.owner?.name || '',
+                    owner_avatar: exp.owner?.avatar || '',
+                    hypothesis: exp.hypothesis || '',
+                    observation: exp.observation || null,
+                    problem: exp.problem || null,
+                    source: exp.source || null,
+                    labels: exp.labels || null,
+                    impact: exp.impact || 5,
+                    confidence: exp.confidence || 5,
+                    ease: exp.ease || 5,
+                    ice_score: exp.iceScore || 125,
+                    funnel_stage: exp.funnelStage || 'Acquisition',
+                    north_star_metric: exp.northStarMetric || null,
+                    // Link strategy only if we have a valid mapping
+                    linked_strategy_id: exp.linkedStrategyId ? (strategyIdMap[exp.linkedStrategyId] || null) : null,
+                    // Optional fields
+                    start_date: exp.startDate || null,
+                    end_date: exp.endDate || null,
+                    test_url: exp.testUrl || null,
+                    success_criteria: exp.successCriteria || null,
+                    target_metric: exp.targetMetric || null,
+                    key_learnings: exp.keyLearnings || null,
+                    visual_proof: exp.visualProof || null,
+                }))
+
+                const { error: expError } = await supabase
+                    .from('experiments')
+                    .insert(experimentsToInsert)
+
+                if (expError) throw expError
+            }
+
+            // 6. Wrap up
+            console.log(`✅ Project created in ${Date.now() - startTime}ms`)
             await fetchProjects()
-            console.log('✅ [6/7] Projects fetched')
 
             // Set the new project as active
             if (newProjectId) {
                 setActiveProjectId(newProjectId)
             }
-            console.log('✅ [7/7] createProject complete!')
         } catch (err) {
             console.error('❌ createProject FAILED:', err)
             throw err
@@ -720,6 +870,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     const value: ProjectContextValue = {
         projects,
         projectsLoading,
+        teamMembers,
         activeProjectId,
         activeProject,
         setActiveProjectId,
@@ -741,6 +892,9 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         createProject,
         deleteProject,
         refetchAll: fetchProjects,
+        addTeamMember,
+        updateTeamMemberRole,
+        removeTeamMember,
     }
 
     return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>
