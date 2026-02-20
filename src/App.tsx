@@ -746,6 +746,7 @@ const App: React.FC = () => {
   const handleCreateProject = async (newProject: Project) => {
     try {
       await ctxCreateProject(newProject);
+      setView('roadmap'); // Navigate to the new project after creation
     } catch (err: any) {
       console.error('Error creating project:', err);
       // Ensure we alert the user so they know why it "hung" or failed
