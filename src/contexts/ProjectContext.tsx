@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase, resilientSupabaseCall } from '../lib/supabase'
 import { useAuth } from './AuthContext'
 import type { Project, NorthStarMetric, Objective, Strategy, Experiment, TeamMember } from '../types'
 
@@ -229,10 +229,14 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
             setProjectsLoading(true)
 
             // Step 1: Fetch project list (RLS handles superadmin vs normal)
-            const { data: projectRows, error: projError } = await supabase
-                .from('projects')
-                .select('*')
-                .order('created_at', { ascending: false })
+            const { data: projectRows, error: projError } = await resilientSupabaseCall(
+                () => supabase
+                    .from('projects')
+                    .select('*')
+                    .order('created_at', { ascending: false }),
+                3,
+                'fetchProjects'
+            )
 
             if (projError) throw projError
             if (!projectRows || projectRows.length === 0) {
@@ -245,9 +249,9 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 
             // Step 2: Fetch all child data in parallel
             const [objRes, stratRes, expRes] = await Promise.all([
-                supabase.from('objectives').select('*').in('project_id', projectIds),
-                supabase.from('strategies').select('*').in('project_id', projectIds),
-                supabase.from('experiments').select('*').in('project_id', projectIds).order('ice_score', { ascending: false }),
+                resilientSupabaseCall(() => supabase.from('objectives').select('*').in('project_id', projectIds), 3, 'fetchObjectives'),
+                resilientSupabaseCall(() => supabase.from('strategies').select('*').in('project_id', projectIds), 3, 'fetchStrategies'),
+                resilientSupabaseCall(() => supabase.from('experiments').select('*').in('project_id', projectIds).order('ice_score', { ascending: false }), 3, 'fetchExperiments'),
             ])
 
             // Step 3: Group by project
@@ -714,31 +718,39 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 
         try {
             // 1. Create Project
-            const { data: projectData, error: projectError } = await supabase
-                .from('projects')
-                .insert({
-                    name: project.metadata.name,
-                    nsm_name: project.northStar.name,
-                    nsm_value: project.northStar.currentValue,
-                    nsm_target: project.northStar.targetValue,
-                    nsm_unit: project.northStar.unit,
-                    nsm_type: project.northStar.type,
-                    logo: project.metadata.logo || null,
-                    industry: project.metadata.industry || null,
-                })
-                .select('id')
-                .single()
-
+            const { data: projectData, error: projectError } = await resilientSupabaseCall(
+                () => supabase
+                    .from('projects')
+                    .insert({
+                        name: project.metadata.name,
+                        nsm_name: project.northStar.name,
+                        nsm_value: project.northStar.currentValue,
+                        nsm_target: project.northStar.targetValue,
+                        nsm_unit: project.northStar.unit,
+                        nsm_type: project.northStar.type,
+                        logo: project.metadata.logo || null,
+                        industry: project.metadata.industry || null,
+                    })
+                    .select('id')
+                    .single(),
+                3,
+                'createProject:insert'
+            )
 
             if (projectError) throw projectError
+            if (!projectData) throw new Error('Project created but no data returned')
             const newProjectId = projectData.id as string
 
             // 2. Add Admin Member (Critical Step)
-            const { error: memberError } = await supabase.from('project_members').insert({
-                project_id: newProjectId,
-                user_id: user!.id,
-                role: 'admin',
-            })
+            const { error: memberError } = await resilientSupabaseCall(
+                () => supabase.from('project_members').insert({
+                    project_id: newProjectId,
+                    user_id: user!.id,
+                    role: 'admin',
+                }),
+                3,
+                'createProject:addMember'
+            )
 
             if (memberError) {
                 console.error('❌ Error adding admin member, rolling back project...', memberError)
@@ -757,7 +769,11 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 
             let newObjectives: any[] = []
             if (objectivesToInsert.length > 0) {
-                const { data, error: objError } = await supabase.from('objectives').insert(objectivesToInsert).select('id')
+                const { data, error: objError } = await resilientSupabaseCall(
+                    () => supabase.from('objectives').insert(objectivesToInsert).select('id'),
+                    3,
+                    'createProject:insertObjectives'
+                )
                 if (objError) throw objError
                 newObjectives = data || []
             }
@@ -785,10 +801,14 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
                     }))
 
                 if (strategiesToInsert.length > 0) {
-                    const { data: newStrategies, error: stratError } = await supabase
-                        .from('strategies')
-                        .insert(strategiesToInsert)
-                        .select('id')
+                    const { data: newStrategies, error: stratError } = await resilientSupabaseCall(
+                        () => supabase
+                            .from('strategies')
+                            .insert(strategiesToInsert)
+                            .select('id'),
+                        3,
+                        'createProject:insertStrategies'
+                    )
 
                     if (stratError) throw stratError
 
@@ -835,9 +855,13 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
                     visual_proof: exp.visualProof || null,
                 }))
 
-                const { error: expError } = await supabase
-                    .from('experiments')
-                    .insert(experimentsToInsert)
+                const { error: expError } = await resilientSupabaseCall(
+                    () => supabase
+                        .from('experiments')
+                        .insert(experimentsToInsert),
+                    3,
+                    'createProject:insertExperiments'
+                )
 
                 if (expError) throw expError
             }
