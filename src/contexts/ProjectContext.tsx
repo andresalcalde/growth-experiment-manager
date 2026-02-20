@@ -850,7 +850,19 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
             if (newProjectId) {
                 setActiveProjectId(newProjectId)
             }
-        } catch (err) {
+        } catch (err: any) {
+            // AbortError can happen if Supabase fetch is cancelled (e.g. by re-render)
+            // In some cases, the data was actually inserted before the abort happened
+            if (err?.name === 'AbortError' || err?.message?.includes('abort')) {
+                console.warn('⚠️ createProject hit AbortError – checking if data was saved...')
+                try {
+                    await fetchProjects()
+                    // If fetchProjects found projects, the creation likely succeeded
+                    return
+                } catch {
+                    // fetchProjects also failed, so re-throw the original error
+                }
+            }
             console.error('❌ createProject FAILED:', err)
             throw err
         }

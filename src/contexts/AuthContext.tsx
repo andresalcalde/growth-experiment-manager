@@ -73,34 +73,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }
 
-    // Check for demo onboarding (runs in background, never blocks loading)
-    const checkOnboarding = async (userId: string) => {
-        try {
-            const { count, error } = await supabase
-                .from('project_members')
-                .select('*', { count: 'exact', head: true })
-                .eq('user_id', userId)
-
-            if (error) {
-                console.error('Error checking onboarding:', error)
-                return
-            }
-
-            if (count === 0) {
-                console.log('🎯 New user detected – cloning demo project...')
-                const { data, error: rpcError } = await supabase
-                    .rpc('clone_demo_project', { p_user_id: userId })
-
-                if (rpcError) {
-                    console.error('Error cloning demo project:', rpcError)
-                } else {
-                    console.log('✅ Demo project cloned:', data)
-                }
-            }
-        } catch (err: any) {
-            if (isAbortError(err)) return
-            console.error('Error in onboarding:', err)
-        }
+    // Check for demo onboarding (disabled – clone_demo_project RPC not deployed)
+    const checkOnboarding = async (_userId: string) => {
+        // NOTE: clone_demo_project RPC was removed. New users start with an empty portfolio.
+        // If you want to re-enable demo project cloning, create the RPC function in Supabase first.
+        console.log('ℹ️ New user onboarding: starting with empty portfolio')
     }
 
     // Prevent duplicate onboarding calls
@@ -140,7 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 // Fire onboarding in background – don't block loading
                 if (!onboardingDone.current) {
                     onboardingDone.current = true
-                    checkOnboarding(existingSession.user.id).catch(() => {})
+                    checkOnboarding(existingSession.user.id).catch(() => { })
                 }
             }
             finishLoading()
@@ -173,7 +150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     // Fire onboarding in background – don't block loading
                     if (event === 'SIGNED_IN' && !onboardingDone.current) {
                         onboardingDone.current = true
-                        checkOnboarding(newSession.user.id).catch(() => {})
+                        checkOnboarding(newSession.user.id).catch(() => { })
                     }
                 } else {
                     setProfile(null)
