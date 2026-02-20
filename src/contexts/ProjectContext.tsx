@@ -842,27 +842,48 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
                 if (expError) throw expError
             }
 
-            // 6. Wrap up
+            // 6. Wrap up — Optimistic local state update (avoids AbortError from fetchProjects)
             console.log(`✅ Project created in ${Date.now() - startTime}ms`)
-            await fetchProjects()
+
+            // Build the new project object from what we know
+            const newProject: Project = {
+                metadata: {
+                    id: newProjectId,
+                    name: project.metadata.name,
+                    logo: project.metadata.logo,
+                    createdAt: new Date().toISOString(),
+                    industry: project.metadata.industry,
+                },
+                northStar: {
+                    name: project.northStar.name,
+                    currentValue: project.northStar.currentValue,
+                    targetValue: project.northStar.targetValue,
+                    unit: project.northStar.unit,
+                    type: project.northStar.type,
+                },
+                objectives: (project.objectives || []).map((obj, i) => ({
+                    ...obj,
+                    id: newObjectives[i]?.id || obj.id,
+                })),
+                strategies: (project.strategies || []).map(s => ({
+                    ...s,
+                    id: strategyIdMap[s.id] || s.id,
+                    parentObjectiveId: objectiveIdMap[s.parentObjectiveId] || s.parentObjectiveId,
+                })),
+                experiments: project.experiments || [],
+            }
+
+            // Add to local state immediately (no network call needed)
+            setProjects(prev => [newProject, ...prev])
 
             // Set the new project as active
-            if (newProjectId) {
-                setActiveProjectId(newProjectId)
-            }
+            setActiveProjectId(newProjectId)
+
+            // Fire a background sync to reconcile with DB (non-blocking)
+            fetchProjects().catch(() => {
+                console.warn('⚠️ Background sync after project creation failed (non-critical)')
+            })
         } catch (err: any) {
-            // AbortError can happen if Supabase fetch is cancelled (e.g. by re-render)
-            // In some cases, the data was actually inserted before the abort happened
-            if (err?.name === 'AbortError' || err?.message?.includes('abort')) {
-                console.warn('⚠️ createProject hit AbortError – checking if data was saved...')
-                try {
-                    await fetchProjects()
-                    // If fetchProjects found projects, the creation likely succeeded
-                    return
-                } catch {
-                    // fetchProjects also failed, so re-throw the original error
-                }
-            }
             console.error('❌ createProject FAILED:', err)
             throw err
         }
