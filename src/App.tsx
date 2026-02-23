@@ -9,7 +9,6 @@ import {
   GitBranch,
   X,
   CheckCircle2,
-  Image as ImageIcon2,
   HelpCircle,
   Settings
 } from 'lucide-react';
@@ -241,32 +240,21 @@ const LibraryCard = ({ experiment, onClick }: { experiment: Experiment; onClick:
       }}
       className="library-card"
     >
-      {/* Hero Image */}
-      <div style={{ height: '160px', background: '#f3f4f6', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {hasImage ? (
-          <div style={{ width: '100%', height: '100%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>
-            <ImageIcon2 size={32} />
+      {/* Hero Image or compact badge */}
+      {hasImage ? (
+        <div style={{ height: '160px', background: '#f3f4f6', position: 'relative' }}>
+          <img src={experiment.visualProof![0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <div style={{ position: 'absolute', top: '12px', right: '12px', background: badgeBg, color: badgeColor, padding: '4px 8px', borderRadius: '99px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.5px' }}>
+            {badgeText}
           </div>
-        ) : (
-          <div style={{ width: '100%', height: '100%', background: 'linear-gradient(45deg, #f3f4f6, #e5e7eb)' }} />
-        )}
-
-        {/* Result Badge */}
-        <div style={{
-          position: 'absolute',
-          top: '12px',
-          right: '12px',
-          background: badgeBg,
-          color: badgeColor,
-          padding: '4px 8px',
-          borderRadius: '99px',
-          fontSize: '11px',
-          fontWeight: 700,
-          letterSpacing: '0.5px'
-        }}>
-          {badgeText}
         </div>
-      </div>
+      ) : (
+        <div style={{ padding: '12px 16px 0', display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ background: badgeBg, color: badgeColor, padding: '4px 8px', borderRadius: '99px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.5px' }}>
+            {badgeText}
+          </div>
+        </div>
+      )}
 
       {/* Card Body */}
       <div style={{ padding: '16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
