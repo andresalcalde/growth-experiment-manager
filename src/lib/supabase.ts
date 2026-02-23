@@ -44,11 +44,61 @@ const customFetch: typeof fetch = async (input, init) => {
   return fetch(input, { ...init, headers })
 }
 
+/**
+ * Custom lock implementation that replaces navigator.locks.
+ *
+ * navigator.locks can deadlock when: the initial getSession() acquires the
+ * exclusive lock, but the operation inside (token refresh / storage read)
+ * hangs indefinitely. The lock is never released, and ALL subsequent
+ * Supabase calls (rpc, from, etc.) queue behind it forever.
+ *
+ * This implementation uses a simple Promise-based queue with a hard timeout
+ * on the ENTIRE operation (not just acquisition), preventing permanent hangs.
+ */
+const lockMap = new Map<string, Promise<unknown>>()
+
+async function simpleLock<R>(
+  name: string,
+  acquireTimeout: number,
+  fn: () => Promise<R>
+): Promise<R> {
+  const timeout = Math.max(acquireTimeout, 5000)
+
+  // Wait for any existing lock on this name
+  const existing = lockMap.get(name)
+  if (existing) {
+    await Promise.race([
+      existing,
+      new Promise(resolve => setTimeout(resolve, timeout))
+    ]).catch(() => {})
+  }
+
+  // Create a new lock entry
+  let releaseLock: () => void
+  const lockPromise = new Promise<void>(resolve => { releaseLock = resolve })
+  lockMap.set(name, lockPromise)
+
+  try {
+    // Run fn with a hard timeout to prevent permanent hangs
+    const result = await Promise.race([
+      fn(),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`Lock operation timeout: ${name}`)), timeout)
+      )
+    ])
+    return result
+  } finally {
+    lockMap.delete(name)
+    releaseLock!()
+  }
+}
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
+    lock: simpleLock,
   },
   global: {
     fetch: customFetch,
