@@ -10,7 +10,8 @@ import {
   X,
   CheckCircle2,
   HelpCircle,
-  Settings
+  Settings,
+  LogOut
 } from 'lucide-react';
 import { MethodologyToolkit } from './components/MethodologyToolkit';
 import {
@@ -388,7 +389,8 @@ const App: React.FC = () => {
   if (import.meta.env.DEV) console.log("App rendering");
   const [view, setView] = useState<'portfolio' | 'board' | 'table' | 'library' | 'roadmap'>('portfolio');
 
-  const { signOut } = useAuth();
+  const { signOut, profile } = useAuth();
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   // Multi-Project State Management via Context
   const {
@@ -949,8 +951,34 @@ const App: React.FC = () => {
                 onChange={e => setSearchQuery(e.target.value)}
               />
             </div>
-            <div style={{ width: '32px', height: '32px', background: 'var(--accent)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: '14px' }}>
-              ME
+            <div style={{ position: 'relative' }}>
+              <div
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                style={{ width: '32px', height: '32px', background: 'var(--accent)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: '12px', cursor: 'pointer' }}
+                title={profile?.full_name || profile?.email || ''}
+              >
+                {profile?.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'ME'}
+              </div>
+              {showUserMenu && (
+                <>
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setShowUserMenu(false)} />
+                  <div style={{ position: 'absolute', top: '40px', right: 0, background: 'white', borderRadius: '8px', border: '1px solid var(--border-subtle)', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 100, minWidth: '200px', overflow: 'hidden' }}>
+                    <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
+                      <div style={{ fontWeight: 600, fontSize: '14px' }}>{profile?.full_name || 'User'}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>{profile?.email}</div>
+                    </div>
+                    <button
+                      onClick={() => { setShowUserMenu(false); signOut(); }}
+                      style={{ width: '100%', padding: '10px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '13px', color: '#DC2626', display: 'flex', alignItems: 'center', gap: '8px' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = '#FEF2F2')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                    >
+                      <LogOut size={14} />
+                      Cerrar Sesión
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </header>
