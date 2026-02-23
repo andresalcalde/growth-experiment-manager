@@ -148,7 +148,10 @@ export const ExperimentDrawer: React.FC<ExperimentDrawerProps> = ({
             </div>
             <h2 style={{ fontSize: '24px', marginBottom: '4px' }}>{experiment.title}</h2>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: 'var(--text-muted)' }}>
-              <img src={experiment.owner.avatar} alt="" style={{ width: '20px', height: '20px', borderRadius: '50%' }} />
+              {experiment.owner.avatar && (experiment.owner.avatar.startsWith('http') || experiment.owner.avatar.startsWith('data:'))
+                ? <img src={experiment.owner.avatar} alt="" style={{ width: '20px', height: '20px', borderRadius: '50%', objectFit: 'cover' }} />
+                : <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 600, color: '#6B7280' }}>{experiment.owner.avatar || experiment.owner.name?.charAt(0)?.toUpperCase() || '?'}</div>
+              }
               <span>{experiment.owner.name}</span>
             </div>
           </div>

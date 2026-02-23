@@ -90,6 +90,22 @@ const IceBadge = ({ impact, confidence, ease, score }: { impact: number, confide
 };
 
 
+const isUrl = (s: string) => s.startsWith('http://') || s.startsWith('https://') || s.startsWith('data:');
+
+const OwnerAvatar = ({ avatar, name, size = 20 }: { avatar: string; name: string; size?: number }) => {
+  if (avatar && isUrl(avatar)) {
+    return <img src={avatar} alt="" style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover' }} />;
+  }
+  if (avatar && avatar.length <= 2) {
+    return <span style={{ fontSize: size * 0.75 }}>{avatar}</span>;
+  }
+  return (
+    <div style={{ width: size, height: size, borderRadius: '50%', background: 'var(--border-subtle, #E5E7EB)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.5, fontWeight: 600, color: '#6B7280' }}>
+      {name?.charAt(0)?.toUpperCase() || '?'}
+    </div>
+  );
+};
+
 const ExperimentCard = ({
   experiment,
   onClick,
@@ -114,7 +130,7 @@ const ExperimentCard = ({
     <div className="card-title">{experiment.title}</div>
     <div className="card-footer">
       <IceBadge impact={experiment.impact} confidence={experiment.confidence} ease={experiment.ease} score={experiment.iceScore} />
-      <img src={experiment.owner.avatar} alt="" style={{ width: '20px', height: '20px', borderRadius: '50%' }} />
+      <OwnerAvatar avatar={experiment.owner.avatar} name={experiment.owner.name} size={20} />
     </div>
   </div>
 );
@@ -346,7 +362,7 @@ const CaseStudyModal = ({ experiment, onClose }: { experiment: Experiment; onClo
                 <div>
                   <div className="label">Owner</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                    <img src={experiment.owner.avatar} style={{ width: '24px', height: '24px', borderRadius: '50%' }} />
+                    <OwnerAvatar avatar={experiment.owner.avatar} name={experiment.owner.name} size={24} />
                     <span style={{ fontSize: '14px', fontWeight: 500 }}>{experiment.owner.name}</span>
                   </div>
                 </div>
