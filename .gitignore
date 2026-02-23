@@ -35,5 +35,8 @@ supabase/.env
 # Backup files
 *.BEFORE_*
 *.backup
+*.ORIGINAL
+*.ORIGINAL_*
+*.OLD_STATE
 
 .vercel

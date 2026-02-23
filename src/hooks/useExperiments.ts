@@ -113,7 +113,9 @@ export function useExperiments(projectId: string | null) {
       )
       .subscribe();
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [projectId]);
 
   return {

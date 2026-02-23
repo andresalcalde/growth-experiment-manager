@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Plus,
   LayoutDashboard,
@@ -9,14 +9,9 @@ import {
   GitBranch,
   X,
   CheckCircle2,
-  Calendar,
-  ExternalLink,
-  ImageIcon,
-  Lightbulb,
-  Image as ImageIcon2,
-  TrendingUp,
   HelpCircle,
-  Settings
+  Settings,
+  LogOut
 } from 'lucide-react';
 import { MethodologyToolkit } from './components/MethodologyToolkit';
 import {
@@ -27,7 +22,6 @@ import {
   useSensor,
   useSensors,
   DragOverlay,
-  defaultDropAnimationSideEffects,
   useDroppable
 } from '@dnd-kit/core';
 import type {
@@ -43,7 +37,7 @@ import {
   useSortable
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { Status, Experiment, Objective, Strategy, NorthStarMetric, FunnelStage, Project, TeamMember } from './types';
+import type { Status, Experiment, NorthStarMetric, FunnelStage, Project, TeamMember } from './types';
 import { CreateProjectModal } from './CreateProjectModal';
 import { SettingsView } from './SettingsView';
 import { PortfolioView } from './PortfolioView';
@@ -52,8 +46,8 @@ import { RoadmapView } from './RoadmapView';
 import { ExperimentModal } from './ExperimentModal';
 import type { ExperimentFormData } from './ExperimentModal';
 import { KeyLearningModal } from './KeyLearningModal';
-import { POLANCO_NORTH_STAR, POLANCO_OBJECTIVES, POLANCO_STRATEGIES, POLANCO_EXPERIMENTS } from './laboratorioPolancoData';
 import { useProjectContext } from './contexts/ProjectContext';
+import { useAuth } from './contexts/AuthContext';
 
 
 // Original MOCK_EXPERIMENTS replaced with Laboratorio Polanco data
@@ -62,10 +56,6 @@ import { useProjectContext } from './contexts/ProjectContext';
 // Board only shows these columns
 const BOARD_COLUMNS: Status[] = ['Prioritized', 'Building', 'Live Testing', 'Analysis'];
 
-const ALL_STATUSES: Status[] = [
-  'Idea', 'Prioritized', 'Building', 'Live Testing', 'Analysis',
-  'Finished - Winner', 'Finished - Loser', 'Finished - Inconclusive'
-];
 
 const getStatusColor = (status: Status) => {
   switch (status) {
@@ -100,6 +90,22 @@ const IceBadge = ({ impact, confidence, ease, score }: { impact: number, confide
 };
 
 
+const isUrl = (s: string) => s.startsWith('http://') || s.startsWith('https://') || s.startsWith('data:');
+
+const OwnerAvatar = ({ avatar, name, size = 20 }: { avatar: string; name: string; size?: number }) => {
+  if (avatar && isUrl(avatar)) {
+    return <img src={avatar} alt="" style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover' }} />;
+  }
+  if (avatar && avatar.length <= 2) {
+    return <span style={{ fontSize: size * 0.75 }}>{avatar}</span>;
+  }
+  return (
+    <div style={{ width: size, height: size, borderRadius: '50%', background: 'var(--border-subtle, #E5E7EB)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.5, fontWeight: 600, color: '#6B7280' }}>
+      {name?.charAt(0)?.toUpperCase() || '?'}
+    </div>
+  );
+};
+
 const ExperimentCard = ({
   experiment,
   onClick,
@@ -124,7 +130,7 @@ const ExperimentCard = ({
     <div className="card-title">{experiment.title}</div>
     <div className="card-footer">
       <IceBadge impact={experiment.impact} confidence={experiment.confidence} ease={experiment.ease} score={experiment.iceScore} />
-      <img src={experiment.owner.avatar} alt="" style={{ width: '20px', height: '20px', borderRadius: '50%' }} />
+      <OwnerAvatar avatar={experiment.owner.avatar} name={experiment.owner.name} size={20} />
     </div>
   </div>
 );
@@ -194,55 +200,6 @@ const KanbanColumn = ({
 
 
 
-// Initial Team Members (Multi-User Support)
-const INITIAL_TEAM_MEMBERS: TeamMember[] = [
-  { id: '1', name: 'Me (Admin)', email: 'me@growthlab.com', avatar: '👤', role: 'Admin', projectIds: ['lab-polanco', 'demo-project'] },
-  { id: '2', name: 'Alice Smith', email: 'alice@growthlab.com', avatar: '👩', role: 'Lead', projectIds: ['lab-polanco'] },
-  { id: '3', name: 'Carlos Ruiz', email: 'carlos@growthlab.com', avatar: '👨', role: 'Lead', projectIds: ['demo-project'] },
-];
-
-const EditableCell = ({ value, onChange }: { value: number; onChange: (v: number) => void }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [tempValue, setTempValue] = useState(value);
-
-  const handleBlur = () => {
-    setIsEditing(false);
-    onChange(tempValue);
-  };
-
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleBlur();
-    }
-  };
-
-
-  if (isEditing) {
-    return (
-      <input
-        type="number"
-        value={tempValue}
-        onChange={(e) => setTempValue(Number(e.target.value))}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-        autoFocus
-        style={{ width: '40px', padding: '4px', borderRadius: '4px', border: '1px solid var(--accent)' }}
-        onClick={(e) => e.stopPropagation()}
-      />
-    );
-  }
-
-  return (
-    <div
-      onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
-      style={{ cursor: 'text', padding: '4px', border: '1px solid transparent', display: 'inline-block' }}
-      title="Click to edit"
-    >
-      {value}
-    </div>
-  );
-};
 
 
 
@@ -251,7 +208,6 @@ const EditableCell = ({ value, onChange }: { value: number; onChange: (v: number
 const LibraryCard = ({ experiment, onClick }: { experiment: Experiment; onClick: () => void }) => {
   const isWinner = experiment.status === 'Finished - Winner';
   const isLoser = experiment.status === 'Finished - Loser';
-  const isInconclusive = experiment.status === 'Finished - Inconclusive';
 
   let badgeColor = '#9CA3AF'; // gray
   let badgeText = 'INCONCLUSIVE';
@@ -285,32 +241,21 @@ const LibraryCard = ({ experiment, onClick }: { experiment: Experiment; onClick:
       }}
       className="library-card"
     >
-      {/* Hero Image */}
-      <div style={{ height: '160px', background: '#f3f4f6', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {hasImage ? (
-          <div style={{ width: '100%', height: '100%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>
-            <ImageIcon2 size={32} />
+      {/* Hero Image or compact badge */}
+      {hasImage ? (
+        <div style={{ height: '160px', background: '#f3f4f6', position: 'relative' }}>
+          <img src={experiment.visualProof![0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <div style={{ position: 'absolute', top: '12px', right: '12px', background: badgeBg, color: badgeColor, padding: '4px 8px', borderRadius: '99px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.5px' }}>
+            {badgeText}
           </div>
-        ) : (
-          <div style={{ width: '100%', height: '100%', background: 'linear-gradient(45deg, #f3f4f6, #e5e7eb)' }} />
-        )}
-
-        {/* Result Badge */}
-        <div style={{
-          position: 'absolute',
-          top: '12px',
-          right: '12px',
-          background: badgeBg,
-          color: badgeColor,
-          padding: '4px 8px',
-          borderRadius: '99px',
-          fontSize: '11px',
-          fontWeight: 700,
-          letterSpacing: '0.5px'
-        }}>
-          {badgeText}
         </div>
-      </div>
+      ) : (
+        <div style={{ padding: '12px 16px 0', display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ background: badgeBg, color: badgeColor, padding: '4px 8px', borderRadius: '99px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.5px' }}>
+            {badgeText}
+          </div>
+        </div>
+      )}
 
       {/* Card Body */}
       <div style={{ padding: '16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -321,7 +266,7 @@ const LibraryCard = ({ experiment, onClick }: { experiment: Experiment; onClick:
           {experiment.keyLearnings || experiment.hypothesis}
         </p>
 
-        <div style={{ marginTop: 'auto', display: 'flex', items: 'center', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-subtle)', borderTop: '1px solid var(--border-subtle)', paddingTop: '12px' }}>
+        <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-subtle)', borderTop: '1px solid var(--border-subtle)', paddingTop: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Target size={14} />
             {experiment.funnelStage}
@@ -406,7 +351,7 @@ const CaseStudyModal = ({ experiment, onClose }: { experiment: Experiment; onClo
                 <div>
                   <div className="label">Owner</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                    <img src={experiment.owner.avatar} style={{ width: '24px', height: '24px', borderRadius: '50%' }} />
+                    <OwnerAvatar avatar={experiment.owner.avatar} name={experiment.owner.name} size={24} />
                     <span style={{ fontSize: '14px', fontWeight: 500 }}>{experiment.owner.name}</span>
                   </div>
                 </div>
@@ -441,16 +386,17 @@ const CaseStudyModal = ({ experiment, onClose }: { experiment: Experiment; onClo
 
 
 const App: React.FC = () => {
-  console.log("App rendering");
+  if (import.meta.env.DEV) console.log("App rendering");
   const [view, setView] = useState<'portfolio' | 'board' | 'table' | 'library' | 'roadmap'>('portfolio');
+
+  const { signOut, profile } = useAuth();
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   // Multi-Project State Management via Context
   const {
     projects,
-    projectsLoading,
     teamMembers,
     activeProjectId,
-    activeProject,
     setActiveProjectId,
     northStar,
     objectives,
@@ -470,7 +416,6 @@ const App: React.FC = () => {
     addTeamMember: ctxAddTeamMember,
     updateTeamMemberRole: ctxUpdateTeamMemberRole,
     removeTeamMember: ctxRemoveTeamMember,
-    refetchAll
   } = useProjectContext();
 
   // const setNorthStar = updateNorthStar; // Removed alias
@@ -548,51 +493,42 @@ const App: React.FC = () => {
 
 
   const updateFunnelStage = (id: string, stage: FunnelStage) => {
-    setExperiments(prev => prev.map(e => e.id === id ? { ...e, funnelStage: stage } : e));
+    updateExperiment(id, { funnelStage: stage });
   };
   const updateIceScore = (id: string, field: 'impact' | 'confidence' | 'ease', val: number) => {
-    setExperiments(prev => prev.map(e => {
-      if (e.id !== id) return e;
-      const updated = { ...e, [field]: val };
-
-      updated.iceScore = updated.impact * updated.confidence * updated.ease;
-      return updated;
-    }));
+    const exp = experiments.find(e => e.id === id);
+    if (!exp) return;
+    const updated = { ...exp, [field]: val };
+    updated.iceScore = updated.impact * updated.confidence * updated.ease;
+    updateExperiment(id, { [field]: val, iceScore: updated.iceScore });
 
     if (selectedExperiment && selectedExperiment.id === id) {
       setSelectedExperiment(prev => {
         if (!prev) return null;
-        const updated = { ...prev, [field]: val };
-        updated.iceScore = updated.impact * updated.confidence * updated.ease;
-        return updated;
+        const u = { ...prev, [field]: val };
+        u.iceScore = u.impact * u.confidence * u.ease;
+        return u;
       });
     }
   };
 
   const handleStatusChangeAttempt = (id: string, newStatus: Status) => {
     if (newStatus.includes('Finished')) {
-      // Trigger Modal
       setPendingExperimentId(id);
       setPendingStatus(newStatus);
       setIsLearningModalOpen(true);
     } else {
-      // Just update
-      setExperiments(prev => prev.map(e => e.id === id ? { ...e, status: newStatus } : e));
+      updateExperiment(id, { status: newStatus });
     }
   };
 
   const handleLearningSave = (learning: string) => {
     if (pendingExperimentId && pendingStatus) {
-      setExperiments(prev => prev.map(e =>
-        e.id === pendingExperimentId
-          ? {
-            ...e,
-            status: pendingStatus,
-            keyLearnings: learning,
-            endDate: new Date().toISOString().split('T')[0]
-          }
-          : e
-      ));
+      updateExperiment(pendingExperimentId, {
+        status: pendingStatus,
+        keyLearnings: learning,
+        endDate: new Date().toISOString().split('T')[0]
+      });
       setIsLearningModalOpen(false);
       setPendingExperimentId(null);
       setPendingStatus(null);
@@ -601,7 +537,7 @@ const App: React.FC = () => {
   };
 
   const handleExperimentUpdate = (id: string, updates: Partial<Experiment>) => {
-    setExperiments(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+    updateExperiment(id, updates);
     if (selectedExperiment && selectedExperiment.id === id) {
       setSelectedExperiment(prev => prev ? { ...prev, ...updates } : null);
     }
@@ -661,7 +597,14 @@ const App: React.FC = () => {
   };
 
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = (_event: DragEndEvent) => {
+    // Persist the status change that happened during drag over
+    if (activeId) {
+      const exp = experiments.find(e => e.id === activeId);
+      if (exp) {
+        updateExperiment(exp.id, { status: exp.status });
+      }
+    }
     setActiveId(null);
   };
 
@@ -1008,8 +951,34 @@ const App: React.FC = () => {
                 onChange={e => setSearchQuery(e.target.value)}
               />
             </div>
-            <div style={{ width: '32px', height: '32px', background: 'var(--accent)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: '14px' }}>
-              ME
+            <div style={{ position: 'relative' }}>
+              <div
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                style={{ width: '32px', height: '32px', background: 'var(--accent)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: '12px', cursor: 'pointer' }}
+                title={profile?.full_name || profile?.email || ''}
+              >
+                {profile?.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'ME'}
+              </div>
+              {showUserMenu && (
+                <>
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setShowUserMenu(false)} />
+                  <div style={{ position: 'absolute', top: '40px', right: 0, background: 'white', borderRadius: '8px', border: '1px solid var(--border-subtle)', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 100, minWidth: '200px', overflow: 'hidden' }}>
+                    <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
+                      <div style={{ fontWeight: 600, fontSize: '14px' }}>{profile?.full_name || 'User'}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>{profile?.email}</div>
+                    </div>
+                    <button
+                      onClick={() => { setShowUserMenu(false); signOut(); }}
+                      style={{ width: '100%', padding: '10px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '13px', color: '#DC2626', display: 'flex', alignItems: 'center', gap: '8px' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = '#FEF2F2')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                    >
+                      <LogOut size={14} />
+                      Cerrar Sesión
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </header>
@@ -1214,6 +1183,8 @@ const App: React.FC = () => {
                 <option value="All">All Stages</option>
                 <option value="Acquisition">Acquisition</option>
                 <option value="Activation">Activation</option>
+                <option value="Retention">Retention</option>
+                <option value="Referral">Referral</option>
                 <option value="Revenue">Revenue</option>
               </select>
             </div>
@@ -1309,6 +1280,7 @@ const App: React.FC = () => {
         onAddMember={handleAddTeamMember}
         onRemoveMember={handleRemoveTeamMember}
         onUpdateMember={handleUpdateTeamMember}
+        onSignOut={signOut}
       />
     </div>
   );

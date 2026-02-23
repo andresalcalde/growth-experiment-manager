@@ -1,12 +1,10 @@
 import React from 'react';
 import {
-    LayoutGrid,
     Beaker,
     TrendingUp,
     ChevronRight,
     Plus,
-    Search,
-    Sparkles
+    Search
 } from 'lucide-react';
 import type { Project } from './types';
 import { SectionGuide } from './components/SectionGuide';
@@ -220,24 +218,6 @@ const ProjectCard = ({
         </div>
     );
 };
-
-// ============================================================================
-// Loading Skeleton
-// ============================================================================
-const ProjectCardSkeleton = () => (
-    <div style={{
-        background: 'white', borderRadius: '16px', border: '1px solid #E5E7EB',
-        overflow: 'hidden',
-    }}>
-        <div style={{ height: '80px', background: 'linear-gradient(135deg, #F3F4F6, #E5E7EB)', animation: 'pulse 2s infinite' }} />
-        <div style={{ padding: '32px 20px 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div style={{ width: '60px', height: '20px', borderRadius: '10px', background: '#F3F4F6' }} />
-            <div style={{ width: '75%', height: '20px', borderRadius: '6px', background: '#F3F4F6' }} />
-            <div style={{ height: '56px', borderRadius: '10px', background: '#F3F4F6' }} />
-            <div style={{ width: '50%', height: '14px', borderRadius: '6px', background: '#F3F4F6' }} />
-        </div>
-    </div>
-);
 
 // ============================================================================
 // PortfolioView Component

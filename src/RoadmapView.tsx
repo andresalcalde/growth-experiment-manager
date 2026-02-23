@@ -36,7 +36,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
   onAddStrategy,
   onEditObjective,
   onEditStrategy,
-  onSelectExperiment,
+  // onSelectExperiment is intentionally not destructured (unused within this component)
   onDeleteObjective,
   onDeleteStrategy
 }) => {
@@ -418,8 +418,8 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                 Descripción
               </label>
               <textarea
-                value={strategyDescription}
-                onChange={(e) => setStrategyDescription(e.target.value)}
+                value={objectiveDescription}
+                onChange={(e) => setObjectiveDescription(e.target.value)}
                 placeholder="Describe lo que esta palanca de growth busca lograr..."
                 rows={3}
                 style={{
@@ -656,8 +656,8 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                 Descripción
               </label>
               <textarea
-                value={strategyDescription}
-                onChange={(e) => setStrategyDescription(e.target.value)}
+                value={objectiveDescription}
+                onChange={(e) => setObjectiveDescription(e.target.value)}
                 placeholder="Describe lo que esta palanca de growth busca lograr..."
                 rows={3}
                 style={{
