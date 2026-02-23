@@ -1,12 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Lightbulb,
   Target,
   CheckCircle2,
-  Calendar,
   ExternalLink,
-  ImageIcon,
   Upload,
   TrendingUp,
   Edit3
@@ -61,6 +59,13 @@ export const ExperimentDrawer: React.FC<ExperimentDrawerProps> = ({
   const [tempTargetMetric, setTempTargetMetric] = useState(experiment.targetMetric || '');
   const [tempUrl, setTempUrl] = useState(experiment.testUrl || '');
   const [tempLearnings, setTempLearnings] = useState(experiment.keyLearnings || '');
+
+  useEffect(() => {
+    setTempSuccessCriteria(experiment.successCriteria || '');
+    setTempTargetMetric(experiment.targetMetric || '');
+    setTempUrl(experiment.testUrl || '');
+    setTempLearnings(experiment.keyLearnings || '');
+  }, [experiment.id]);
 
   const linkedStrategy = strategies.find(s => s.id === experiment.linkedStrategyId);
   const parentObjective = linkedStrategy

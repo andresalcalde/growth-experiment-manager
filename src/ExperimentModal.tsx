@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Lightbulb, Upload, Plus } from 'lucide-react';
 import type { Strategy, Status, FunnelStage, TeamMember } from './types';
 
@@ -69,6 +69,26 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({ isOpen, onClos
     linkedStrategyId: '',
     ownerId: teamMembers[0]?.id || ''
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        title: '',
+        status: 'Idea',
+        hypothesis: '',
+        observation: '',
+        problem: '',
+        source: '',
+        labels: [],
+        impact: 5,
+        confidence: 5,
+        ease: 5,
+        funnelStage: 'Acquisition',
+        linkedStrategyId: '',
+        ownerId: teamMembers[0]?.id || ''
+      });
+    }
+  }, [isOpen, teamMembers]);
 
   if (!isOpen) return null;
 

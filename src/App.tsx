@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Plus,
   LayoutDashboard,
@@ -9,12 +9,7 @@ import {
   GitBranch,
   X,
   CheckCircle2,
-  Calendar,
-  ExternalLink,
-  ImageIcon,
-  Lightbulb,
   Image as ImageIcon2,
-  TrendingUp,
   HelpCircle,
   Settings
 } from 'lucide-react';
@@ -27,7 +22,6 @@ import {
   useSensor,
   useSensors,
   DragOverlay,
-  defaultDropAnimationSideEffects,
   useDroppable
 } from '@dnd-kit/core';
 import type {
@@ -43,7 +37,7 @@ import {
   useSortable
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { Status, Experiment, Objective, Strategy, NorthStarMetric, FunnelStage, Project, TeamMember } from './types';
+import type { Status, Experiment, NorthStarMetric, FunnelStage, Project, TeamMember } from './types';
 import { CreateProjectModal } from './CreateProjectModal';
 import { SettingsView } from './SettingsView';
 import { PortfolioView } from './PortfolioView';
@@ -52,8 +46,8 @@ import { RoadmapView } from './RoadmapView';
 import { ExperimentModal } from './ExperimentModal';
 import type { ExperimentFormData } from './ExperimentModal';
 import { KeyLearningModal } from './KeyLearningModal';
-import { POLANCO_NORTH_STAR, POLANCO_OBJECTIVES, POLANCO_STRATEGIES, POLANCO_EXPERIMENTS } from './laboratorioPolancoData';
 import { useProjectContext } from './contexts/ProjectContext';
+import { useAuth } from './contexts/AuthContext';
 
 
 // Original MOCK_EXPERIMENTS replaced with Laboratorio Polanco data
@@ -62,10 +56,6 @@ import { useProjectContext } from './contexts/ProjectContext';
 // Board only shows these columns
 const BOARD_COLUMNS: Status[] = ['Prioritized', 'Building', 'Live Testing', 'Analysis'];
 
-const ALL_STATUSES: Status[] = [
-  'Idea', 'Prioritized', 'Building', 'Live Testing', 'Analysis',
-  'Finished - Winner', 'Finished - Loser', 'Finished - Inconclusive'
-];
 
 const getStatusColor = (status: Status) => {
   switch (status) {
@@ -194,55 +184,6 @@ const KanbanColumn = ({
 
 
 
-// Initial Team Members (Multi-User Support)
-const INITIAL_TEAM_MEMBERS: TeamMember[] = [
-  { id: '1', name: 'Me (Admin)', email: 'me@growthlab.com', avatar: '👤', role: 'Admin', projectIds: ['lab-polanco', 'demo-project'] },
-  { id: '2', name: 'Alice Smith', email: 'alice@growthlab.com', avatar: '👩', role: 'Lead', projectIds: ['lab-polanco'] },
-  { id: '3', name: 'Carlos Ruiz', email: 'carlos@growthlab.com', avatar: '👨', role: 'Lead', projectIds: ['demo-project'] },
-];
-
-const EditableCell = ({ value, onChange }: { value: number; onChange: (v: number) => void }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [tempValue, setTempValue] = useState(value);
-
-  const handleBlur = () => {
-    setIsEditing(false);
-    onChange(tempValue);
-  };
-
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleBlur();
-    }
-  };
-
-
-  if (isEditing) {
-    return (
-      <input
-        type="number"
-        value={tempValue}
-        onChange={(e) => setTempValue(Number(e.target.value))}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-        autoFocus
-        style={{ width: '40px', padding: '4px', borderRadius: '4px', border: '1px solid var(--accent)' }}
-        onClick={(e) => e.stopPropagation()}
-      />
-    );
-  }
-
-  return (
-    <div
-      onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
-      style={{ cursor: 'text', padding: '4px', border: '1px solid transparent', display: 'inline-block' }}
-      title="Click to edit"
-    >
-      {value}
-    </div>
-  );
-};
 
 
 
@@ -251,7 +192,6 @@ const EditableCell = ({ value, onChange }: { value: number; onChange: (v: number
 const LibraryCard = ({ experiment, onClick }: { experiment: Experiment; onClick: () => void }) => {
   const isWinner = experiment.status === 'Finished - Winner';
   const isLoser = experiment.status === 'Finished - Loser';
-  const isInconclusive = experiment.status === 'Finished - Inconclusive';
 
   let badgeColor = '#9CA3AF'; // gray
   let badgeText = 'INCONCLUSIVE';
@@ -321,7 +261,7 @@ const LibraryCard = ({ experiment, onClick }: { experiment: Experiment; onClick:
           {experiment.keyLearnings || experiment.hypothesis}
         </p>
 
-        <div style={{ marginTop: 'auto', display: 'flex', items: 'center', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-subtle)', borderTop: '1px solid var(--border-subtle)', paddingTop: '12px' }}>
+        <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-subtle)', borderTop: '1px solid var(--border-subtle)', paddingTop: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Target size={14} />
             {experiment.funnelStage}
@@ -441,16 +381,16 @@ const CaseStudyModal = ({ experiment, onClose }: { experiment: Experiment; onClo
 
 
 const App: React.FC = () => {
-  console.log("App rendering");
+  if (import.meta.env.DEV) console.log("App rendering");
   const [view, setView] = useState<'portfolio' | 'board' | 'table' | 'library' | 'roadmap'>('portfolio');
+
+  const { signOut } = useAuth();
 
   // Multi-Project State Management via Context
   const {
     projects,
-    projectsLoading,
     teamMembers,
     activeProjectId,
-    activeProject,
     setActiveProjectId,
     northStar,
     objectives,
@@ -470,7 +410,6 @@ const App: React.FC = () => {
     addTeamMember: ctxAddTeamMember,
     updateTeamMemberRole: ctxUpdateTeamMemberRole,
     removeTeamMember: ctxRemoveTeamMember,
-    refetchAll
   } = useProjectContext();
 
   // const setNorthStar = updateNorthStar; // Removed alias
@@ -548,51 +487,42 @@ const App: React.FC = () => {
 
 
   const updateFunnelStage = (id: string, stage: FunnelStage) => {
-    setExperiments(prev => prev.map(e => e.id === id ? { ...e, funnelStage: stage } : e));
+    updateExperiment(id, { funnelStage: stage });
   };
   const updateIceScore = (id: string, field: 'impact' | 'confidence' | 'ease', val: number) => {
-    setExperiments(prev => prev.map(e => {
-      if (e.id !== id) return e;
-      const updated = { ...e, [field]: val };
-
-      updated.iceScore = updated.impact * updated.confidence * updated.ease;
-      return updated;
-    }));
+    const exp = experiments.find(e => e.id === id);
+    if (!exp) return;
+    const updated = { ...exp, [field]: val };
+    updated.iceScore = updated.impact * updated.confidence * updated.ease;
+    updateExperiment(id, { [field]: val, iceScore: updated.iceScore });
 
     if (selectedExperiment && selectedExperiment.id === id) {
       setSelectedExperiment(prev => {
         if (!prev) return null;
-        const updated = { ...prev, [field]: val };
-        updated.iceScore = updated.impact * updated.confidence * updated.ease;
-        return updated;
+        const u = { ...prev, [field]: val };
+        u.iceScore = u.impact * u.confidence * u.ease;
+        return u;
       });
     }
   };
 
   const handleStatusChangeAttempt = (id: string, newStatus: Status) => {
     if (newStatus.includes('Finished')) {
-      // Trigger Modal
       setPendingExperimentId(id);
       setPendingStatus(newStatus);
       setIsLearningModalOpen(true);
     } else {
-      // Just update
-      setExperiments(prev => prev.map(e => e.id === id ? { ...e, status: newStatus } : e));
+      updateExperiment(id, { status: newStatus });
     }
   };
 
   const handleLearningSave = (learning: string) => {
     if (pendingExperimentId && pendingStatus) {
-      setExperiments(prev => prev.map(e =>
-        e.id === pendingExperimentId
-          ? {
-            ...e,
-            status: pendingStatus,
-            keyLearnings: learning,
-            endDate: new Date().toISOString().split('T')[0]
-          }
-          : e
-      ));
+      updateExperiment(pendingExperimentId, {
+        status: pendingStatus,
+        keyLearnings: learning,
+        endDate: new Date().toISOString().split('T')[0]
+      });
       setIsLearningModalOpen(false);
       setPendingExperimentId(null);
       setPendingStatus(null);
@@ -601,7 +531,7 @@ const App: React.FC = () => {
   };
 
   const handleExperimentUpdate = (id: string, updates: Partial<Experiment>) => {
-    setExperiments(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+    updateExperiment(id, updates);
     if (selectedExperiment && selectedExperiment.id === id) {
       setSelectedExperiment(prev => prev ? { ...prev, ...updates } : null);
     }
@@ -661,7 +591,14 @@ const App: React.FC = () => {
   };
 
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = (_event: DragEndEvent) => {
+    // Persist the status change that happened during drag over
+    if (activeId) {
+      const exp = experiments.find(e => e.id === activeId);
+      if (exp) {
+        updateExperiment(exp.id, { status: exp.status });
+      }
+    }
     setActiveId(null);
   };
 
@@ -1214,6 +1151,8 @@ const App: React.FC = () => {
                 <option value="All">All Stages</option>
                 <option value="Acquisition">Acquisition</option>
                 <option value="Activation">Activation</option>
+                <option value="Retention">Retention</option>
+                <option value="Referral">Referral</option>
                 <option value="Revenue">Revenue</option>
               </select>
             </div>
@@ -1309,6 +1248,7 @@ const App: React.FC = () => {
         onAddMember={handleAddTeamMember}
         onRemoveMember={handleRemoveTeamMember}
         onUpdateMember={handleUpdateTeamMember}
+        onSignOut={signOut}
       />
     </div>
   );

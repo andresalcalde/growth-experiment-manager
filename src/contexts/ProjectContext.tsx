@@ -89,7 +89,7 @@ const frontendRoleToDb = (role: TeamMember['role']): string => {
         case 'Admin': return 'admin'
         case 'Lead': return 'editor'
         case 'Viewer': return 'viewer'
-        default: return 'viewer'
+        default: return 'editor'
     }
 }
 
@@ -596,7 +596,6 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
             .from('experiments')
             .insert({
                 project_id: activeProjectId,
-                owner_id: user!.id,
                 title: exp.title,
                 status: exp.status,
                 owner_name: exp.owner.name,
@@ -793,7 +792,6 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
             if (project.experiments && project.experiments.length > 0) {
                 const experimentsToInsert = project.experiments.map(exp => ({
                     project_id: newProjectId,
-                    owner_id: user!.id,
                     title: exp.title,
                     status: exp.status || 'Idea',
                     owner_name: exp.owner?.name || '',
