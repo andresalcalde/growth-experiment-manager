@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { LandingPage } from './LandingPage'
 
 /**
  * AuthGate wraps the app and shows a login/signup screen when not authenticated.
@@ -14,6 +15,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     const [error, setError] = useState<string | null>(null)
     const [successMessage, setSuccessMessage] = useState<string | null>(null)
     const [submitting, setSubmitting] = useState(false)
+    const [showLanding, setShowLanding] = useState(true)
 
     // Loading state
     if (loading) {
@@ -51,6 +53,11 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     // Authenticated
     if (session) {
         return <>{children}</>
+    }
+
+    // Show landing page before login
+    if (showLanding) {
+        return <LandingPage onLogin={() => setShowLanding(false)} />
     }
 
     // Login/Signup form
@@ -231,6 +238,22 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                         }}
                     >
                         {mode === 'login' ? 'Crear Cuenta' : 'Iniciar Sesión'}
+                    </button>
+                </div>
+
+                {/* Back to landing */}
+                <div style={{ textAlign: 'center', marginTop: '16px' }}>
+                    <button
+                        onClick={() => setShowLanding(true)}
+                        style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#9ca3af',
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                        }}
+                    >
+                        ← Volver a la página principal
                     </button>
                 </div>
             </div>

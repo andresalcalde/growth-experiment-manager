@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Growth Experiment Manager — Gestiona tus experimentos de crecimiento</title>
+    <meta name="description" content="Plataforma integral para diseñar, priorizar y ejecutar experimentos de crecimiento con metodología científica. Del caos a la claridad en tu estrategia de growth.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: #1a1a28;
+            --bg-card-hover: #22223a;
+            --accent: #7c3aed;
+            --accent-light: #a78bfa;
+            --accent-glow: rgba(124, 58, 237, 0.25);
+            --accent-soft: rgba(124, 58, 237, 0.08);
+            --green: #22c55e;
+            --green-glow: rgba(34, 197, 94, 0.2);
+            --blue: #3b82f6;
+            --orange: #f59e0b;
+            --pink: #ec4899;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border: rgba(255, 255, 255, 0.06);
+            --border-light: rgba(255, 255, 255, 0.1);
+            --radius: 16px;
+            --radius-sm: 10px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* ─── Background Effects ─── */
+        .bg-grid {
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 64px 64px;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .bg-blob {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.4;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .blob-1 {
+            width: 600px;
+            height: 600px;
+            background: var(--accent);
+            top: -200px;
+            right: -150px;
+            opacity: 0.15;
+        }
+
+        .blob-2 {
+            width: 500px;
+            height: 500px;
+            background: var(--blue);
+            bottom: 200px;
+            left: -200px;
+            opacity: 0.1;
+        }
+
+        .blob-3 {
+            width: 400px;
+            height: 400px;
+            background: var(--green);
+            bottom: -100px;
+            right: 100px;
+            opacity: 0.08;
+        }
+
+        /* ─── Navigation ─── */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            padding: 16px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(10, 10, 15, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 1.15rem;
+            letter-spacing: -0.5px;
+        }
+
+        .nav-logo {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-light));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .nav-btn {
+            padding: 10px 24px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .nav-btn:hover {
+            background: #6d28d9;
+            transform: translateY(-1px);
+            box-shadow: 0 8px 24px var(--accent-glow);
+        }
+
+        /* ─── Container ─── */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ─── Hero Section ─── */
+        .hero {
+            padding: 160px 0 100px;
+            text-align: center;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 20px;
+            background: var(--accent-soft);
+            border: 1px solid rgba(124, 58, 237, 0.2);
+            border-radius: 100px;
+            font-size: 0.85rem;
+            color: var(--accent-light);
+            margin-bottom: 32px;
+            animation: fadeInUp 0.6s ease;
+        }
+
+        .hero-badge .dot {
+            width: 8px;
+            height: 8px;
+            background: var(--green);
+            border-radius: 50%;
+            animation: pulse-dot 2s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.3); }
+        }
+
+        .hero h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(2.8rem, 6vw, 4.8rem);
+            font-weight: 800;
+            line-height: 1.1;
+            letter-spacing: -2px;
+            margin-bottom: 24px;
+            animation: fadeInUp 0.6s ease 0.1s both;
+        }
+
+        .hero h1 .gradient-text {
+            background: linear-gradient(135deg, var(--accent-light) 0%, var(--pink) 50%, var(--orange) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            max-width: 640px;
+            margin: 0 auto 48px;
+            line-height: 1.7;
+            animation: fadeInUp 0.6s ease 0.2s both;
+        }
+
+        .hero-cta {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            animation: fadeInUp 0.6s ease 0.3s both;
+        }
+
+        .btn-primary {
+            padding: 16px 36px;
+            background: linear-gradient(135deg, var(--accent), #6d28d9);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-weight: 700;
+            font-size: 1.05rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px var(--accent-glow);
+        }
+
+        .btn-secondary {
+            padding: 16px 36px;
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--border-light);
+            border-radius: 14px;
+            font-weight: 600;
+            font-size: 1.05rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--accent-light);
+            transform: translateY(-2px);
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ─── Problem Section ─── */
+        .problem-section {
+            padding: 80px 0;
+        }
+
+        .section-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--accent-light);
+            margin-bottom: 20px;
+        }
+
+        .section-label .icon {
+            font-size: 1rem;
+        }
+
+        .section-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(2rem, 4vw, 2.8rem);
+            font-weight: 700;
+            letter-spacing: -1px;
+            margin-bottom: 16px;
+            line-height: 1.2;
+        }
+
+        .section-desc {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            line-height: 1.7;
+            margin-bottom: 48px;
+        }
+
+        .problem-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .problem-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 32px 28px;
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .problem-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent), var(--pink));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .problem-card:hover {
+            border-color: rgba(124, 58, 237, 0.3);
+            transform: translateY(-4px);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .problem-card:hover::before {
+            opacity: 1;
+        }
+
+        .problem-emoji {
+            font-size: 2.2rem;
+            margin-bottom: 16px;
+        }
+
+        .problem-card h3 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .problem-card p {
+            font-size: 0.92rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* ─── How It Works ─── */
+        .how-section {
+            padding: 100px 0;
+        }
+
+        .how-section .section-title {
+            text-align: center;
+        }
+
+        .how-section .section-desc {
+            text-align: center;
+            margin: 0 auto 64px;
+        }
+
+        .steps-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 32px;
+            position: relative;
+        }
+
+        .steps-grid::before {
+            content: '';
+            position: absolute;
+            top: 60px;
+            left: 17%;
+            right: 17%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent), var(--green), transparent);
+            opacity: 0.3;
+        }
+
+        .step-card {
+            text-align: center;
+            position: relative;
+        }
+
+        .step-number {
+            width: 64px;
+            height: 64px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin: 0 auto 24px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .step-1 .step-number {
+            background: linear-gradient(135deg, var(--accent), #6d28d9);
+            box-shadow: 0 8px 30px var(--accent-glow);
+        }
+
+        .step-2 .step-number {
+            background: linear-gradient(135deg, var(--blue), #2563eb);
+            box-shadow: 0 8px 30px rgba(59, 130, 246, 0.25);
+        }
+
+        .step-3 .step-number {
+            background: linear-gradient(135deg, var(--green), #16a34a);
+            box-shadow: 0 8px 30px var(--green-glow);
+        }
+
+        .step-card h3 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .step-card p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.65;
+            max-width: 300px;
+            margin: 0 auto;
+        }
+
+        .step-subtitle {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .step-1 .step-subtitle {
+            background: var(--accent-soft);
+            color: var(--accent-light);
+        }
+
+        .step-2 .step-subtitle {
+            background: rgba(59,130,246,0.1);
+            color: #60a5fa;
+        }
+
+        .step-3 .step-subtitle {
+            background: rgba(34,197,94,0.1);
+            color: #4ade80;
+        }
+
+        /* ─── Features ─── */
+        .features-section {
+            padding: 80px 0 100px;
+        }
+
+        .features-section .section-label,
+        .features-section .section-title,
+        .features-section .section-desc {
+            text-align: center;
+        }
+
+        .features-section .section-desc {
+            margin: 0 auto 64px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 36px 32px;
+            display: flex;
+            gap: 20px;
+            transition: all 0.4s ease;
+        }
+
+        .feature-card:hover {
+            border-color: rgba(124, 58, 237, 0.2);
+            background: var(--bg-card-hover);
+            transform: translateY(-2px);
+        }
+
+        .feature-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            flex-shrink: 0;
+        }
+
+        .feature-icon.purple {
+            background: var(--accent-soft);
+        }
+
+        .feature-icon.blue {
+            background: rgba(59,130,246,0.1);
+        }
+
+        .feature-icon.green {
+            background: rgba(34,197,94,0.1);
+        }
+
+        .feature-icon.orange {
+            background: rgba(245,158,11,0.1);
+        }
+
+        .feature-icon.pink {
+            background: rgba(236,72,153,0.1);
+        }
+
+        .feature-icon.teal {
+            background: rgba(20,184,166,0.1);
+        }
+
+        .feature-card h3 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.55;
+        }
+
+        /* ─── Funnel Framework ─── */
+        .funnel-section {
+            padding: 80px 0;
+        }
+
+        .funnel-section .section-label,
+        .funnel-section .section-title {
+            text-align: center;
+        }
+
+        .funnel-section .section-desc {
+            text-align: center;
+            margin: 0 auto 56px;
+        }
+
+        .funnel-visual {
+            display: flex;
+            justify-content: center;
+            gap: 0;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .funnel-stage {
+            flex: 1;
+            padding: 28px 16px;
+            text-align: center;
+            position: relative;
+            border-radius: var(--radius-sm);
+            transition: all 0.3s ease;
+        }
+
+        .funnel-stage:hover {
+            transform: translateY(-4px);
+        }
+
+        .funnel-stage .stage-icon {
+            font-size: 2rem;
+            margin-bottom: 12px;
+        }
+
+        .funnel-stage h4 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .funnel-stage p {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .stage-acq { background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.15); }
+        .stage-act { background: rgba(124,58,237,0.08); border: 1px solid rgba(124,58,237,0.15); }
+        .stage-ret { background: rgba(236,72,153,0.08); border: 1px solid rgba(236,72,153,0.15); }
+        .stage-ref { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.15); }
+        .stage-rev { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.15); }
+
+        .funnel-arrow {
+            display: flex;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            padding: 0 4px;
+        }
+
+        /* ─── CTA Section ─── */
+        .cta-section {
+            padding: 100px 0 120px;
+            text-align: center;
+        }
+
+        .cta-box {
+            background: linear-gradient(135deg, rgba(124,58,237,0.12), rgba(236,72,153,0.06));
+            border: 1px solid rgba(124,58,237,0.2);
+            border-radius: 24px;
+            padding: 72px 48px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-box::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .cta-box h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(2rem, 4vw, 2.8rem);
+            font-weight: 800;
+            letter-spacing: -1px;
+            margin-bottom: 16px;
+            position: relative;
+        }
+
+        .cta-box p {
+            color: var(--text-secondary);
+            font-size: 1.15rem;
+            max-width: 500px;
+            margin: 0 auto 40px;
+            position: relative;
+        }
+
+        .cta-box .btn-primary {
+            position: relative;
+            font-size: 1.15rem;
+            padding: 18px 44px;
+        }
+
+        /* ─── Footer ─── */
+        footer {
+            padding: 32px 0;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        footer a {
+            color: var(--accent-light);
+            text-decoration: none;
+        }
+
+        /* ─── Responsive ─── */
+        @media (max-width: 768px) {
+            nav { padding: 12px 20px; }
+            .hero { padding: 120px 0 60px; }
+            .problem-grid { grid-template-columns: 1fr; }
+            .steps-grid {
+                grid-template-columns: 1fr;
+                gap: 48px;
+            }
+            .steps-grid::before { display: none; }
+            .features-grid { grid-template-columns: 1fr; }
+            .funnel-visual {
+                flex-direction: column;
+                gap: 12px;
+            }
+            .funnel-arrow {
+                transform: rotate(90deg);
+                justify-content: center;
+            }
+            .hero-cta {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+
+        /* ─── Scroll Animations ─── */
+        .animate-on-scroll {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: all 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .animate-on-scroll.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ─── Metrics Bar ─── */
+        .metrics-bar {
+            display: flex;
+            justify-content: center;
+            gap: 48px;
+            padding: 48px 0;
+            margin-top: 64px;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .metric-item {
+            text-align: center;
+        }
+
+        .metric-value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-light), var(--pink));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .metric-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* ─── ICE Preview ─── */
+        .ice-preview {
+            display: flex;
+            gap: 32px;
+            justify-content: center;
+            margin-top: 56px;
+        }
+
+        .ice-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 20px 28px;
+            text-align: center;
+            min-width: 140px;
+        }
+
+        .ice-letter {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+        }
+
+        .ice-i { color: var(--accent-light); }
+        .ice-c { color: var(--blue); }
+        .ice-e { color: var(--green); }
+
+        .ice-word {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .ice-desc {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-grid"></div>
+    <div class="bg-blob blob-1"></div>
+    <div class="bg-blob blob-2"></div>
+    <div class="bg-blob blob-3"></div>
+
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-brand">
+            <div class="nav-logo">🧪</div>
+            Growth Experiment Manager
+        </div>
+        <a href="https://growth-experiment-manager.vercel.app/" class="nav-btn" target="_blank">
+            Iniciar Sesión →
+        </a>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-badge">
+                <span class="dot"></span>
+                Plataforma de Growth · Metodología científica
+            </div>
+            <h1>
+                Del caos a la claridad<br>
+                en tu estrategia de<br>
+                <span class="gradient-text">crecimiento</span>
+            </h1>
+            <p class="hero-subtitle">
+                Diseña hipótesis, prioriza con ICE scoring, ejecuta experimentos y documenta aprendizajes clave — todo en una plataforma integral para equipos de growth.
+            </p>
+            <div class="hero-cta">
+                <a href="https://growth-experiment-manager.vercel.app/" class="btn-primary" target="_blank">
+                    Comenzar Gratis 🚀
+                </a>
+                <a href="#como-funciona" class="btn-secondary">
+                    ¿Cómo funciona? ↓
+                </a>
+            </div>
+
+            <!-- Metrics -->
+            <div class="metrics-bar">
+                <div class="metric-item">
+                    <div class="metric-value">3</div>
+                    <div class="metric-label">Fases del Proceso</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value">5</div>
+                    <div class="metric-label">Etapas del Funnel</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value">∞</div>
+                    <div class="metric-label">Proyectos & Experimentos</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value">ICE</div>
+                    <div class="metric-label">Framework de Priorización</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problem -->
+    <section class="problem-section">
+        <div class="container">
+            <div class="section-label"><span class="icon">⚡</span> EL PROBLEMA</div>
+            <h2 class="section-title">¿Te suena familiar?</h2>
+            <p class="section-desc">
+                Los equipos de growth enfrentan los mismos problemas una y otra vez. Sin un sistema, el crecimiento es caótico.
+            </p>
+            <div class="problem-grid">
+                <div class="problem-card animate-on-scroll">
+                    <div class="problem-emoji">📋</div>
+                    <h3>Experimentos en spreadsheets</h3>
+                    <p>Hipótesis perdidas en Google Sheets, sin contexto, sin resultados trazables. El conocimiento se pierde con cada iteración.</p>
+                </div>
+                <div class="problem-card animate-on-scroll">
+                    <div class="problem-emoji">🎯</div>
+                    <h3>Sin alineación estratégica</h3>
+                    <p>¿Cómo conectar cada experimento con un objetivo de negocio? Sin visibilidad de la cascada North Star → Objetivos → Estrategias.</p>
+                </div>
+                <div class="problem-card animate-on-scroll">
+                    <div class="problem-emoji">🔮</div>
+                    <h3>Priorización por intuición</h3>
+                    <p>Sin un framework objetivo para decidir qué experimentar primero. Las decisiones se toman por "feeling", no por datos.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="how-section" id="como-funciona">
+        <div class="container">
+            <div class="section-label"><span class="icon">🔄</span> METODOLOGÍA</div>
+            <h2 class="section-title">Un proceso de 3 fases</h2>
+            <p class="section-desc">
+                Sigue un flujo estructurado que va desde el diseño estratégico hasta la ejecución ágil de experimentos.
+            </p>
+            <div class="steps-grid">
+                <div class="step-card step-1 animate-on-scroll">
+                    <div class="step-number">01</div>
+                    <div class="step-subtitle">ROADMAP</div>
+                    <h3>Design</h3>
+                    <p>Define tu North Star Metric, establece objetivos y diseña estrategias. Crea una cascada clara desde tu métrica clave hasta las tácticas ejecutables.</p>
+                </div>
+                <div class="step-card step-2 animate-on-scroll">
+                    <div class="step-number">02</div>
+                    <div class="step-subtitle">BACKLOG</div>
+                    <h3>Explore</h3>
+                    <p>Prioriza tu backlog de experimentos con ICE scoring. Visualiza todos tus experimentos en tabla, filtra por funnel stage, ordena por impacto.</p>
+                </div>
+                <div class="step-card step-3 animate-on-scroll">
+                    <div class="step-number">03</div>
+                    <div class="step-subtitle">KANBAN</div>
+                    <h3>Be Agile</h3>
+                    <p>Mueve experimentos por las fases: Prioritized → Building → Live Testing → Analysis. Drag & drop para agilidad total.</p>
+                </div>
+            </div>
+
+            <!-- ICE Framework -->
+            <div class="ice-preview animate-on-scroll">
+                <div class="ice-item">
+                    <div class="ice-letter ice-i">I</div>
+                    <div class="ice-word">Impact</div>
+                    <div class="ice-desc">¿Qué tan grande será el efecto?</div>
+                </div>
+                <div class="ice-item">
+                    <div class="ice-letter ice-c">C</div>
+                    <div class="ice-word">Confidence</div>
+                    <div class="ice-desc">¿Qué tan seguro estás?</div>
+                </div>
+                <div class="ice-item">
+                    <div class="ice-letter ice-e">E</div>
+                    <div class="ice-word">Ease</div>
+                    <div class="ice-desc">¿Qué tan fácil de implementar?</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Funnel Framework -->
+    <section class="funnel-section">
+        <div class="container">
+            <div class="section-label animate-on-scroll"><span class="icon">📊</span> AARRR FRAMEWORK</div>
+            <h2 class="section-title animate-on-scroll">Pirate Metrics integrado</h2>
+            <p class="section-desc animate-on-scroll">
+                Cada experimento se clasifica por etapa del funnel, dándote visibilidad de dónde estás invirtiendo esfuerzo y dónde hay oportunidades.
+            </p>
+            <div class="funnel-visual animate-on-scroll">
+                <div class="funnel-stage stage-acq">
+                    <div class="stage-icon">🎣</div>
+                    <h4>Acquisition</h4>
+                    <p>¿Cómo atraes usuarios?</p>
+                </div>
+                <div class="funnel-arrow">→</div>
+                <div class="funnel-stage stage-act">
+                    <div class="stage-icon">⚡</div>
+                    <h4>Activation</h4>
+                    <p>¿Llegan al "Aha moment"?</p>
+                </div>
+                <div class="funnel-arrow">→</div>
+                <div class="funnel-stage stage-ret">
+                    <div class="stage-icon">🔄</div>
+                    <h4>Retention</h4>
+                    <p>¿Regresan los usuarios?</p>
+                </div>
+                <div class="funnel-arrow">→</div>
+                <div class="funnel-stage stage-ref">
+                    <div class="stage-icon">📣</div>
+                    <h4>Referral</h4>
+                    <p>¿Recomiendan tu producto?</p>
+                </div>
+                <div class="funnel-arrow">→</div>
+                <div class="funnel-stage stage-rev">
+                    <div class="stage-icon">💰</div>
+                    <h4>Revenue</h4>
+                    <p>¿Cómo monetizas?</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section class="features-section" id="features">
+        <div class="container">
+            <div class="section-label"><span class="icon">✨</span> FUNCIONALIDADES</div>
+            <h2 class="section-title">Todo lo que necesitas para crecer</h2>
+            <p class="section-desc">
+                Herramientas diseñadas específicamente para equipos de growth que toman decisiones basadas en datos.
+            </p>
+            <div class="features-grid">
+                <div class="feature-card animate-on-scroll">
+                    <div class="feature-icon purple">🎯</div>
+                    <div>
+                        <h3>North Star Metric</h3>
+                        <p>Define y monitorea tu métrica estrella. Visualiza el progreso en tiempo real con barras de avance y targets configurables.</p>
+                    </div>
+                </div>
+                <div class="feature-card animate-on-scroll">
+                    <div class="feature-icon blue">📐</div>
+                    <div>
+                        <h3>Roadmap Estratégico</h3>
+                        <p>Cascada visual de Objetivos → Estrategias → Experimentos. Cada nivel se conecta al anterior para trazabilidad total.</p>
+                    </div>
+                </div>
+                <div class="feature-card animate-on-scroll">
+                    <div class="feature-icon green">📊</div>
+                    <div>
+                        <h3>Backlog con ICE Scoring</h3>
+                        <p>Tabla interactiva con edición inline de Impact, Confidence y Ease. Prioriza objetivamente con puntuación automática.</p>
+                    </div>
+                </div>
+                <div class="feature-card animate-on-scroll">
+                    <div class="feature-icon orange">🗂️</div>
+                    <div>
+                        <h3>Kanban con Drag & Drop</h3>
+                        <p>Board visual para mover experimentos entre etapas. Arrastra tarjetas de Prioritized a Building, Testing y Analysis.</p>
+                    </div>
+                </div>
+                <div class="feature-card animate-on-scroll">
+                    <div class="feature-icon pink">📁</div>
+                    <div>
+                        <h3>Multi-Proyecto</h3>
+                        <p>Gestiona múltiples proyectos desde un portfolio centralizado. Cada proyecto con su propio North Star, equipo y experimentos.</p>
+                    </div>
+                </div>
+                <div class="feature-card animate-on-scroll">
+                    <div class="feature-icon teal">📚</div>
+                    <div>
+                        <h3>Knowledge Library</h3>
+                        <p>Documenta hipótesis, criterios de éxito, key learnings y pruebas visuales. Construye un repositorio de conocimiento para tu equipo.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta-section">
+        <div class="container">
+            <div class="cta-box animate-on-scroll">
+                <h2>Empieza a experimentar<br>con metodología</h2>
+                <p>Deja de adivinar y empieza a tomar decisiones de crecimiento basadas en datos y frameworks probados.</p>
+                <a href="https://growth-experiment-manager.vercel.app/" class="btn-primary" target="_blank">
+                    Acceder a la Plataforma 🚀
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>© 2026 Growth Experiment Manager · Construido con 💜 por <a href="#">Laboratorio Polanco</a></p>
+        </div>
+    </footer>
+
+    <script>
+        // Scroll animation observer
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        });
+
+        document.querySelectorAll('.animate-on-scroll').forEach(el => {
+            observer.observe(el);
+        });
+    </script>
+</body>
+</html>

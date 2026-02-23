@@ -7,74 +7,72 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('⚠️ Supabase credentials not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env')
 }
 
+/**
+ * Cached access token to bypass navigator lock contention.
+ *
+ * Root cause of AbortError: Supabase auth-js uses navigator.locks.request()
+ * inside getSession(). Every Supabase query calls fetchWithAuth() which calls
+ * getAccessToken() → getSession() → navigator.locks.request(). When the lock
+ * is contended/stuck, the AbortController fires and kills the request.
+ *
+ * Solution: Cache the access token and refresh it via onAuthStateChange.
+ * Use a custom fetch that applies the cached token directly, bypassing
+ * the navigator lock entirely for database queries.
+ */
+let cachedAccessToken: string | null = null
+
+export function setCachedAccessToken(token: string | null) {
+  cachedAccessToken = token
+}
+
+/**
+ * Custom fetch that applies the cached auth token directly.
+ * This bypasses Supabase's internal fetchWithAuth → getSession() → navigator.locks chain.
+ */
+const customFetch: typeof fetch = async (input, init) => {
+  const headers = new Headers(init?.headers)
+
+  if (!headers.has('apikey')) {
+    headers.set('apikey', supabaseAnonKey)
+  }
+
+  if (!headers.has('Authorization')) {
+    const token = cachedAccessToken ?? supabaseAnonKey
+    headers.set('Authorization', `Bearer ${token}`)
+  }
+
+  return fetch(input, { ...init, headers })
+}
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
   },
+  global: {
+    fetch: customFetch,
+  },
 })
 
-/**
- * Retry wrapper for Supabase operations that may fail with AbortError.
- * 
- * Root cause: Supabase auth-js uses navigator.locks.request() with an
- * AbortController timeout inside getSession(). When the lock can't be
- * acquired in time, it fires abortController.abort(), which throws
- * "AbortError: signal is aborted without reason". This error propagates
- * through fetchWithAuth() → every Supabase query.
- *
- * This wrapper retries the entire Supabase operation (query builder + auth)
- * when an AbortError is detected in the response.
- */
-export async function resilientSupabaseCall<T>(
-  queryFn: () => PromiseLike<{ data: T; error: any }>,
-  maxRetries = 3,
-  label = 'query'
-): Promise<{ data: T; error: any }> {
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const result = await queryFn()
-
-      // Check if the error is an AbortError (returned as error object by postgrest-js)
-      const isAbortError =
-        result.error?.message?.includes('AbortError') ||
-        result.error?.message?.includes('abort') ||
-        result.error?.message?.includes('signal is aborted')
-
-      if (isAbortError && attempt < maxRetries) {
-        const delay = 300 * (attempt + 1)
-        console.warn(
-          `⚠️ ${label}: AbortError in response (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${delay}ms...`
-        )
-        await new Promise(r => setTimeout(r, delay))
-        continue
-      }
-
-      return result
-    } catch (err: any) {
-      // Also handle thrown AbortErrors (from .throwOnError() or edge cases)
-      const isAbortError =
-        err?.name === 'AbortError' ||
-        err?.message?.includes('abort') ||
-        err?.message?.includes('signal is aborted')
-
-      if (isAbortError && attempt < maxRetries) {
-        const delay = 300 * (attempt + 1)
-        console.warn(
-          `⚠️ ${label}: AbortError thrown (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${delay}ms...`
-        )
-        await new Promise(r => setTimeout(r, delay))
-        continue
-      }
-
-      throw err
-    }
+// Initialize the cached token from the persisted session
+// This runs once when the module loads
+supabase.auth.getSession().then(({ data }) => {
+  if (data.session?.access_token) {
+    cachedAccessToken = data.session.access_token
+    console.log('🔑 Initial auth token cached')
   }
+}).catch(err => {
+  console.warn('⚠️ Could not get initial session:', err?.message)
+})
 
-  // Should never reach here
-  return { data: null as T, error: { message: 'resilientSupabaseCall: exhausted retries' } }
-}
+// Keep the token updated via auth state changes
+supabase.auth.onAuthStateChange((_event, session) => {
+  cachedAccessToken = session?.access_token ?? null
+  if (session) {
+    console.log('🔑 Auth token updated via state change')
+  }
+})
 
 export function handleSupabaseError(error: any, context: string) {
   console.error(`[Supabase Error - ${context}]:`, error)
