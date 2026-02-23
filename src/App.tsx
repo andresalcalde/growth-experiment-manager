@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   Plus,
   LayoutDashboard,
@@ -413,6 +413,7 @@ const App: React.FC = () => {
     updateExperiment,
     setExperiments,
     createProject: ctxCreateProject,
+    deleteProject,
     addTeamMember: ctxAddTeamMember,
     updateTeamMemberRole: ctxUpdateTeamMemberRole,
     removeTeamMember: ctxRemoveTeamMember,
@@ -698,6 +699,11 @@ const App: React.FC = () => {
     }
   };
 
+  const handleDeleteProject = async (projectId: string) => {
+    await deleteProject(projectId);
+    setView('portfolio');
+  };
+
   // Team Management Handlers
   const handleAddTeamMember = (member: TeamMember) => {
     ctxAddTeamMember(member.email, member.role);
@@ -727,6 +733,7 @@ const App: React.FC = () => {
           projects={projects}
           onSelectProject={handleSelectProjectFromPortfolio}
           onCreateProject={() => setIsCreateProjectOpen(true)}
+          onDeleteProject={handleDeleteProject}
         />
         <CreateProjectModal
           isOpen={isCreateProjectOpen}
@@ -1281,6 +1288,7 @@ const App: React.FC = () => {
         onRemoveMember={handleRemoveTeamMember}
         onUpdateMember={handleUpdateTeamMember}
         onSignOut={signOut}
+        onDeleteProject={activeProjectId ? () => handleDeleteProject(activeProjectId) : undefined}
       />
     </div>
   );

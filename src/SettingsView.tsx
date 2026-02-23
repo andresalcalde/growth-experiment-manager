@@ -12,6 +12,7 @@ interface SettingsViewProps {
   onUpdateMember: (memberId: string, updates: Partial<TeamMember>) => void;
   onResetData?: () => void;
   onSignOut?: () => void;
+  onDeleteProject?: () => void;
 }
 
 const ROLE_COLORS = {
@@ -31,7 +32,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onRemoveMember,
   onUpdateMember,
   onResetData,
-  onSignOut
+  onSignOut,
+  onDeleteProject
 }) => {
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
@@ -658,6 +660,32 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               >
                 <Trash2 size={14} />
                 Reiniciar Datos
+              </button>
+            )}
+            {onDeleteProject && (
+              <button
+                onClick={() => {
+                  if (window.confirm('¿Estás seguro de que deseas eliminar este proyecto? Esta acción no se puede deshacer.')) {
+                    onDeleteProject();
+                  }
+                }}
+                style={{
+                  padding: '8px 14px',
+                  border: '1px solid #dc2626',
+                  borderRadius: '8px',
+                  background: '#dc2626',
+                  color: 'white',
+                  fontWeight: 600,
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <Trash2 size={14} />
+                Eliminar Proyecto
               </button>
             )}
             {onSignOut && (
