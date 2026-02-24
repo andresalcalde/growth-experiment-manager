@@ -46,6 +46,8 @@ import { RoadmapView } from './RoadmapView';
 import { ExperimentModal } from './ExperimentModal';
 import type { ExperimentFormData } from './ExperimentModal';
 import { KeyLearningModal } from './KeyLearningModal';
+import { SectionGuide } from './components/SectionGuide';
+import { InfoTooltip } from './components/InfoTooltip';
 import { useProjectContext } from './contexts/ProjectContext';
 import { useAuth } from './contexts/AuthContext';
 
@@ -832,6 +834,32 @@ const App: React.FC = () => {
           New Experiment
         </button>
 
+        {/* Back to Portfolio - Prominent */}
+        <button
+          onClick={handleBackToPortfolio}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px',
+            borderRadius: '8px', width: '100%', textAlign: 'left',
+            border: '1px solid #E5E7EB',
+            cursor: 'pointer', background: '#F9FAFB', color: '#4F46E5',
+            marginBottom: '16px', fontSize: '13px', fontWeight: 600,
+            transition: 'all 0.2s',
+            letterSpacing: '-0.1px',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#EEF2FF';
+            e.currentTarget.style.borderColor = '#C7D2FE';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = '#F9FAFB';
+            e.currentTarget.style.borderColor = '#E5E7EB';
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg>
+          <span>All Projects</span>
+        </button>
+
         <button
           className={'tab ' + (view === 'roadmap' ? 'active' : '')}
           onClick={() => setView('roadmap')}
@@ -839,6 +867,7 @@ const App: React.FC = () => {
         >
           <GitBranch size={18} />
           <span style={{ fontWeight: 500 }}>01. Design</span>
+          <InfoTooltip content="Define tu hipótesis de crecimiento. Estructura: 'Si hacemos [Acción], entonces veremos un cambio en [Métrica] porque [Razón estratégica]'. No lances experimentos sin una tesis clara." position="right" />
         </button>
 
         <button
@@ -848,6 +877,7 @@ const App: React.FC = () => {
         >
           <TableIcon size={18} />
           <span style={{ fontWeight: 500 }}>02. Explore</span>
+          <InfoTooltip content="Usa el framework ICE para decidir qué probar primero. Evalúa el Impacto potencial, la Confianza en que funcionará y la Facilidad (Ease) de ejecución. Prioriza lo que mueva la aguja con el menor esfuerzo." position="right" />
         </button>
 
         <button
@@ -857,6 +887,7 @@ const App: React.FC = () => {
         >
           <LayoutDashboard size={18} />
           <span style={{ fontWeight: 500 }}>03. Be Agile</span>
+          <InfoTooltip content="Este es tu motor de High-Tempo Testing. Mueve los experimentos de 'Builders' a 'Live Testers' rápidamente para generar datos reales. El objetivo es la velocidad de aprendizaje, no la perfección inicial." position="right" />
         </button>
 
         <button
@@ -866,6 +897,7 @@ const App: React.FC = () => {
         >
           <Book size={18} />
           <span style={{ fontWeight: 500 }}>04. Learning</span>
+          <InfoTooltip content="Cierra el Growth Loop. Documenta aquí si la hipótesis se validó o se rechazó. El aprendizaje es el activo más valioso; un experimento 'fallido' es un éxito si nos dice qué no hacer en el futuro." position="right" />
         </button>
 
         <div style={{ marginTop: 'auto' }}>
@@ -989,6 +1021,14 @@ const App: React.FC = () => {
             </div>
           </div>
         </header>
+
+        {/* Section Guide — Contextual guide for each view */}
+        <div style={{ padding: '16px 24px 0 24px' }}>
+          {view === 'roadmap' && <SectionGuide guideId="roadmap" />}
+          {view === 'table' && <SectionGuide guideId="table" />}
+          {view === 'board' && <SectionGuide guideId="board" />}
+          {view === 'library' && <SectionGuide guideId="library" />}
+        </div>
 
         {view === 'board' ? (
           <div className="kanban-board">
