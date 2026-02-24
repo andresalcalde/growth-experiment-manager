@@ -52,45 +52,17 @@ const customFetch: typeof fetch = async (input, init) => {
  * hangs indefinitely. The lock is never released, and ALL subsequent
  * Supabase calls (rpc, from, etc.) queue behind it forever.
  *
- * This implementation uses a simple Promise-based queue with a hard timeout
- * on the ENTIRE operation (not just acquisition), preventing permanent hangs.
+ * Since we already cache the access token via onAuthStateChange, we don't
+ * need strict locking — race conditions in token refresh are harmless
+ * (worst case: two concurrent refreshes, both succeed). Just run fn()
+ * directly without navigator.locks to avoid any deadlock risk.
  */
-const lockMap = new Map<string, Promise<unknown>>()
-
 async function simpleLock<R>(
-  name: string,
-  acquireTimeout: number,
+  _name: string,
+  _acquireTimeout: number,
   fn: () => Promise<R>
 ): Promise<R> {
-  const timeout = Math.max(acquireTimeout, 5000)
-
-  // Wait for any existing lock on this name
-  const existing = lockMap.get(name)
-  if (existing) {
-    await Promise.race([
-      existing,
-      new Promise(resolve => setTimeout(resolve, timeout))
-    ]).catch(() => {})
-  }
-
-  // Create a new lock entry
-  let releaseLock: () => void
-  const lockPromise = new Promise<void>(resolve => { releaseLock = resolve })
-  lockMap.set(name, lockPromise)
-
-  try {
-    // Run fn with a hard timeout to prevent permanent hangs
-    const result = await Promise.race([
-      fn(),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(`Lock operation timeout: ${name}`)), timeout)
-      )
-    ])
-    return result
-  } finally {
-    lockMap.delete(name)
-    releaseLock!()
-  }
+  return fn()
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
