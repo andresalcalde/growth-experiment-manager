@@ -77,18 +77,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 })
 
-// Initialize the cached token from the persisted session
-// This runs once when the module loads
-supabase.auth.getSession().then(({ data }) => {
-  if (data.session?.access_token) {
-    cachedAccessToken = data.session.access_token
-    console.log('🔑 Initial auth token cached')
-  }
-}).catch(err => {
-  console.warn('⚠️ Could not get initial session:', err?.message)
-})
-
 // Keep the token updated via auth state changes
+// NOTE: Removed duplicate getSession() call here — AuthContext handles
+// the initial session load. Having two concurrent getSession() calls
+// caused intermittent token refresh races and slow initialization.
 supabase.auth.onAuthStateChange((_event, session) => {
   cachedAccessToken = session?.access_token ?? null
   if (session) {

@@ -86,13 +86,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         let cancelled = false
 
-        // Safety timeout: force loading=false after 10s no matter what
+        // Safety timeout: force loading=false after 3s no matter what
         const safetyTimer = setTimeout(() => {
             if (!cancelled) {
                 console.warn('⏱️ Auth init safety timeout – forcing load complete')
                 setLoading(false)
             }
-        }, 10_000)
+        }, 3_000)
 
         const finishLoading = () => {
             if (!cancelled) {
@@ -102,25 +102,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Get initial session
-        supabase.auth.getSession().then(async ({ data: { session: existingSession } }) => {
+        supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
             if (cancelled) return
             setSession(existingSession)
+            // Finish loading immediately – don't block on profile fetch
+            finishLoading()
             if (existingSession?.user) {
-                try {
-                    const p = await fetchProfile(existingSession.user.id)
-                    if (cancelled) return
-                    setProfile(p)
-                } catch (err: any) {
-                    if (isAbortError(err)) return
-                    console.error('Profile fetch failed:', err)
-                }
-                // Fire onboarding in background – don't block loading
+                // Fetch profile in background (non-blocking)
+                fetchProfile(existingSession.user.id).then(p => {
+                    if (!cancelled) setProfile(p)
+                }).catch(err => {
+                    if (!isAbortError(err)) console.error('Profile fetch failed:', err)
+                })
                 if (!onboardingDone.current) {
                     onboardingDone.current = true
                     checkOnboarding(existingSession.user.id).catch(() => { })
                 }
             }
-            finishLoading()
         }).catch((err) => {
             if (isAbortError(err)) {
                 console.log('Auth init aborted (StrictMode remount)')
@@ -132,22 +130,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (event, newSession) => {
+            (event, newSession) => {
                 if (cancelled) return
                 console.log('🔐 Auth event:', event)
                 setSession(newSession)
+                // Finish loading immediately – don't block on profile fetch
+                finishLoading()
 
                 if (newSession?.user) {
-                    try {
-                        const p = await fetchProfile(newSession.user.id)
-                        if (cancelled) return
-                        setProfile(p)
-                    } catch (err: any) {
-                        if (isAbortError(err)) return
-                        console.error('Profile fetch failed on auth change:', err)
-                    }
+                    // Fetch profile in background (non-blocking)
+                    fetchProfile(newSession.user.id).then(p => {
+                        if (!cancelled) setProfile(p)
+                    }).catch(err => {
+                        if (!isAbortError(err)) console.error('Profile fetch failed on auth change:', err)
+                    })
 
-                    // Fire onboarding in background – don't block loading
                     if (event === 'SIGNED_IN' && !onboardingDone.current) {
                         onboardingDone.current = true
                         checkOnboarding(newSession.user.id).catch(() => { })
@@ -156,8 +153,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     setProfile(null)
                     onboardingDone.current = false
                 }
-
-                finishLoading()
             }
         )
 
