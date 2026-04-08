@@ -46,6 +46,8 @@ import { RoadmapView } from './RoadmapView';
 import { ExperimentModal } from './ExperimentModal';
 import type { ExperimentFormData } from './ExperimentModal';
 import { KeyLearningModal } from './KeyLearningModal';
+import { NorthStarBar } from './components/NorthStarBar';
+import { StatusChip } from './components/StatusChip';
 import { useProjectContext } from './contexts/ProjectContext';
 import { useAuth } from './contexts/AuthContext';
 
@@ -172,13 +174,20 @@ const KanbanColumn = ({
   const { setNodeRef } = useDroppable({
     id: status,
   });
+  const isAnalysis = status === 'Analysis';
 
   return (
-    <div ref={setNodeRef} className="kanban-column" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div ref={setNodeRef} className={`kanban-column ${isAnalysis ? 'kanban-column--analysis' : ''}`} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div className="column-header">
         <span>{status}</span>
         <span style={{ opacity: 0.5 }}>{experiments.length}</span>
       </div>
+      {isAnalysis && (
+        <div className="analysis-cta">
+          <span>📊</span>
+          <span>Registra resultados para avanzar a Learning</span>
+        </div>
+      )}
       <SortableContext
         id={status}
         items={experiments.map(e => e.id)}
@@ -397,6 +406,7 @@ const App: React.FC = () => {
     projects,
     teamMembers,
     activeProjectId,
+    activeProject,
     setActiveProjectId,
     northStar,
     objectives,
@@ -413,6 +423,7 @@ const App: React.FC = () => {
     updateExperiment,
     setExperiments,
     createProject: ctxCreateProject,
+    updateProjectLogo,
     addTeamMember: ctxAddTeamMember,
     updateTeamMemberRole: ctxUpdateTeamMemberRole,
     removeTeamMember: ctxRemoveTeamMember,
@@ -743,11 +754,21 @@ const App: React.FC = () => {
       {/* Sidebar - Simplified for brevity in this view */}
       <nav className="sidebar">
         <div className="logo-area" style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={handleBackToPortfolio}>
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" fill="#4F46E5" stroke="#4F46E5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            <circle cx="12" cy="12" r="10" stroke="#4F46E5" strokeWidth="1" strokeDasharray="2 2" />
-          </svg>
-          <span style={{ fontWeight: 800, fontSize: '18px', letterSpacing: '-0.5px', fontFamily: 'var(--font-sans)' }}>Growth Lab</span>
+          {activeProject?.metadata.logoUrl ? (
+            <img
+              src={activeProject.metadata.logoUrl}
+              alt={activeProject.metadata.name}
+              style={{ width: '32px', height: '32px', borderRadius: '8px', objectFit: 'cover' }}
+            />
+          ) : (
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" fill="#4F46E5" stroke="#4F46E5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <circle cx="12" cy="12" r="10" stroke="#4F46E5" strokeWidth="1" strokeDasharray="2 2" />
+            </svg>
+          )}
+          <span style={{ fontWeight: 800, fontSize: '18px', letterSpacing: '-0.5px', fontFamily: 'var(--font-sans)' }}>
+            {activeProject?.metadata.logoUrl ? activeProject.metadata.name : 'Growth Lab'}
+          </span>
         </div>
 
         {/* Project Switcher */}
@@ -968,6 +989,15 @@ const App: React.FC = () => {
                       <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>{profile?.email}</div>
                     </div>
                     <button
+                      onClick={() => { setShowUserMenu(false); setIsSettingsOpen(true); }}
+                      style={{ width: '100%', padding: '10px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '13px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = '#F5F3FF')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                    >
+                      <Settings size={14} />
+                      Settings
+                    </button>
+                    <button
                       onClick={() => { setShowUserMenu(false); signOut(); }}
                       style={{ width: '100%', padding: '10px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '13px', color: '#DC2626', display: 'flex', alignItems: 'center', gap: '8px' }}
                       onMouseEnter={e => (e.currentTarget.style.background = '#FEF2F2')}
@@ -984,6 +1014,8 @@ const App: React.FC = () => {
         </header>
 
         {view === 'board' ? (
+          <>
+          {northStar && northStar.name && <NorthStarBar northStar={northStar} />}
           <div className="kanban-board">
             <DndContext
               sensors={sensors}
@@ -1010,7 +1042,10 @@ const App: React.FC = () => {
               </DragOverlay>
             </DndContext>
           </div>
+          </>
         ) : view === 'table' ? (
+          <>
+          {northStar && northStar.name && <NorthStarBar northStar={northStar} />}
           <div className="data-table-container">
             <table className="data-table">
               <thead>
@@ -1078,32 +1113,10 @@ const App: React.FC = () => {
                         </div>
                       </td>
                       <td>
-                        <select
-                          value={exp.status}
-                          onChange={(e) => {
-                            e.stopPropagation();
-                            handleStatusChangeAttempt(exp.id, e.target.value as Status);
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                          style={{
-                            padding: '6px 10px',
-                            borderRadius: '6px',
-                            border: 'none',
-                            background: getStatusColor(exp.status) + '15',
-                            color: getStatusColor(exp.status),
-                            fontSize: '12px',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            outline: 'none',
-                            width: '100%'
-                          }}
-                        >
-                          <option value="Idea">Idea</option>
-                          <option value="Prioritized">Prioritized</option>
-                          <option value="Building">Building</option>
-                          <option value="Live Testing">Live Testing</option>
-                          <option value="Analysis">Analysis</option>
-                        </select>
+                        <StatusChip
+                          status={exp.status}
+                          onChange={(newStatus) => handleStatusChangeAttempt(exp.id, newStatus)}
+                        />
                       </td>
                       <td style={{ textAlign: 'center', fontWeight: 600, color: '#374151' }}>
                         {exp.impact}
@@ -1156,6 +1169,7 @@ const App: React.FC = () => {
               </tbody>
             </table>
           </div>
+          </>
         ) : view === 'library' ? (
           <div style={{ padding: '0 32px 32px 32px', overflowY: 'auto', height: '100%' }}>
             {/* Filter Tabs */}
@@ -1277,9 +1291,11 @@ const App: React.FC = () => {
         onClose={() => setIsSettingsOpen(false)}
         teamMembers={teamMembers}
         projects={projects}
+        activeProject={activeProject}
         onAddMember={handleAddTeamMember}
         onRemoveMember={handleRemoveTeamMember}
         onUpdateMember={handleUpdateTeamMember}
+        onUpdateProjectLogo={updateProjectLogo}
         onSignOut={signOut}
       />
     </div>

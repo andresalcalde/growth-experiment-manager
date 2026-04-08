@@ -9,6 +9,7 @@ import {
   TrendingUp,
   Edit3
 } from 'lucide-react';
+import { FinalizeExperimentButton } from './components/FinalizeExperimentButton';
 import type { Experiment, Status, Objective, Strategy } from './types';
 
 interface ExperimentDrawerProps {
@@ -145,6 +146,18 @@ export const ExperimentDrawer: React.FC<ExperimentDrawerProps> = ({
                 ))}
               </select>
               <span style={{ color: 'var(--text-subtle)', fontSize: '13px' }}>EXP-{experiment.id}</span>
+              <div style={{
+                background: 'linear-gradient(135deg, #4F46E5 0%, #6366F1 100%)',
+                borderRadius: '8px',
+                padding: '4px 12px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                marginLeft: 'auto',
+              }}>
+                <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>ICE</span>
+                <span style={{ color: 'white', fontSize: '18px', fontWeight: 800, lineHeight: 1 }}>{experiment.iceScore}</span>
+              </div>
             </div>
             <h2 style={{ fontSize: '24px', marginBottom: '4px' }}>{experiment.title}</h2>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: 'var(--text-muted)' }}>
@@ -153,24 +166,6 @@ export const ExperimentDrawer: React.FC<ExperimentDrawerProps> = ({
                 : <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 600, color: '#6B7280' }}>{experiment.owner.avatar || experiment.owner.name?.charAt(0)?.toUpperCase() || '?'}</div>
               }
               <span>{experiment.owner.name}</span>
-            </div>
-          </div>
-
-          <div style={{
-            position: 'absolute',
-            top: '16px',
-            right: '60px',
-            background: 'linear-gradient(135deg, #4F46E5 0%, #6366F1 100%)',
-            borderRadius: '12px',
-            padding: '16px 24px',
-            boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)',
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.8)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px', fontWeight: 700 }}>
-              ICE Score
-            </div>
-            <div style={{ fontSize: '32px', fontWeight: 800, color: 'white', lineHeight: 1 }}>
-              {experiment.iceScore}
             </div>
           </div>
 
@@ -724,33 +719,20 @@ export const ExperimentDrawer: React.FC<ExperimentDrawerProps> = ({
               </div>
 
               <div style={{ marginTop: '48px', paddingTop: '24px', borderTop: '1px solid var(--border-subtle)' }}>
-                <button
-                  onClick={() => canConclude && onStatusChange(experiment.id, 'Finished - Winner')}
-                  disabled={!canConclude}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    background: canConclude ? '#4F46E5' : '#E5E7EB',
-                    color: canConclude ? 'white' : '#9CA3AF',
-                    fontWeight: 600,
-                    border: 'none',
-                    cursor: canConclude ? 'pointer' : 'not-allowed',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <CheckCircle2 size={18} />
-                  Concluir y Archivar Experimento
-                </button>
-                <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '12px', color: 'var(--text-muted)' }}>
-                  {canConclude
-                    ? 'Esto moverá el experimento a la Library'
-                    : 'Cambia el status a "Analysis" para concluir este experimento'}
-                </div>
+                {canConclude ? (
+                  <>
+                    <FinalizeExperimentButton
+                      onFinalize={(status) => onStatusChange(experiment.id, status)}
+                    />
+                    <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                      Esto moverá el experimento a la Library
+                    </div>
+                  </>
+                ) : (
+                  <p style={{ fontSize: '12px', color: 'var(--text-subtle)', textAlign: 'center', padding: '12px' }}>
+                    Cambia el status a &ldquo;Analysis&rdquo; para finalizar este experimento
+                  </p>
+                )}
               </div>
             </div>
           )}

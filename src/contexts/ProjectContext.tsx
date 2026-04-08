@@ -58,6 +58,7 @@ interface ProjectContextValue {
     // Project CRUD
     createProject: (project: Project) => Promise<void>
     deleteProject: (id: string) => Promise<void>
+    updateProjectLogo: (id: string, logoUrl: string | null) => Promise<void>
 
     // Refresh
     refetchAll: () => Promise<void>
@@ -121,6 +122,7 @@ function dbRowToProject(row: any): Omit<Project, 'objectives' | 'strategies' | '
             id: row.id,
             name: row.name,
             logo: row.logo || undefined,
+            logoUrl: row.logo_url || undefined,
             createdAt: row.created_at,
             industry: row.industry || undefined,
         },
@@ -882,6 +884,15 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         await fetchProjects()
     }, [fetchProjects])
 
+    const updateProjectLogo = useCallback(async (id: string, logoUrl: string | null) => {
+        const { error } = await supabase.from('projects').update({ logo_url: logoUrl }).eq('id', id)
+        if (error) {
+            console.error('Error updating project logo:', error)
+            throw error
+        }
+        await fetchProjects()
+    }, [fetchProjects])
+
     // ── Value ─────────────────────────────────────────────────────────────────
 
     const value: ProjectContextValue = {
@@ -908,6 +919,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         setExperiments: setExperimentsLocal,
         createProject,
         deleteProject,
+        updateProjectLogo,
         refetchAll: fetchProjects,
         addTeamMember,
         updateTeamMemberRole,

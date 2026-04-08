@@ -128,9 +128,13 @@ const ProjectCard = ({
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: '16px', fontWeight: 800, color: '#4F46E5',
                     transform: 'translateY(24px)', border: '3px solid white',
-                    flexShrink: 0,
+                    flexShrink: 0, overflow: 'hidden',
                 }}>
-                    {project.metadata.logo || initials}
+                    {project.metadata.logoUrl ? (
+                        <img src={project.metadata.logoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                        project.metadata.logo || initials
+                    )}
                 </div>
 
                 {/* Badges */}

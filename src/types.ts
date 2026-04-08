@@ -79,6 +79,7 @@ export interface ProjectMetadata {
   id: string;
   name: string;
   logo?: string;
+  logoUrl?: string;
   createdAt: string;
   industry?: string;
 }

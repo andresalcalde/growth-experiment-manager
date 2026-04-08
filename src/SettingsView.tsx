@@ -1,15 +1,18 @@
-import React, { useState } from 'react';
-import { X, Plus, Mail, Trash2, Users, Shield, Edit2, Briefcase, LogOut } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { X, Plus, Mail, Trash2, Users, Shield, Edit2, Briefcase, LogOut, Upload } from 'lucide-react';
 import type { TeamMember, Project } from './types';
+import { uploadProjectLogo, deleteProjectLogo } from './lib/uploadLogo';
 
 interface SettingsViewProps {
   isOpen: boolean;
   onClose: () => void;
   teamMembers: TeamMember[];
   projects: Project[];
+  activeProject?: Project | null;
   onAddMember: (member: TeamMember) => void;
   onRemoveMember: (memberId: string) => void;
   onUpdateMember: (memberId: string, updates: Partial<TeamMember>) => void;
+  onUpdateProjectLogo?: (id: string, logoUrl: string | null) => Promise<void>;
   onResetData?: () => void;
   onSignOut?: () => void;
 }
@@ -30,9 +33,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onAddMember,
   onRemoveMember,
   onUpdateMember,
+  onUpdateProjectLogo,
+  activeProject,
   onResetData,
   onSignOut
 }) => {
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
 
@@ -187,6 +194,111 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           flex: 1,
           overflowY: 'auto'
         }}>
+          {/* Project Logo Section */}
+          {activeProject && onUpdateProjectLogo && (
+            <div style={{
+              padding: '20px',
+              background: '#f9fafb',
+              borderRadius: '12px',
+              border: '1px solid #e5e7eb',
+              marginBottom: '24px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '20px'
+            }}>
+              <div style={{
+                width: '64px', height: '64px', borderRadius: '12px',
+                background: 'white', border: '2px solid #e5e7eb',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                overflow: 'hidden', flexShrink: 0
+              }}>
+                {activeProject.metadata.logoUrl ? (
+                  <img src={activeProject.metadata.logoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <span style={{ fontSize: '32px' }}>{activeProject.metadata.logo || '📁'}</span>
+                )}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>Logo del Proyecto</div>
+                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '10px' }}>
+                  Sube un logo PNG o JPG para personalizar la marca de tu proyecto
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg"
+                    style={{ display: 'none' }}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (file.size > 2 * 1024 * 1024) {
+                        alert('El archivo no debe exceder 2MB');
+                        return;
+                      }
+                      try {
+                        setUploadingLogo(true);
+                        const url = await uploadProjectLogo(activeProject.metadata.id, file);
+                        await onUpdateProjectLogo(activeProject.metadata.id, url);
+                      } catch (err) {
+                        console.error('Error uploading logo:', err);
+                        alert('Error al subir el logo');
+                      } finally {
+                        setUploadingLogo(false);
+                        if (logoInputRef.current) logoInputRef.current.value = '';
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={() => logoInputRef.current?.click()}
+                    disabled={uploadingLogo}
+                    style={{
+                      padding: '6px 14px',
+                      background: '#4F46E5',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: uploadingLogo ? 'wait' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      opacity: uploadingLogo ? 0.7 : 1
+                    }}
+                  >
+                    <Upload size={14} />
+                    {uploadingLogo ? 'Subiendo...' : 'Cambiar Logo'}
+                  </button>
+                  {activeProject.metadata.logoUrl && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          await deleteProjectLogo(activeProject.metadata.id);
+                          await onUpdateProjectLogo(activeProject.metadata.id, null);
+                        } catch (err) {
+                          console.error('Error deleting logo:', err);
+                        }
+                      }}
+                      style={{
+                        padding: '6px 14px',
+                        background: 'transparent',
+                        color: '#ef4444',
+                        border: '1px solid #fca5a5',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Eliminar
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Add Member Button */}
           {!isAddingMember && !editingMember && (
             <button
