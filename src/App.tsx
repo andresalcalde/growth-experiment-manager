@@ -738,6 +738,7 @@ const App: React.FC = () => {
           projects={projects}
           onSelectProject={handleSelectProjectFromPortfolio}
           onCreateProject={() => setIsCreateProjectOpen(true)}
+          onSignOut={signOut}
         />
         <CreateProjectModal
           isOpen={isCreateProjectOpen}

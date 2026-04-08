@@ -230,13 +230,16 @@ interface PortfolioViewProps {
     projects: Project[];
     onSelectProject: (projectId: string) => void;
     onCreateProject: () => void;
+    onSignOut?: () => void;
 }
 
 export const PortfolioView: React.FC<PortfolioViewProps> = ({
     projects,
     onSelectProject,
     onCreateProject,
+    onSignOut,
 }) => {
+    const [showUserMenu, setShowUserMenu] = React.useState(false);
     const [searchQuery, setSearchQuery] = React.useState('');
 
     const filteredProjects = projects.filter(p =>
@@ -265,13 +268,33 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                     </svg>
                     <span style={{ fontWeight: 800, fontSize: '17px', letterSpacing: '-0.5px', color: '#111827' }}>Growth Lab</span>
                 </div>
-                <div style={{
-                    width: '36px', height: '36px', borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #4F46E5, #7C3AED)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: 'white', fontSize: '14px', fontWeight: 700,
-                }}>
-                    A
+                <div style={{ position: 'relative' }}>
+                    <div
+                        onClick={() => setShowUserMenu(!showUserMenu)}
+                        style={{
+                            width: '36px', height: '36px', borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #4F46E5, #7C3AED)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: 'white', fontSize: '14px', fontWeight: 700, cursor: 'pointer',
+                        }}
+                    >
+                        A
+                    </div>
+                    {showUserMenu && onSignOut && (
+                        <>
+                            <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setShowUserMenu(false)} />
+                            <div style={{ position: 'absolute', top: '44px', right: 0, background: 'white', borderRadius: '8px', border: '1px solid #E5E7EB', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 100, minWidth: '160px', overflow: 'hidden' }}>
+                                <button
+                                    onClick={() => { setShowUserMenu(false); onSignOut(); }}
+                                    style={{ width: '100%', padding: '10px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '13px', color: '#DC2626', display: 'flex', alignItems: 'center', gap: '8px' }}
+                                    onMouseEnter={e => (e.currentTarget.style.background = '#FEF2F2')}
+                                    onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                                >
+                                    Cerrar Sesión
+                                </button>
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
 

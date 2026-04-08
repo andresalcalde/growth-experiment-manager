@@ -44,11 +44,24 @@ const customFetch: typeof fetch = async (input, init) => {
   return fetch(input, { ...init, headers })
 }
 
+/**
+ * Simple lock that replaces navigator.locks to prevent deadlocks.
+ * navigator.locks.request() can hang indefinitely when the lock holder
+ * (getSession -> token refresh -> storage) never releases, blocking
+ * all subsequent Supabase calls forever.
+ */
+const simpleLock = async (name: string, _mode: any, callback: any) => {
+  // If called with 2 args: lock(name, callback)
+  const cb = typeof _mode === 'function' ? _mode : callback
+  return await cb()
+}
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
+    lock: simpleLock,
   },
   global: {
     fetch: customFetch,
