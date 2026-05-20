@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { logActivity } from '../lib/activityLog'
 import { useAuth } from './AuthContext'
 import type { Project, NorthStarMetric, Objective, Strategy, Experiment, TeamMember } from '../types'
 
@@ -59,6 +60,7 @@ interface ProjectContextValue {
     createProject: (project: Project) => Promise<void>
     deleteProject: (id: string) => Promise<void>
     updateProjectLogo: (id: string, logoUrl: string | null) => Promise<void>
+    updateProjectName: (id: string, name: string) => Promise<void>
 
     // Refresh
     refetchAll: () => Promise<void>
@@ -185,6 +187,7 @@ function dbRowToExperiment(row: any): Experiment {
         successCriteria: row.success_criteria || undefined,
         targetMetric: row.target_metric || undefined,
         keyLearnings: row.key_learnings || undefined,
+        verdict: row.verdict || undefined,
         visualProof: row.visual_proof || undefined,
     }
 }
@@ -620,6 +623,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
                 success_criteria: exp.successCriteria || null,
                 target_metric: exp.targetMetric || null,
                 key_learnings: exp.keyLearnings || null,
+                verdict: exp.verdict || null,
                 visual_proof: exp.visualProof || null,
             })
             .select()
@@ -636,6 +640,11 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
                 ? { ...p, experiments: [...p.experiments, newExp] }
                 : p
         ))
+
+        if (user) logActivity({
+            userId: user.id, projectId: activeProjectId,
+            action: 'experiment_created', entityType: 'experiment', entityId: newExp.id,
+        })
     }, [activeProjectId, user])
 
     const updateExperiment = useCallback(async (id: string, updates: Partial<Experiment>) => {
@@ -672,6 +681,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         if (updates.successCriteria !== undefined) dbUpdates.success_criteria = updates.successCriteria
         if (updates.targetMetric !== undefined) dbUpdates.target_metric = updates.targetMetric
         if (updates.keyLearnings !== undefined) dbUpdates.key_learnings = updates.keyLearnings
+        if (updates.verdict !== undefined) dbUpdates.verdict = updates.verdict
         if (updates.visualProof !== undefined) dbUpdates.visual_proof = updates.visualProof
 
         if (Object.keys(dbUpdates).length === 0) return
@@ -680,8 +690,14 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         if (error) {
             console.error('Error updating experiment:', error)
             fetchProjects()
+        } else if (updates.status !== undefined && user) {
+            // Solo registramos cambios de etapa, no cada edición inline (evita ruido).
+            logActivity({
+                userId: user.id, projectId: activeProjectId,
+                action: 'experiment_moved', entityType: 'experiment', entityId: id,
+            })
         }
-    }, [activeProjectId, fetchProjects])
+    }, [activeProjectId, fetchProjects, user])
 
     const deleteExperiment = useCallback(async (id: string) => {
         setProjects(prev => prev.map(p =>
@@ -694,8 +710,13 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         if (error) {
             console.error('Error deleting experiment:', error)
             fetchProjects()
+        } else if (user) {
+            logActivity({
+                userId: user.id, projectId: activeProjectId,
+                action: 'experiment_deleted', entityType: 'experiment', entityId: id,
+            })
         }
-    }, [activeProjectId, fetchProjects])
+    }, [activeProjectId, fetchProjects, user])
 
     // setExperiments – for drag-and-drop reordering and batch updates
     const setExperimentsLocal = useCallback((updater: Experiment[] | ((prev: Experiment[]) => Experiment[])) => {
@@ -818,6 +839,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
                     success_criteria: exp.successCriteria || null,
                     target_metric: exp.targetMetric || null,
                     key_learnings: exp.keyLearnings || null,
+                    verdict: exp.verdict || null,
                     visual_proof: exp.visualProof || null,
                 }))
 
@@ -865,6 +887,11 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
             // Set the new project as active
             setActiveProjectId(newProjectId)
 
+            if (user) logActivity({
+                userId: user.id, projectId: newProjectId,
+                action: 'project_created', entityType: 'project', entityId: newProjectId,
+            })
+
             // Fire a background sync to reconcile with DB (non-blocking)
             fetchProjects().catch(() => {
                 console.warn('⚠️ Background sync after project creation failed (non-critical)')
@@ -891,6 +918,19 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
             throw error
         }
         await fetchProjects()
+    }, [fetchProjects])
+
+    const updateProjectName = useCallback(async (id: string, name: string) => {
+        // Optimistic update
+        setProjects(prev => prev.map(p =>
+            p.metadata.id === id ? { ...p, metadata: { ...p.metadata, name } } : p
+        ))
+        const { error } = await supabase.from('projects').update({ name }).eq('id', id)
+        if (error) {
+            console.error('Error updating project name:', error)
+            fetchProjects() // Rollback
+            throw error
+        }
     }, [fetchProjects])
 
     // ── Value ─────────────────────────────────────────────────────────────────
@@ -920,6 +960,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         createProject,
         deleteProject,
         updateProjectLogo,
+        updateProjectName,
         refetchAll: fetchProjects,
         addTeamMember,
         updateTeamMemberRole,
