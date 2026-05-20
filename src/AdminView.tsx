@@ -335,13 +335,33 @@ const ManageTab: React.FC<{
   busyUserId: string | null;
   currentUserId?: string;
   onToggleSuperadmin: (u: Profile) => void;
-}> = ({ users, projects, members, busyUserId, currentUserId, onToggleSuperadmin }) => (
+}> = ({ users, projects, members, busyUserId, currentUserId, onToggleSuperadmin }) => {
+  const [userSearch, setUserSearch] = useState('');
+  const q = userSearch.trim().toLowerCase();
+  const filteredUsers = q
+    ? users.filter(u =>
+        (u.full_name || '').toLowerCase().includes(q) ||
+        (u.email || '').toLowerCase().includes(q))
+    : users;
+
+  return (
   <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
     {/* Users */}
     <section>
-      <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px' }}>
-        Usuarios ({users.length})
-      </h2>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '12px' }}>
+        <h2 style={{ fontSize: '16px', fontWeight: 700, margin: 0 }}>
+          Usuarios ({q ? `${filteredUsers.length} / ${users.length}` : users.length})
+        </h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '6px 10px', background: 'white' }}>
+          <Search size={14} color="#9ca3af" />
+          <input
+            value={userSearch}
+            onChange={e => setUserSearch(e.target.value)}
+            placeholder="Buscar por nombre o email…"
+            style={{ border: 'none', outline: 'none', fontSize: '13px', width: '200px' }}
+          />
+        </div>
+      </div>
       <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden', background: 'white' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
@@ -352,7 +372,7 @@ const ManageTab: React.FC<{
             </tr>
           </thead>
           <tbody>
-            {users.map(u => (
+            {filteredUsers.map(u => (
               <tr key={u.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                 <td style={{ padding: '12px 16px', fontSize: '14px', fontWeight: 600 }}>
                   {u.full_name || '—'}
@@ -386,6 +406,11 @@ const ManageTab: React.FC<{
                 </td>
               </tr>
             ))}
+            {filteredUsers.length === 0 && (
+              <tr><td colSpan={5} style={{ padding: '24px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>
+                Ningún usuario coincide con la búsqueda.
+              </td></tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -423,7 +448,8 @@ const ManageTab: React.FC<{
     {/* Áreas */}
     <AreasSection users={users} />
   </div>
-);
+  );
+};
 
 // ── Areas section (gestión de áreas, solo superadmin) ────────────────────────
 
