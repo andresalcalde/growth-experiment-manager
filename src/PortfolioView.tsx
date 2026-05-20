@@ -33,28 +33,14 @@ const RoleBadge = ({ role }: { role: string }) => {
 };
 
 // ============================================================================
-// ProjectCard Component - Miro-inspired
+// ProjectCard Component
 // ============================================================================
-
-// Gradient presets for card headers
-const CARD_GRADIENTS = [
-    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-    'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-    'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
-    'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-    'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)',
-    'linear-gradient(135deg, #fccb90 0%, #d57eeb 100%)',
-    'linear-gradient(135deg, #96e6a1 0%, #d4fc79 100%)',
-];
 
 const ProjectCard = ({
     project,
-    index,
     onClick
 }: {
     project: Project;
-    index: number;
     onClick: () => void;
 }) => {
     const activeExperiments = project.experiments.filter(
@@ -65,7 +51,6 @@ const ProjectCard = ({
     const northStarValue = project.northStar?.currentValue ?? 0;
     const northStarName = project.northStar?.name ?? 'Sin configurar';
     const northStarUnit = project.northStar?.unit ?? '';
-    const gradient = CARD_GRADIENTS[index % CARD_GRADIENTS.length];
 
     const formatValue = (val: number, unit: string) => {
         if (unit === '$' || unit === 'currency') return `$${val.toLocaleString()}`;
@@ -86,51 +71,34 @@ const ProjectCard = ({
             onClick={onClick}
             style={{
                 background: 'white',
-                borderRadius: '16px',
-                border: '1px solid #E5E7EB',
-                overflow: 'hidden',
+                borderRadius: '12px',
+                border: '1px solid rgba(17,17,20,0.12)',
                 cursor: 'pointer',
-                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                transition: 'transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease',
                 display: 'flex',
                 flexDirection: 'column',
-                position: 'relative',
+                gap: '18px',
+                padding: '22px',
             }}
             onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-4px)';
-                e.currentTarget.style.boxShadow = '0 12px 40px rgba(79, 70, 229, 0.15)';
-                e.currentTarget.style.borderColor = '#C7D2FE';
+                e.currentTarget.style.transform = 'translateY(-3px)';
+                e.currentTarget.style.boxShadow = '0 10px 28px rgba(17,17,20,0.08)';
+                e.currentTarget.style.borderColor = 'rgba(17,17,20,0.24)';
             }}
             onMouseLeave={(e) => {
                 e.currentTarget.style.transform = 'translateY(0)';
                 e.currentTarget.style.boxShadow = 'none';
-                e.currentTarget.style.borderColor = '#E5E7EB';
+                e.currentTarget.style.borderColor = 'rgba(17,17,20,0.12)';
             }}
         >
-            {/* Gradient Header - Miro style */}
-            <div style={{
-                height: '80px',
-                background: gradient,
-                position: 'relative',
-                display: 'flex',
-                alignItems: 'flex-end',
-                padding: '0 20px 0',
-            }}>
-                {/* Decorative pattern */}
+            {/* Top: avatar + badges */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                 <div style={{
-                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                    opacity: 0.15,
-                    backgroundImage: 'radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 30%, white 1px, transparent 1px), radial-gradient(circle at 60% 70%, white 1.5px, transparent 1.5px)',
-                    backgroundSize: '40px 40px, 50px 50px, 30px 30px'
-                }} />
-
-                {/* Project Avatar */}
-                <div style={{
-                    width: '48px', height: '48px', borderRadius: '14px',
-                    background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                    width: '44px', height: '44px', borderRadius: '9px',
+                    background: '#f1f0ec', border: '1px solid rgba(17,17,20,0.10)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '16px', fontWeight: 800, color: '#4F46E5',
-                    transform: 'translateY(24px)', border: '3px solid white',
-                    flexShrink: 0, overflow: 'hidden',
+                    fontSize: '15px', fontWeight: 600, color: '#111114',
+                    overflow: 'hidden', flexShrink: 0,
                 }}>
                     {project.metadata.logoUrl ? (
                         <img src={project.metadata.logoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -138,88 +106,73 @@ const ProjectCard = ({
                         project.metadata.logo || initials
                     )}
                 </div>
-
-                {/* Badges */}
-                <div style={{
-                    position: 'absolute', top: '12px', right: '12px',
-                    display: 'flex', gap: '6px'
-                }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     {isDemo && (
                         <span style={{
                             fontSize: '10px', fontWeight: 700, padding: '3px 8px',
-                            borderRadius: '99px', background: 'rgba(255,255,255,0.9)', color: '#D97706',
-                            textTransform: 'uppercase', letterSpacing: '0.5px',
-                            backdropFilter: 'blur(4px)',
+                            borderRadius: '5px', background: '#f1f0ec', color: '#74747c',
+                            textTransform: 'uppercase', letterSpacing: '0.06em',
                         }}>
-                            ★ Demo
+                            Demo
                         </span>
                     )}
+                    <RoleBadge role="admin" />
                 </div>
             </div>
 
-            {/* Card Body */}
-            <div style={{ padding: '32px 20px 20px', flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {/* Badges row */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <RoleBadge role="admin" />
-                </div>
+            {/* Project Name */}
+            <h3 style={{
+                fontSize: '17px', fontWeight: 600, margin: 0, lineHeight: 1.3,
+                color: '#111114', letterSpacing: '-0.01em',
+            }}>
+                {project.metadata.name}
+            </h3>
 
-                {/* Project Name */}
-                <h3 style={{
-                    fontSize: '17px', fontWeight: 700, margin: 0, lineHeight: 1.3,
-                    color: '#111827', letterSpacing: '-0.2px'
-                }}>
-                    {project.metadata.name}
-                </h3>
-
-                {/* North Star Metric - Compact */}
-                <div style={{
-                    background: '#F9FAFB',
-                    borderRadius: '10px',
-                    padding: '12px 14px',
-                    border: '1px solid #F3F4F6',
-                }}>
-                    <div style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between'
-                    }}>
-                        <div>
-                            <div style={{
-                                fontSize: '10px', fontWeight: 600, textTransform: 'uppercase',
-                                letterSpacing: '0.5px', color: '#9CA3AF', marginBottom: '2px',
-                                display: 'flex', alignItems: 'center', gap: '4px'
-                            }}>
-                                <TrendingUp size={10} />
-                                North Star
-                            </div>
-                            <div style={{ fontSize: '22px', fontWeight: 800, color: '#111827', lineHeight: 1 }}>
-                                {formatValue(northStarValue, northStarUnit)}
-                            </div>
-                        </div>
+            {/* North Star Metric */}
+            <div style={{
+                background: '#faf9f6',
+                borderRadius: '8px',
+                padding: '12px 14px',
+                border: '1px solid rgba(17,17,20,0.08)',
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
                         <div style={{
-                            fontSize: '11px', color: '#6B7280', textAlign: 'right',
-                            maxWidth: '100px', lineHeight: 1.3
+                            fontSize: '10px', fontWeight: 600, textTransform: 'uppercase',
+                            letterSpacing: '0.08em', color: '#9CA3AF', marginBottom: '3px',
+                            display: 'flex', alignItems: 'center', gap: '4px',
                         }}>
-                            {northStarName}
+                            <TrendingUp size={10} />
+                            North Star
+                        </div>
+                        <div style={{ fontSize: '22px', fontWeight: 700, color: '#111114', lineHeight: 1 }}>
+                            {formatValue(northStarValue, northStarUnit)}
                         </div>
                     </div>
-                </div>
-
-                {/* Footer stats */}
-                <div style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    marginTop: 'auto', paddingTop: '8px',
-                    borderTop: '1px solid #F3F4F6'
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Beaker size={14} color="#9CA3AF" />
-                        <span style={{ fontSize: '13px', color: '#6B7280' }}>
-                            <span style={{ fontWeight: 700, color: '#374151' }}>{activeExperiments}</span> activos
-                            <span style={{ color: '#D1D5DB', margin: '0 4px' }}>·</span>
-                            {totalExperiments} total
-                        </span>
+                    <div style={{
+                        fontSize: '11px', color: '#6B7280', textAlign: 'right',
+                        maxWidth: '100px', lineHeight: 1.3,
+                    }}>
+                        {northStarName}
                     </div>
-                    <ChevronRight size={16} color="#D1D5DB" />
                 </div>
+            </div>
+
+            {/* Footer stats */}
+            <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                marginTop: 'auto', paddingTop: '14px',
+                borderTop: '1px solid rgba(17,17,20,0.08)',
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Beaker size={14} color="#9CA3AF" />
+                    <span style={{ fontSize: '13px', color: '#6B7280' }}>
+                        <span style={{ fontWeight: 700, color: '#374151' }}>{activeExperiments}</span> activos
+                        <span style={{ color: '#D1D5DB', margin: '0 4px' }}>·</span>
+                        {totalExperiments} total
+                    </span>
+                </div>
+                <ChevronRight size={16} color="#D1D5DB" />
             </div>
         </div>
     );
@@ -257,7 +210,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
     return (
         <div style={{
             minHeight: '100vh',
-            background: 'linear-gradient(180deg, #F8FAFC 0%, #EEF2FF 100%)',
+            background: '#f6f5f1',
         }}>
             {/* Top bar */}
             <div style={{
@@ -276,10 +229,10 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                         />
                     ) : (
                         <>
-                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                                <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" fill="#4F46E5" stroke="#4F46E5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" fill="#4F46E5" />
                             </svg>
-                            <span style={{ fontWeight: 800, fontSize: '17px', letterSpacing: '-0.5px', color: '#111827' }}>Growth Hub</span>
+                            <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, fontSize: '17px', letterSpacing: '-0.01em', color: '#111114' }}>Growth Hub</span>
                         </>
                     )}
                 </div>
@@ -302,9 +255,9 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                         onClick={() => setShowUserMenu(!showUserMenu)}
                         style={{
                             width: '36px', height: '36px', borderRadius: '50%',
-                            background: 'linear-gradient(135deg, #4F46E5, #7C3AED)',
+                            background: '#111114',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: 'white', fontSize: '14px', fontWeight: 700, cursor: 'pointer',
+                            color: 'white', fontSize: '14px', fontWeight: 600, cursor: 'pointer',
                         }}
                     >
                         A
@@ -332,7 +285,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                 {/* Header */}
                 <div style={{ marginBottom: '32px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
-                        <h1 style={{ fontSize: '32px', fontWeight: 800, margin: 0, color: '#111827', letterSpacing: '-0.5px' }}>
+                        <h1 style={{ fontSize: '32px', fontWeight: 600, margin: 0, color: '#111114', letterSpacing: '-0.025em' }}>
                             Tus Proyectos
                         </h1>
                         <span style={{
@@ -378,12 +331,12 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                         style={{
                             display: 'flex', alignItems: 'center', gap: '8px',
                             padding: '10px 20px', borderRadius: '10px',
-                            background: '#4F46E5', color: 'white', border: 'none',
+                            background: '#111114', color: 'white', border: 'none',
                             cursor: 'pointer', fontSize: '14px', fontWeight: 600,
-                            transition: 'all 0.2s', whiteSpace: 'nowrap',
+                            transition: 'opacity 0.15s ease', whiteSpace: 'nowrap',
                         }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = '#4338CA'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = '#4F46E5'; }}
+                        onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.86'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
                     >
                         <Plus size={16} />
                         Nuevo Proyecto
@@ -406,11 +359,10 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                         gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
                         gap: '20px'
                     }}>
-                        {filteredProjects.map((project, index) => (
+                        {filteredProjects.map((project) => (
                             <ProjectCard
                                 key={project.metadata.id}
                                 project={project}
-                                index={index}
                                 onClick={() => onSelectProject(project.metadata.id)}
                             />
                         ))}
@@ -434,10 +386,10 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                                     color: '#9CA3AF',
                                 }}
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.borderColor = '#4F46E5';
-                                    e.currentTarget.style.color = '#4F46E5';
-                                    e.currentTarget.style.background = 'rgba(79, 70, 229, 0.03)';
-                                    e.currentTarget.style.transform = 'translateY(-4px)';
+                                    e.currentTarget.style.borderColor = '#111114';
+                                    e.currentTarget.style.color = '#111114';
+                                    e.currentTarget.style.background = 'rgba(17,17,20,0.03)';
+                                    e.currentTarget.style.transform = 'translateY(-3px)';
                                 }}
                                 onMouseLeave={(e) => {
                                     e.currentTarget.style.borderColor = '#D1D5DB';
