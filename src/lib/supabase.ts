@@ -69,15 +69,24 @@ const customFetch: typeof fetch = async (input, init) => {
 }
 
 /**
- * Simple lock that replaces navigator.locks to prevent deadlocks.
- * navigator.locks.request() can hang indefinitely when the lock holder
- * (getSession -> token refresh -> storage) never releases, blocking
- * all subsequent Supabase calls forever.
+ * Custom lock implementation that replaces navigator.locks.
+ *
+ * navigator.locks can deadlock when: the initial getSession() acquires the
+ * exclusive lock, but the operation inside (token refresh / storage read)
+ * hangs indefinitely. The lock is never released, and ALL subsequent
+ * Supabase calls (rpc, from, etc.) queue behind it forever.
+ *
+ * Since we already cache the access token via onAuthStateChange, we don't
+ * need strict locking — race conditions in token refresh are harmless
+ * (worst case: two concurrent refreshes, both succeed). Just run fn()
+ * directly without navigator.locks to avoid any deadlock risk.
  */
-const simpleLock = async (_name: string, _mode: any, callback: any) => {
-  // If called with 2 args: lock(name, callback)
-  const cb = typeof _mode === 'function' ? _mode : callback
-  return await cb()
+async function simpleLock<R>(
+  _name: string,
+  _acquireTimeout: number,
+  fn: () => Promise<R>
+): Promise<R> {
+  return fn()
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -92,25 +101,18 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 })
 
-// Initialize the cached token from the persisted session
-// This runs once when the module loads
-supabase.auth.getSession().then(({ data }) => {
-  if (data.session?.access_token) {
-    cachedAccessToken = data.session.access_token
-    console.log('🔑 Initial auth token cached')
-  }
-}).catch(err => {
-  console.warn('⚠️ Could not get initial session:', err?.message)
-}).finally(() => {
-  tokenReady = true
-  resolveTokenReady()
-})
-
-// Keep the token updated via auth state changes
+// Keep the token cached via auth state changes. onAuthStateChange fires an
+// INITIAL_SESSION event on load (with the persisted session or null), so it
+// also resolves the token-readiness gate without a separate getSession()
+// call — avoiding the concurrent-getSession races that slowed init.
 supabase.auth.onAuthStateChange((_event, session) => {
   cachedAccessToken = session?.access_token ?? null
   if (session) {
     console.log('🔑 Auth token updated via state change')
+  }
+  if (!tokenReady) {
+    tokenReady = true
+    resolveTokenReady()
   }
 })
 

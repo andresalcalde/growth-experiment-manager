@@ -55,7 +55,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   userArea,
   onUpdateArea,
   onResetData,
-  onSignOut
+  onSignOut,
 }) => {
   const { areas } = useAuth();
   const logoInputRef = useRef<HTMLInputElement>(null);

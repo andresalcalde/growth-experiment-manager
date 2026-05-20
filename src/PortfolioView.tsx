@@ -5,7 +5,8 @@ import {
     ChevronRight,
     Plus,
     Search,
-    Shield
+    Shield,
+    Trash2
 } from 'lucide-react';
 import type { Project } from './types';
 import { SectionGuide } from './components/SectionGuide';
@@ -38,10 +39,12 @@ const RoleBadge = ({ role }: { role: string }) => {
 
 const ProjectCard = ({
     project,
-    onClick
+    onClick,
+    onDelete
 }: {
     project: Project;
     onClick: () => void;
+    onDelete?: () => void;
 }) => {
     const activeExperiments = project.experiments.filter(
         e => !e.status.startsWith('Finished')
@@ -84,11 +87,15 @@ const ProjectCard = ({
                 e.currentTarget.style.transform = 'translateY(-3px)';
                 e.currentTarget.style.boxShadow = '0 10px 28px rgba(17,17,20,0.08)';
                 e.currentTarget.style.borderColor = 'rgba(17,17,20,0.24)';
+                const deleteBtn = e.currentTarget.querySelector('.project-card-delete') as HTMLElement;
+                if (deleteBtn) deleteBtn.style.opacity = '1';
             }}
             onMouseLeave={(e) => {
                 e.currentTarget.style.transform = 'translateY(0)';
                 e.currentTarget.style.boxShadow = 'none';
                 e.currentTarget.style.borderColor = 'rgba(17,17,20,0.12)';
+                const deleteBtn = e.currentTarget.querySelector('.project-card-delete') as HTMLElement;
+                if (deleteBtn) deleteBtn.style.opacity = '0';
             }}
         >
             {/* Top: avatar + badges */}
@@ -117,6 +124,33 @@ const ProjectCard = ({
                         </span>
                     )}
                     <RoleBadge role="admin" />
+                    {onDelete && (
+                        <button
+                            className="project-card-delete"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (window.confirm('¿Estás seguro de que deseas eliminar este proyecto? Esta acción no se puede deshacer.')) {
+                                    onDelete();
+                                }
+                            }}
+                            style={{
+                                opacity: 0,
+                                transition: 'opacity 0.2s',
+                                padding: '4px',
+                                borderRadius: '6px',
+                                border: 'none',
+                                background: 'rgba(255,255,255,0.9)',
+                                backdropFilter: 'blur(4px)',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: '#DC2626',
+                            }}
+                        >
+                            <Trash2 size={14} />
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -187,6 +221,7 @@ interface PortfolioViewProps {
     onCreateProject: () => void;
     onSignOut?: () => void;
     onOpenAdmin?: () => void;
+    onDeleteProject?: (projectId: string) => void;
 }
 
 export const PortfolioView: React.FC<PortfolioViewProps> = ({
@@ -195,6 +230,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
     onCreateProject,
     onSignOut,
     onOpenAdmin,
+    onDeleteProject,
 }) => {
     const { profile } = useAuth();
     const [showUserMenu, setShowUserMenu] = React.useState(false);
@@ -364,6 +400,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                                 key={project.metadata.id}
                                 project={project}
                                 onClick={() => onSelectProject(project.metadata.id)}
+                                onDelete={onDeleteProject ? () => onDeleteProject(project.metadata.id) : undefined}
                             />
                         ))}
 
