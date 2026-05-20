@@ -21,8 +21,8 @@ export const KeyLearningModal: React.FC<KeyLearningModalProps> = ({ isOpen, onCl
                      <Lightbulb size={24} color="#d97706" />
                   </div>
                   <div>
-                     <h2 style={{ fontSize: '20px', fontWeight: 700, margin: 0 }}>Key Insight Requerido</h2>
-                     <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '14px' }}>¿Qué aprendimos de este experimento?</p>
+                     <h2 style={{ fontSize: '20px', fontWeight: 700, margin: 0 }}>The Verdict — Key Insight</h2>
+                     <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '14px' }}>¿Cuál es el veredicto de este experimento?</p>
                   </div>
                </div>
 
@@ -31,9 +31,18 @@ export const KeyLearningModal: React.FC<KeyLearningModalProps> = ({ isOpen, onCl
                   onChange={(e) => setLearning(e.target.value)}
                   placeholder="Ej: Descubrimos que los usuarios prefieren..."
                   rows={4}
-                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-strong)', marginBottom: '24px', fontSize: '14px' }}
+                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-strong)', marginBottom: '12px', fontSize: '14px' }}
                   autoFocus
                />
+
+               <div style={{ display: 'flex', gap: '8px', padding: '10px 12px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', marginBottom: '24px' }}>
+                  <span style={{ fontSize: '14px' }}>💡</span>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#92400e', lineHeight: 1.5 }}>
+                     Este texto es <strong>The Verdict</strong> y se mostrará en la vista Learning.
+                     Los datos numéricos y aprendizajes detallados se registran aparte, en el campo
+                     <strong> Key Learnings</strong> dentro del experimento.
+                  </p>
+               </div>
 
                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
                   <button onClick={onClose} style={{ background: 'transparent', color: 'var(--text-muted)' }}>Cancelar</button>

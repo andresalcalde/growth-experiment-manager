@@ -7,7 +7,8 @@ import {
   ExternalLink,
   Upload,
   TrendingUp,
-  Edit3
+  Edit3,
+  Trash2
 } from 'lucide-react';
 import { FinalizeExperimentButton } from './components/FinalizeExperimentButton';
 import type { Experiment, Status, Objective, Strategy } from './types';
@@ -18,6 +19,7 @@ interface ExperimentDrawerProps {
   onStatusChange: (id: string, newStatus: Status) => void;
   onIceUpdate?: (field: 'impact' | 'confidence' | 'ease', val: number) => void;
   onExperimentUpdate: (id: string, updates: Partial<Experiment>) => void;
+  onDelete: (id: string) => void;
   objectives: Objective[];
   strategies: Strategy[];
   teamMembers: any[];  // Array of team members for owner selection
@@ -46,6 +48,7 @@ export const ExperimentDrawer: React.FC<ExperimentDrawerProps> = ({
   onStatusChange,
   onIceUpdate,
   onExperimentUpdate,
+  onDelete,
   objectives,
   strategies,
   teamMembers
@@ -55,17 +58,28 @@ export const ExperimentDrawer: React.FC<ExperimentDrawerProps> = ({
   const [editingTargetMetric, setEditingTargetMetric] = useState(false);
   const [editingUrl, setEditingUrl] = useState(false);
   const [editingLearnings, setEditingLearnings] = useState(false);
+  const [editingVerdict, setEditingVerdict] = useState(false);
 
   const [tempSuccessCriteria, setTempSuccessCriteria] = useState(experiment.successCriteria || '');
   const [tempTargetMetric, setTempTargetMetric] = useState(experiment.targetMetric || '');
   const [tempUrl, setTempUrl] = useState(experiment.testUrl || '');
   const [tempLearnings, setTempLearnings] = useState(experiment.keyLearnings || '');
+  const [tempVerdict, setTempVerdict] = useState(experiment.verdict || '');
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [editingHypothesis, setEditingHypothesis] = useState(false);
+  const [tempTitle, setTempTitle] = useState(experiment.title);
+  const [tempHypothesis, setTempHypothesis] = useState(experiment.hypothesis);
 
   useEffect(() => {
     setTempSuccessCriteria(experiment.successCriteria || '');
     setTempTargetMetric(experiment.targetMetric || '');
     setTempUrl(experiment.testUrl || '');
     setTempLearnings(experiment.keyLearnings || '');
+    setTempVerdict(experiment.verdict || '');
+    setTempTitle(experiment.title);
+    setTempHypothesis(experiment.hypothesis);
+    setEditingTitle(false);
+    setEditingHypothesis(false);
   }, [experiment.id]);
 
   const linkedStrategy = strategies.find(s => s.id === experiment.linkedStrategyId);
@@ -93,6 +107,29 @@ export const ExperimentDrawer: React.FC<ExperimentDrawerProps> = ({
   const saveLearnings = () => {
     onExperimentUpdate(experiment.id, { keyLearnings: tempLearnings });
     setEditingLearnings(false);
+  };
+
+  const saveVerdict = () => {
+    onExperimentUpdate(experiment.id, { verdict: tempVerdict });
+    setEditingVerdict(false);
+  };
+
+  const saveTitle = () => {
+    const t = tempTitle.trim();
+    if (!t) { alert('El título no puede estar vacío'); return; }
+    onExperimentUpdate(experiment.id, { title: t });
+    setEditingTitle(false);
+  };
+
+  const saveHypothesis = () => {
+    onExperimentUpdate(experiment.id, { hypothesis: tempHypothesis });
+    setEditingHypothesis(false);
+  };
+
+  const handleDelete = () => {
+    if (window.confirm(`¿Eliminar el experimento "${experiment.title}"? Esta acción no se puede deshacer.`)) {
+      onDelete(experiment.id);
+    }
   };
 
   const handleImageUpload = () => {
@@ -159,7 +196,25 @@ export const ExperimentDrawer: React.FC<ExperimentDrawerProps> = ({
                 <span style={{ color: 'white', fontSize: '18px', fontWeight: 800, lineHeight: 1 }}>{experiment.iceScore}</span>
               </div>
             </div>
-            <h2 style={{ fontSize: '24px', marginBottom: '4px' }}>{experiment.title}</h2>
+            {editingTitle ? (
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '4px' }}>
+                <input
+                  value={tempTitle}
+                  onChange={(e) => setTempTitle(e.target.value)}
+                  autoFocus
+                  style={{ fontSize: '20px', fontWeight: 700, padding: '4px 8px', border: '1px solid var(--border-strong)', borderRadius: '6px', flex: 1, fontFamily: 'inherit' }}
+                />
+                <button onClick={saveTitle} style={{ background: '#4F46E5', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}>Guardar</button>
+                <button onClick={() => { setTempTitle(experiment.title); setEditingTitle(false); }} style={{ background: 'none', border: 'none', color: 'var(--text-subtle)', cursor: 'pointer', fontSize: '13px' }}>Cancelar</button>
+              </div>
+            ) : (
+              <h2 style={{ fontSize: '24px', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {experiment.title}
+                <button onClick={() => setEditingTitle(true)} title="Editar título" style={{ background: 'none', border: 'none', color: 'var(--text-subtle)', cursor: 'pointer', padding: '2px', display: 'inline-flex' }}>
+                  <Edit3 size={16} />
+                </button>
+              </h2>
+            )}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: 'var(--text-muted)' }}>
               {experiment.owner.avatar && (experiment.owner.avatar.startsWith('http') || experiment.owner.avatar.startsWith('data:'))
                 ? <img src={experiment.owner.avatar} alt="" style={{ width: '20px', height: '20px', borderRadius: '50%', objectFit: 'cover' }} />
@@ -169,12 +224,21 @@ export const ExperimentDrawer: React.FC<ExperimentDrawerProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            style={{ background: 'none', border: 'none', color: 'var(--text-subtle)', padding: '4px', cursor: 'pointer' }}
-          >
-            <X size={24} />
-          </button>
+          <div style={{ display: 'flex', gap: '4px' }}>
+            <button
+              onClick={handleDelete}
+              title="Eliminar experimento"
+              style={{ background: 'none', border: 'none', color: '#DC2626', padding: '4px', cursor: 'pointer' }}
+            >
+              <Trash2 size={22} />
+            </button>
+            <button
+              onClick={onClose}
+              style={{ background: 'none', border: 'none', color: 'var(--text-subtle)', padding: '4px', cursor: 'pointer' }}
+            >
+              <X size={24} />
+            </button>
+          </div>
         </div>
 
         <div className="drawer-content">
@@ -204,10 +268,46 @@ export const ExperimentDrawer: React.FC<ExperimentDrawerProps> = ({
           {activeTab === 'strategy' ? (
             <div className="tab-content transition-in">
               <div className="form-group">
-                <div className="label">Hipótesis</div>
-                <div className="rich-text" style={{ background: 'var(--bg-sidebar)', border: 'none', fontWeight: 500, fontSize: '16px' }}>
-                  {experiment.hypothesis}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <div className="label">Hipótesis</div>
+                  <button
+                    onClick={() => setEditingHypothesis(!editingHypothesis)}
+                    style={{ background: 'none', border: 'none', color: '#4F46E5', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600 }}
+                  >
+                    <Edit3 size={14} />
+                    {editingHypothesis ? 'Cancelar' : 'Editar'}
+                  </button>
                 </div>
+                {editingHypothesis ? (
+                  <div>
+                    <textarea
+                      value={tempHypothesis}
+                      onChange={(e) => setTempHypothesis(e.target.value)}
+                      placeholder="Si... entonces..."
+                      style={{
+                        width: '100%',
+                        minHeight: '90px',
+                        padding: '12px',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '8px',
+                        fontSize: '15px',
+                        fontFamily: 'inherit',
+                        resize: 'vertical',
+                        marginBottom: '8px'
+                      }}
+                    />
+                    <button
+                      onClick={saveHypothesis}
+                      style={{ background: '#4F46E5', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}
+                    >
+                      Guardar
+                    </button>
+                  </div>
+                ) : (
+                  <div className="rich-text" style={{ background: 'var(--bg-sidebar)', border: 'none', fontWeight: 500, fontSize: '16px' }}>
+                    {experiment.hypothesis}
+                  </div>
+                )}
               </div>
 
               {/* EDITABLE Success Criteria */}
@@ -617,6 +717,67 @@ export const ExperimentDrawer: React.FC<ExperimentDrawerProps> = ({
                     ) : (
                       <span style={{ color: 'var(--text-subtle)' }}>Sin URL adjunta</span>
                     )}
+                  </div>
+                )}
+              </div>
+
+              {/* EDITABLE The Verdict */}
+              <div style={{ marginBottom: '32px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <div className="label">The Verdict (Key Insight)</div>
+                  <button
+                    onClick={() => setEditingVerdict(!editingVerdict)}
+                    style={{ background: 'none', border: 'none', color: '#4F46E5', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600 }}
+                  >
+                    <Edit3 size={14} />
+                    {editingVerdict ? 'Cancelar' : 'Editar'}
+                  </button>
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--text-subtle)', marginBottom: '8px' }}>
+                  Este es el campo que se muestra en la vista Learning.
+                </div>
+                {editingVerdict ? (
+                  <div>
+                    <textarea
+                      value={tempVerdict}
+                      onChange={(e) => setTempVerdict(e.target.value)}
+                      placeholder="El veredicto / insight de cierre del experimento..."
+                      style={{
+                        width: '100%',
+                        minHeight: '100px',
+                        padding: '12px',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        fontFamily: 'inherit',
+                        resize: 'vertical',
+                        marginBottom: '8px'
+                      }}
+                    />
+                    <button
+                      onClick={saveVerdict}
+                      style={{
+                        background: '#4F46E5',
+                        color: 'white',
+                        border: 'none',
+                        padding: '8px 16px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                        fontSize: '13px'
+                      }}
+                    >
+                      Guardar
+                    </button>
+                  </div>
+                ) : experiment.verdict ? (
+                  <div className="rich-text" style={{ marginTop: '12px', border: '1px dashed var(--border-strong)', background: 'var(--bg-sidebar)' }}>
+                    <Lightbulb size={20} style={{ color: 'var(--status-winner)', marginBottom: '8px' }} />
+                    {experiment.verdict}
+                  </div>
+                ) : (
+                  <div style={{ padding: '32px', textAlign: 'center', border: '1px dashed var(--border-subtle)', borderRadius: '8px', color: 'var(--text-subtle)', marginTop: '8px' }}>
+                    Sin veredicto. Se completa al finalizar el experimento, o aquí con &ldquo;Editar&rdquo;.
                   </div>
                 )}
               </div>
