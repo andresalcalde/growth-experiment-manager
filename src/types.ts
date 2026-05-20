@@ -54,6 +54,7 @@ export interface Experiment {
   endDate?: string;
   testUrl?: string;
   keyLearnings?: string;
+  verdict?: string;
   visualProof?: string[];
   observation?: string;
   problem?: string;
