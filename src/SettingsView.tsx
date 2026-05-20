@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Plus, Mail, Trash2, Users, Shield, Edit2, Briefcase, LogOut, Upload, Sparkles } from 'lucide-react';
 import type { TeamMember, Project } from './types';
-import { uploadProjectLogo, deleteProjectLogo } from './lib/uploadLogo';
+import { uploadProjectLogo, deleteProjectLogo, uploadProjectPlatformLogo, deleteProjectPlatformLogo } from './lib/uploadLogo';
 import { uploadUserPanelLogo, deleteUserPanelLogo } from './lib/uploadUserPanelLogo';
 import { useAuth } from './contexts/AuthContext';
 import type { UserArea } from './contexts/AuthContext';
@@ -16,6 +16,7 @@ interface SettingsViewProps {
   onRemoveMember: (memberId: string) => void;
   onUpdateMember: (memberId: string, updates: Partial<TeamMember>) => void;
   onUpdateProjectLogo?: (id: string, logoUrl: string | null) => Promise<void>;
+  onUpdateProjectPlatformLogo?: (id: string, logoUrl: string | null) => Promise<void>;
   onUpdateProjectName?: (id: string, name: string) => Promise<void>;
   onDeleteProject?: (id: string) => Promise<void>;
   userId?: string;
@@ -44,6 +45,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onRemoveMember,
   onUpdateMember,
   onUpdateProjectLogo,
+  onUpdateProjectPlatformLogo,
   onUpdateProjectName,
   onDeleteProject,
   activeProject,
@@ -58,8 +60,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const { areas } = useAuth();
   const logoInputRef = useRef<HTMLInputElement>(null);
   const userLogoInputRef = useRef<HTMLInputElement>(null);
+  const platformLogoInputRef = useRef<HTMLInputElement>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingUserLogo, setUploadingUserLogo] = useState(false);
+  const [uploadingPlatformLogo, setUploadingPlatformLogo] = useState(false);
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   const [projectNameDraft, setProjectNameDraft] = useState(activeProject?.metadata.name || '');
@@ -548,6 +552,96 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         fontSize: '12px',
                         fontWeight: 600,
                         cursor: 'pointer'
+                      }}
+                    >
+                      Eliminar
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Project Platform Logo Section — reemplaza el logo "Growth Hub" de la cabecera */}
+          {activeProject && onUpdateProjectPlatformLogo && (
+            <div style={{
+              padding: '20px', background: '#f9fafb', borderRadius: '12px',
+              border: '1px solid #e5e7eb', marginBottom: '24px',
+              display: 'flex', alignItems: 'center', gap: '20px'
+            }}>
+              <div style={{
+                width: '64px', height: '64px', borderRadius: '12px',
+                background: 'white', border: '2px solid #e5e7eb',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                overflow: 'hidden', flexShrink: 0
+              }}>
+                {activeProject.metadata.platformLogoUrl ? (
+                  <img src={activeProject.metadata.platformLogoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <Sparkles size={28} color="#4F46E5" />
+                )}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>
+                  Logo de plataforma del proyecto
+                </div>
+                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '10px' }}>
+                  Reemplaza el logo "Growth Hub" de la cabecera para todos los miembros de este proyecto.
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    ref={platformLogoInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                    style={{ display: 'none' }}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (file.size > 2 * 1024 * 1024) {
+                        alert('El archivo no debe exceder 2MB');
+                        return;
+                      }
+                      try {
+                        setUploadingPlatformLogo(true);
+                        const url = await uploadProjectPlatformLogo(activeProject.metadata.id, file);
+                        await onUpdateProjectPlatformLogo(activeProject.metadata.id, url);
+                      } catch (err) {
+                        console.error('Error uploading platform logo:', err);
+                        alert('Error al subir el logo');
+                      } finally {
+                        setUploadingPlatformLogo(false);
+                        if (platformLogoInputRef.current) platformLogoInputRef.current.value = '';
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={() => platformLogoInputRef.current?.click()}
+                    disabled={uploadingPlatformLogo}
+                    style={{
+                      padding: '6px 14px', background: '#4F46E5', color: 'white', border: 'none',
+                      borderRadius: '6px', fontSize: '12px', fontWeight: 600,
+                      cursor: uploadingPlatformLogo ? 'wait' : 'pointer',
+                      display: 'flex', alignItems: 'center', gap: '6px',
+                      opacity: uploadingPlatformLogo ? 0.7 : 1
+                    }}
+                  >
+                    <Upload size={14} />
+                    {uploadingPlatformLogo ? 'Subiendo...' : (activeProject.metadata.platformLogoUrl ? 'Cambiar Logo' : 'Subir Logo')}
+                  </button>
+                  {activeProject.metadata.platformLogoUrl && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          await deleteProjectPlatformLogo(activeProject.metadata.id);
+                          await onUpdateProjectPlatformLogo(activeProject.metadata.id, null);
+                        } catch (err) {
+                          console.error('Error deleting platform logo:', err);
+                        }
+                      }}
+                      style={{
+                        padding: '6px 14px', background: 'transparent', color: '#ef4444',
+                        border: '1px solid #fca5a5', borderRadius: '6px', fontSize: '12px',
+                        fontWeight: 600, cursor: 'pointer'
                       }}
                     >
                       Eliminar

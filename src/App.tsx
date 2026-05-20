@@ -429,6 +429,7 @@ const App: React.FC = () => {
     createProject: ctxCreateProject,
     deleteProject,
     updateProjectLogo,
+    updateProjectPlatformLogo,
     updateProjectName,
     addTeamMember: ctxAddTeamMember,
     updateTeamMemberRole: ctxUpdateTeamMemberRole,
@@ -784,31 +785,29 @@ const App: React.FC = () => {
       {/* Sidebar - Simplified for brevity in this view */}
       <nav className="sidebar">
         <div className="logo-area" style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={handleBackToPortfolio}>
-          {activeProject?.metadata.logoUrl ? (
-            <img
-              src={activeProject.metadata.logoUrl}
-              alt={activeProject.metadata.name}
-              style={{ width: '32px', height: '32px', borderRadius: '8px', objectFit: 'cover' }}
-            />
-          ) : profile?.panel_logo_url ? (
+          {profile?.panel_logo_url ? (
             <img
               src={profile.panel_logo_url}
-              alt="Panel logo"
+              alt="Logo"
+              style={{ width: '32px', height: '32px', borderRadius: '8px', objectFit: 'cover' }}
+            />
+          ) : activeProject?.metadata.platformLogoUrl ? (
+            <img
+              src={activeProject.metadata.platformLogoUrl}
+              alt="Logo"
               style={{ width: '32px', height: '32px', borderRadius: '8px', objectFit: 'cover' }}
             />
           ) : (
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" fill="#4F46E5" stroke="#4F46E5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              <circle cx="12" cy="12" r="10" stroke="#4F46E5" strokeWidth="1" strokeDasharray="2 2" />
-            </svg>
+            <>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" fill="#4F46E5" stroke="#4F46E5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="12" cy="12" r="10" stroke="#4F46E5" strokeWidth="1" strokeDasharray="2 2" />
+              </svg>
+              <span style={{ fontWeight: 800, fontSize: '18px', letterSpacing: '-0.5px', fontFamily: 'var(--font-sans)' }}>
+                Growth Hub
+              </span>
+            </>
           )}
-          <span style={{ fontWeight: 800, fontSize: '18px', letterSpacing: '-0.5px', fontFamily: 'var(--font-sans)' }}>
-            {activeProject?.metadata.logoUrl
-              ? activeProject.metadata.name
-              : profile?.panel_logo_url
-                ? ''
-                : 'Growth Hub'}
-          </span>
         </div>
 
         {/* Project Switcher */}
@@ -1360,6 +1359,7 @@ const App: React.FC = () => {
         onRemoveMember={handleRemoveTeamMember}
         onUpdateMember={handleUpdateTeamMember}
         onUpdateProjectLogo={updateProjectLogo}
+        onUpdateProjectPlatformLogo={updateProjectPlatformLogo}
         onUpdateProjectName={updateProjectName}
         onDeleteProject={handleDeleteProject}
         userId={profile?.id}

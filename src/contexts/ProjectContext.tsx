@@ -60,6 +60,7 @@ interface ProjectContextValue {
     createProject: (project: Project) => Promise<void>
     deleteProject: (id: string) => Promise<void>
     updateProjectLogo: (id: string, logoUrl: string | null) => Promise<void>
+    updateProjectPlatformLogo: (id: string, logoUrl: string | null) => Promise<void>
     updateProjectName: (id: string, name: string) => Promise<void>
 
     // Refresh
@@ -125,6 +126,7 @@ function dbRowToProject(row: any): Omit<Project, 'objectives' | 'strategies' | '
             name: row.name,
             logo: row.logo || undefined,
             logoUrl: row.logo_url || undefined,
+            platformLogoUrl: row.platform_logo_url || undefined,
             createdAt: row.created_at,
             industry: row.industry || undefined,
         },
@@ -920,6 +922,15 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         await fetchProjects()
     }, [fetchProjects])
 
+    const updateProjectPlatformLogo = useCallback(async (id: string, logoUrl: string | null) => {
+        const { error } = await supabase.from('projects').update({ platform_logo_url: logoUrl }).eq('id', id)
+        if (error) {
+            console.error('Error updating project platform logo:', error)
+            throw error
+        }
+        await fetchProjects()
+    }, [fetchProjects])
+
     const updateProjectName = useCallback(async (id: string, name: string) => {
         // Optimistic update
         setProjects(prev => prev.map(p =>
@@ -960,6 +971,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         createProject,
         deleteProject,
         updateProjectLogo,
+        updateProjectPlatformLogo,
         updateProjectName,
         refetchAll: fetchProjects,
         addTeamMember,
