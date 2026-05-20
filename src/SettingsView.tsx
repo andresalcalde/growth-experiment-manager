@@ -1,7 +1,10 @@
-import React, { useState, useRef } from 'react';
-import { X, Plus, Mail, Trash2, Users, Shield, Edit2, Briefcase, LogOut, Upload } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { X, Plus, Mail, Trash2, Users, Shield, Edit2, Briefcase, LogOut, Upload, Sparkles } from 'lucide-react';
 import type { TeamMember, Project } from './types';
 import { uploadProjectLogo, deleteProjectLogo } from './lib/uploadLogo';
+import { uploadUserPanelLogo, deleteUserPanelLogo } from './lib/uploadUserPanelLogo';
+import { useAuth } from './contexts/AuthContext';
+import type { UserArea } from './contexts/AuthContext';
 
 interface SettingsViewProps {
   isOpen: boolean;
@@ -13,6 +16,13 @@ interface SettingsViewProps {
   onRemoveMember: (memberId: string) => void;
   onUpdateMember: (memberId: string, updates: Partial<TeamMember>) => void;
   onUpdateProjectLogo?: (id: string, logoUrl: string | null) => Promise<void>;
+  onUpdateProjectName?: (id: string, name: string) => Promise<void>;
+  onDeleteProject?: (id: string) => Promise<void>;
+  userId?: string;
+  userPanelLogoUrl?: string | null;
+  onUpdateUserPanelLogo?: (logoUrl: string | null) => Promise<void>;
+  userArea?: UserArea | null;
+  onUpdateArea?: (area: UserArea) => Promise<void>;
   onResetData?: () => void;
   onSignOut?: () => void;
 }
@@ -34,14 +44,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onRemoveMember,
   onUpdateMember,
   onUpdateProjectLogo,
+  onUpdateProjectName,
+  onDeleteProject,
   activeProject,
+  userId,
+  userPanelLogoUrl,
+  onUpdateUserPanelLogo,
+  userArea,
+  onUpdateArea,
   onResetData,
   onSignOut
 }) => {
+  const { areas } = useAuth();
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const userLogoInputRef = useRef<HTMLInputElement>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingUserLogo, setUploadingUserLogo] = useState(false);
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
+  const [projectNameDraft, setProjectNameDraft] = useState(activeProject?.metadata.name || '');
+  const [savingName, setSavingName] = useState(false);
+
+  useEffect(() => {
+    setProjectNameDraft(activeProject?.metadata.name || '');
+  }, [activeProject?.metadata.id, activeProject?.metadata.name]);
 
   // Add Member Form State
   const [newMemberName, setNewMemberName] = useState('');
@@ -194,6 +220,228 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           flex: 1,
           overflowY: 'auto'
         }}>
+          {/* User Panel Logo Section — personalize "Growth Hub" branding */}
+          {userId && onUpdateUserPanelLogo && (
+            <div style={{
+              padding: '20px',
+              background: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)',
+              borderRadius: '12px',
+              border: '1px solid #e9d5ff',
+              marginBottom: '24px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '20px'
+            }}>
+              <div style={{
+                width: '64px', height: '64px', borderRadius: '12px',
+                background: 'white', border: '2px solid #e9d5ff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                overflow: 'hidden', flexShrink: 0
+              }}>
+                {userPanelLogoUrl ? (
+                  <img src={userPanelLogoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <Sparkles size={28} color="#7C3AED" />
+                )}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  Mi marca personal
+                  <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', background: '#7C3AED', color: 'white' }}>SOLO TÚ</span>
+                </div>
+                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '10px' }}>
+                  Reemplaza el logo "Growth Hub" en tu panel y portfolio. Los demás miembros no verán este cambio.
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    ref={userLogoInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                    style={{ display: 'none' }}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (file.size > 2 * 1024 * 1024) {
+                        alert('El archivo no debe exceder 2MB');
+                        return;
+                      }
+                      try {
+                        setUploadingUserLogo(true);
+                        const url = await uploadUserPanelLogo(userId, file);
+                        await onUpdateUserPanelLogo(url);
+                      } catch (err) {
+                        console.error('Error uploading user panel logo:', err);
+                        alert('Error al subir el logo');
+                      } finally {
+                        setUploadingUserLogo(false);
+                        if (userLogoInputRef.current) userLogoInputRef.current.value = '';
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={() => userLogoInputRef.current?.click()}
+                    disabled={uploadingUserLogo}
+                    style={{
+                      padding: '6px 14px',
+                      background: '#7C3AED',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: uploadingUserLogo ? 'wait' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      opacity: uploadingUserLogo ? 0.7 : 1
+                    }}
+                  >
+                    <Upload size={14} />
+                    {uploadingUserLogo ? 'Subiendo...' : (userPanelLogoUrl ? 'Cambiar Logo' : 'Subir Logo')}
+                  </button>
+                  {userPanelLogoUrl && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          await deleteUserPanelLogo(userId);
+                          await onUpdateUserPanelLogo(null);
+                        } catch (err) {
+                          console.error('Error deleting user panel logo:', err);
+                        }
+                      }}
+                      style={{
+                        padding: '6px 14px',
+                        background: 'transparent',
+                        color: '#ef4444',
+                        border: '1px solid #fca5a5',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Eliminar
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* My Area Section */}
+          {onUpdateArea && (
+            <div style={{
+              padding: '20px', background: '#f9fafb', borderRadius: '12px',
+              border: '1px solid #e5e7eb', marginBottom: '24px'
+            }}>
+              <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>
+                Mi área de trabajo
+              </div>
+              <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '10px' }}>
+                Se usa para segmentar las métricas de adopción por disciplina.
+              </div>
+              <select
+                value={userArea || ''}
+                onChange={async (e) => {
+                  const v = e.target.value as UserArea;
+                  if (!v) return;
+                  try {
+                    await onUpdateArea(v);
+                  } catch (err) {
+                    console.error('Error updating area:', err);
+                    alert('Error al actualizar el área');
+                  }
+                }}
+                style={{
+                  padding: '10px 14px', border: '1px solid #d1d5db', borderRadius: '8px',
+                  fontSize: '14px', background: 'white', cursor: 'pointer', minWidth: '220px'
+                }}
+              >
+                <option value="" disabled>Selecciona tu área…</option>
+                {areas.map(a => <option key={a.id} value={a.name}>{a.name}</option>)}
+              </select>
+            </div>
+          )}
+
+          {/* Project Settings Section — nombre + eliminar */}
+          {activeProject && (onUpdateProjectName || onDeleteProject) && (
+            <div style={{
+              padding: '20px',
+              background: '#f9fafb',
+              borderRadius: '12px',
+              border: '1px solid #e5e7eb',
+              marginBottom: '24px'
+            }}>
+              <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '12px' }}>
+                Configuración del Proyecto
+              </div>
+              {onUpdateProjectName && (
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '6px' }}>
+                    Nombre del proyecto
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      value={projectNameDraft}
+                      onChange={(e) => setProjectNameDraft(e.target.value)}
+                      style={{
+                        flex: 1, padding: '10px 14px', border: '1px solid #d1d5db',
+                        borderRadius: '8px', fontSize: '14px', outline: 'none'
+                      }}
+                    />
+                    <button
+                      onClick={async () => {
+                        const n = projectNameDraft.trim();
+                        if (!n) { alert('El nombre no puede estar vacío'); return; }
+                        if (n === activeProject.metadata.name) return;
+                        try {
+                          setSavingName(true);
+                          await onUpdateProjectName(activeProject.metadata.id, n);
+                        } catch (err) {
+                          console.error('Error updating project name:', err);
+                          alert('Error al actualizar el nombre');
+                        } finally {
+                          setSavingName(false);
+                        }
+                      }}
+                      disabled={savingName}
+                      style={{
+                        padding: '10px 16px', background: '#4F46E5', color: 'white',
+                        border: 'none', borderRadius: '8px', fontWeight: 600, fontSize: '13px',
+                        cursor: savingName ? 'wait' : 'pointer', opacity: savingName ? 0.7 : 1
+                      }}
+                    >
+                      {savingName ? 'Guardando...' : 'Guardar'}
+                    </button>
+                  </div>
+                </div>
+              )}
+              {onDeleteProject && (
+                <button
+                  onClick={async () => {
+                    if (window.confirm(`¿Eliminar el proyecto "${activeProject.metadata.name}"? Se borrarán todos sus objetivos, estrategias y experimentos. Esta acción no se puede deshacer.`)) {
+                      try {
+                        await onDeleteProject(activeProject.metadata.id);
+                      } catch (err) {
+                        console.error('Error deleting project:', err);
+                        alert('Error al eliminar el proyecto');
+                      }
+                    }
+                  }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                    padding: '8px 14px', border: '1px solid #fecaca', borderRadius: '8px',
+                    background: '#fef2f2', color: '#dc2626', fontWeight: 600,
+                    fontSize: '13px', cursor: 'pointer'
+                  }}
+                >
+                  <Trash2 size={14} />
+                  Eliminar Proyecto
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Project Logo Section */}
           {activeProject && onUpdateProjectLogo && (
             <div style={{
