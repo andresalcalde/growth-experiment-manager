@@ -1,271 +1,225 @@
 import React from 'react'
+import { Target, Route, BarChart3, Columns3, FolderKanban, BookOpen, ArrowDown } from 'lucide-react'
 
 interface LandingPageProps {
     onLogin: () => void
 }
 
+const PHASES = [
+    {
+        n: '01', kicker: 'Roadmap', name: 'Design',
+        desc: 'Define tu North Star Metric, establece objetivos y diseña estrategias. Una cascada clara desde la métrica clave hasta las tácticas ejecutables.',
+    },
+    {
+        n: '02', kicker: 'Backlog', name: 'Explore',
+        desc: 'Prioriza el backlog con ICE scoring. Visualiza los experimentos en tabla, filtra por etapa del funnel y ordena por impacto.',
+    },
+    {
+        n: '03', kicker: 'Kanban', name: 'Be Agile',
+        desc: 'Mueve experimentos por las fases —Prioritized, Building, Live Testing, Analysis— con un tablero de arrastre directo.',
+    },
+]
+
+const FUNNEL = [
+    { n: '01', name: 'Acquisition', desc: 'Cómo atraes usuarios' },
+    { n: '02', name: 'Activation', desc: 'Si llegan al "aha moment"' },
+    { n: '03', name: 'Retention', desc: 'Si los usuarios regresan' },
+    { n: '04', name: 'Referral', desc: 'Si recomiendan el producto' },
+    { n: '05', name: 'Revenue', desc: 'Cómo monetizas' },
+]
+
+const FEATURES = [
+    { Icon: Target, name: 'North Star Metric', desc: 'Define y monitorea tu métrica estrella con progreso en tiempo real y targets configurables.' },
+    { Icon: Route, name: 'Roadmap estratégico', desc: 'Cascada de Objetivos, Estrategias y Experimentos. Cada nivel conecta con el anterior.' },
+    { Icon: BarChart3, name: 'Backlog con ICE', desc: 'Tabla con edición inline de Impact, Confidence y Ease. Priorización objetiva y automática.' },
+    { Icon: Columns3, name: 'Kanban operativo', desc: 'Tablero para mover experimentos entre etapas con arrastre directo.' },
+    { Icon: FolderKanban, name: 'Multi-proyecto', desc: 'Gestiona varios proyectos desde un portfolio, cada uno con su equipo y métrica.' },
+    { Icon: BookOpen, name: 'Knowledge Library', desc: 'Documenta hipótesis, criterios de éxito, aprendizajes y pruebas visuales del equipo.' },
+]
+
 export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     return (
         <>
             <style>{landingStyles}</style>
-            <div className="landing-page">
-                <div className="bg-grid" />
-                <div className="bg-blob blob-1" />
-                <div className="bg-blob blob-2" />
-                <div className="bg-blob blob-3" />
-
-                {/* Navigation */}
-                <nav className="landing-nav">
-                    <div className="nav-brand">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" fill="#4F46E5" stroke="#4F46E5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            <circle cx="12" cy="12" r="10" stroke="#4F46E5" strokeWidth="1" strokeDasharray="2 2" />
-                        </svg>
-                        Growth Hub
+            <div className="landing">
+                {/* ── Nav ── */}
+                <nav className="ln-nav">
+                    <div className="ln-wrap ln-nav-inner">
+                        <div className="ln-brand">
+                            <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+                                <path
+                                    d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"
+                                    fill="#4F46E5"
+                                />
+                            </svg>
+                            <span>Growth Hub</span>
+                        </div>
+                        <button className="ln-nav-btn" onClick={onLogin}>
+                            Iniciar sesión
+                        </button>
                     </div>
-                    <button className="nav-btn" onClick={onLogin}>
-                        Iniciar Sesión →
-                    </button>
                 </nav>
 
-                {/* Hero */}
-                <section className="hero">
-                    <div className="l-container">
-                        <div className="hero-badge">
-                            <span className="dot" />
-                            Plataforma de Growth · Metodología científica
-                        </div>
-                        <h1>
-                            Del caos a la claridad<br />
-                            en tu estrategia de<br />
-                            <span className="gradient-text">crecimiento</span>
+                {/* ── Hero ── */}
+                <header className="ln-hero">
+                    <div className="ln-wrap">
+                        <p className="ln-eyebrow"><i className="ln-rule" />Plataforma de growth</p>
+                        <h1 className="ln-h1">
+                            Del caos a la claridad en tu
+                            estrategia de <em>crecimiento</em>.
                         </h1>
-                        <p className="hero-subtitle">
-                            Diseña hipótesis, prioriza con ICE scoring, ejecuta experimentos y documenta aprendizajes clave — todo en una plataforma integral para equipos de growth.
+                        <p className="ln-lead">
+                            Diseña hipótesis, prioriza con ICE scoring, ejecuta experimentos y
+                            documenta los aprendizajes clave. Un solo lugar para el trabajo de
+                            tu equipo de growth.
                         </p>
-                        <div className="hero-cta">
-                            <button className="btn-primary" onClick={onLogin}>
-                                Comenzar Gratis 🚀
+                        <div className="ln-hero-actions">
+                            <button className="ln-btn ln-btn-solid" onClick={onLogin}>
+                                Entrar a la plataforma
                             </button>
-                            <a href="#como-funciona" className="btn-secondary">
-                                ¿Cómo funciona? ↓
+                            <a href="#metodologia" className="ln-link">
+                                Ver la metodología <ArrowDown size={15} />
                             </a>
                         </div>
-
-                        {/* Metrics */}
-                        <div className="metrics-bar">
-                            <div className="metric-item">
-                                <div className="metric-value">3</div>
-                                <div className="metric-label">Fases del Proceso</div>
-                            </div>
-                            <div className="metric-item">
-                                <div className="metric-value">5</div>
-                                <div className="metric-label">Etapas del Funnel</div>
-                            </div>
-                            <div className="metric-item">
-                                <div className="metric-value">∞</div>
-                                <div className="metric-label">Proyectos & Experimentos</div>
-                            </div>
-                            <div className="metric-item">
-                                <div className="metric-value">ICE</div>
-                                <div className="metric-label">Framework de Priorización</div>
-                            </div>
-                        </div>
                     </div>
-                </section>
+                </header>
 
-                {/* Problem */}
-                <section className="problem-section">
-                    <div className="l-container">
-                        <div className="section-label"><span className="icon">⚡</span> EL PROBLEMA</div>
-                        <h2 className="section-title">¿Te suena familiar?</h2>
-                        <p className="section-desc">
-                            Los equipos de growth enfrentan los mismos problemas una y otra vez. Sin un sistema, el crecimiento es caótico.
-                        </p>
-                        <div className="problem-grid">
-                            <div className="problem-card">
-                                <div className="problem-emoji">📋</div>
+                {/* ── Problema ── */}
+                <section className="ln-section">
+                    <div className="ln-wrap">
+                        <p className="ln-eyebrow"><i className="ln-rule" />El problema</p>
+                        <h2 className="ln-h2">Sin un sistema, el crecimiento es caótico.</h2>
+                        <div className="ln-problems">
+                            <div className="ln-problem">
                                 <h3>Experimentos en spreadsheets</h3>
-                                <p>Hipótesis perdidas en Google Sheets, sin contexto, sin resultados trazables. El conocimiento se pierde con cada iteración.</p>
+                                <p>Hipótesis perdidas en hojas de cálculo, sin contexto ni
+                                resultados trazables. El conocimiento se pierde en cada iteración.</p>
                             </div>
-                            <div className="problem-card">
-                                <div className="problem-emoji">🎯</div>
+                            <div className="ln-problem">
                                 <h3>Sin alineación estratégica</h3>
-                                <p>¿Cómo conectar cada experimento con un objetivo de negocio? Sin visibilidad de la cascada North Star → Objetivos → Estrategias.</p>
+                                <p>Cada experimento desconectado del objetivo de negocio, sin
+                                visibilidad de la cascada North Star, objetivos y estrategias.</p>
                             </div>
-                            <div className="problem-card">
-                                <div className="problem-emoji">🔮</div>
+                            <div className="ln-problem">
                                 <h3>Priorización por intuición</h3>
-                                <p>Sin un framework objetivo para decidir qué experimentar primero. Las decisiones se toman por "feeling", no por datos.</p>
+                                <p>Sin un marco objetivo para decidir qué probar primero. Las
+                                decisiones se toman por intuición, no por datos.</p>
                             </div>
                         </div>
                     </div>
                 </section>
 
-                {/* How It Works */}
-                <section className="how-section" id="como-funciona">
-                    <div className="l-container">
-                        <div className="section-label"><span className="icon">🔄</span> METODOLOGÍA</div>
-                        <h2 className="section-title" style={{ textAlign: 'center' }}>Un proceso de 3 fases</h2>
-                        <p className="section-desc" style={{ textAlign: 'center', margin: '0 auto 64px' }}>
-                            Sigue un flujo estructurado que va desde el diseño estratégico hasta la ejecución ágil de experimentos.
+                {/* ── Metodología ── */}
+                <section className="ln-section ln-section-alt" id="metodologia">
+                    <div className="ln-wrap">
+                        <p className="ln-eyebrow"><i className="ln-rule" />Metodología</p>
+                        <h2 className="ln-h2">Un proceso de tres fases.</h2>
+                        <p className="ln-section-lead">
+                            Un flujo estructurado que va del diseño estratégico a la ejecución
+                            ágil de experimentos.
                         </p>
-                        <div className="steps-grid">
-                            <div className="step-card step-1">
-                                <div className="step-number">01</div>
-                                <div className="step-subtitle">ROADMAP</div>
-                                <h3>Design</h3>
-                                <p>Define tu North Star Metric, establece objetivos y diseña estrategias. Crea una cascada clara desde tu métrica clave hasta las tácticas ejecutables.</p>
-                            </div>
-                            <div className="step-card step-2">
-                                <div className="step-number">02</div>
-                                <div className="step-subtitle">BACKLOG</div>
-                                <h3>Explore</h3>
-                                <p>Prioriza tu backlog de experimentos con ICE scoring. Visualiza todos tus experimentos en tabla, filtra por funnel stage, ordena por impacto.</p>
-                            </div>
-                            <div className="step-card step-3">
-                                <div className="step-number">03</div>
-                                <div className="step-subtitle">KANBAN</div>
-                                <h3>Be Agile</h3>
-                                <p>Mueve experimentos por las fases: Prioritized → Building → Live Testing → Analysis. Drag &amp; drop para agilidad total.</p>
-                            </div>
+                        <div className="ln-phases">
+                            {PHASES.map(p => (
+                                <article key={p.n} className="ln-phase">
+                                    <span className="ln-phase-n">{p.n}</span>
+                                    <span className="ln-phase-kicker">{p.kicker}</span>
+                                    <h3>{p.name}</h3>
+                                    <p>{p.desc}</p>
+                                </article>
+                            ))}
                         </div>
 
-                        {/* ICE Framework */}
-                        <div className="ice-preview">
-                            <div className="ice-item">
-                                <div className="ice-letter ice-i">I</div>
-                                <div className="ice-word">Impact</div>
-                                <div className="ice-desc">¿Qué tan grande será el efecto?</div>
-                            </div>
-                            <div className="ice-item">
-                                <div className="ice-letter ice-c">C</div>
-                                <div className="ice-word">Confidence</div>
-                                <div className="ice-desc">¿Qué tan seguro estás?</div>
-                            </div>
-                            <div className="ice-item">
-                                <div className="ice-letter ice-e">E</div>
-                                <div className="ice-word">Ease</div>
-                                <div className="ice-desc">¿Qué tan fácil de implementar?</div>
+                        <div className="ln-ice">
+                            <p className="ln-ice-label">Priorización ICE</p>
+                            <div className="ln-ice-row">
+                                <div className="ln-ice-item">
+                                    <span className="ln-ice-letter">I</span>
+                                    <div>
+                                        <strong>Impact</strong>
+                                        <span>Qué tan grande es el efecto esperado</span>
+                                    </div>
+                                </div>
+                                <div className="ln-ice-item">
+                                    <span className="ln-ice-letter">C</span>
+                                    <div>
+                                        <strong>Confidence</strong>
+                                        <span>Qué tan seguro estás de la hipótesis</span>
+                                    </div>
+                                </div>
+                                <div className="ln-ice-item">
+                                    <span className="ln-ice-letter">E</span>
+                                    <div>
+                                        <strong>Ease</strong>
+                                        <span>Qué tan fácil es de implementar</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </section>
 
-                {/* Funnel Framework */}
-                <section className="funnel-section">
-                    <div className="l-container">
-                        <div className="section-label" style={{ textAlign: 'center' }}><span className="icon">📊</span> AARRR FRAMEWORK</div>
-                        <h2 className="section-title" style={{ textAlign: 'center' }}>Pirate Metrics integrado</h2>
-                        <p className="section-desc" style={{ textAlign: 'center', margin: '0 auto 56px' }}>
-                            Cada experimento se clasifica por etapa del funnel, dándote visibilidad de dónde estás invirtiendo esfuerzo y dónde hay oportunidades.
+                {/* ── Funnel ── */}
+                <section className="ln-section">
+                    <div className="ln-wrap">
+                        <p className="ln-eyebrow"><i className="ln-rule" />Pirate metrics</p>
+                        <h2 className="ln-h2">El funnel AARRR, integrado.</h2>
+                        <p className="ln-section-lead">
+                            Cada experimento se clasifica por etapa del funnel: dónde inviertes
+                            esfuerzo y dónde están las oportunidades.
                         </p>
-                        <div className="funnel-visual">
-                            <div className="funnel-stage stage-acq">
-                                <div className="stage-icon">🎣</div>
-                                <h4>Acquisition</h4>
-                                <p>¿Cómo atraes usuarios?</p>
-                            </div>
-                            <div className="funnel-arrow">→</div>
-                            <div className="funnel-stage stage-act">
-                                <div className="stage-icon">⚡</div>
-                                <h4>Activation</h4>
-                                <p>¿Llegan al "Aha moment"?</p>
-                            </div>
-                            <div className="funnel-arrow">→</div>
-                            <div className="funnel-stage stage-ret">
-                                <div className="stage-icon">🔄</div>
-                                <h4>Retention</h4>
-                                <p>¿Regresan los usuarios?</p>
-                            </div>
-                            <div className="funnel-arrow">→</div>
-                            <div className="funnel-stage stage-ref">
-                                <div className="stage-icon">📣</div>
-                                <h4>Referral</h4>
-                                <p>¿Recomiendan tu producto?</p>
-                            </div>
-                            <div className="funnel-arrow">→</div>
-                            <div className="funnel-stage stage-rev">
-                                <div className="stage-icon">💰</div>
-                                <h4>Revenue</h4>
-                                <p>¿Cómo monetizas?</p>
-                            </div>
+                        <div className="ln-funnel">
+                            {FUNNEL.map(s => (
+                                <div key={s.n} className="ln-funnel-stage">
+                                    <span className="ln-funnel-n">{s.n}</span>
+                                    <h3>{s.name}</h3>
+                                    <p>{s.desc}</p>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </section>
 
-                {/* Features */}
-                <section className="features-section" id="features">
-                    <div className="l-container">
-                        <div className="section-label" style={{ textAlign: 'center' }}><span className="icon">✨</span> FUNCIONALIDADES</div>
-                        <h2 className="section-title" style={{ textAlign: 'center' }}>Todo lo que necesitas para crecer</h2>
-                        <p className="section-desc" style={{ textAlign: 'center', margin: '0 auto 64px' }}>
-                            Herramientas diseñadas específicamente para equipos de growth que toman decisiones basadas en datos.
+                {/* ── Funcionalidades ── */}
+                <section className="ln-section ln-section-alt">
+                    <div className="ln-wrap">
+                        <p className="ln-eyebrow"><i className="ln-rule" />Funcionalidades</p>
+                        <h2 className="ln-h2">Todo lo que el equipo necesita.</h2>
+                        <div className="ln-features">
+                            {FEATURES.map(({ Icon, name, desc }) => (
+                                <article key={name} className="ln-feature">
+                                    <Icon size={20} strokeWidth={1.6} className="ln-feature-icon" />
+                                    <h3>{name}</h3>
+                                    <p>{desc}</p>
+                                </article>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                {/* ── Cierre ── */}
+                <section className="ln-cta">
+                    <div className="ln-wrap">
+                        <h2>Empieza a experimentar con metodología.</h2>
+                        <p>
+                            Deja de adivinar. Toma decisiones de crecimiento basadas en datos y
+                            marcos probados.
                         </p>
-                        <div className="features-grid">
-                            <div className="feature-card">
-                                <div className="feature-icon purple">🎯</div>
-                                <div>
-                                    <h3>North Star Metric</h3>
-                                    <p>Define y monitorea tu métrica estrella. Visualiza el progreso en tiempo real con barras de avance y targets configurables.</p>
-                                </div>
-                            </div>
-                            <div className="feature-card">
-                                <div className="feature-icon blue">📐</div>
-                                <div>
-                                    <h3>Roadmap Estratégico</h3>
-                                    <p>Cascada visual de Objetivos → Estrategias → Experimentos. Cada nivel se conecta al anterior para trazabilidad total.</p>
-                                </div>
-                            </div>
-                            <div className="feature-card">
-                                <div className="feature-icon green">📊</div>
-                                <div>
-                                    <h3>Backlog con ICE Scoring</h3>
-                                    <p>Tabla interactiva con edición inline de Impact, Confidence y Ease. Prioriza objetivamente con puntuación automática.</p>
-                                </div>
-                            </div>
-                            <div className="feature-card">
-                                <div className="feature-icon orange">🗂️</div>
-                                <div>
-                                    <h3>Kanban con Drag &amp; Drop</h3>
-                                    <p>Board visual para mover experimentos entre etapas. Arrastra tarjetas de Prioritized a Building, Testing y Analysis.</p>
-                                </div>
-                            </div>
-                            <div className="feature-card">
-                                <div className="feature-icon pink">📁</div>
-                                <div>
-                                    <h3>Multi-Proyecto</h3>
-                                    <p>Gestiona múltiples proyectos desde un portfolio centralizado. Cada proyecto con su propio North Star, equipo y experimentos.</p>
-                                </div>
-                            </div>
-                            <div className="feature-card">
-                                <div className="feature-icon teal">📚</div>
-                                <div>
-                                    <h3>Knowledge Library</h3>
-                                    <p>Documenta hipótesis, criterios de éxito, key learnings y pruebas visuales. Construye un repositorio de conocimiento para tu equipo.</p>
-                                </div>
-                            </div>
-                        </div>
+                        <button className="ln-btn ln-btn-light" onClick={onLogin}>
+                            Entrar a la plataforma
+                        </button>
                     </div>
                 </section>
 
-                {/* CTA */}
-                <section className="cta-section">
-                    <div className="l-container">
-                        <div className="cta-box">
-                            <h2>Empieza a experimentar<br />con metodología</h2>
-                            <p>Deja de adivinar y empieza a tomar decisiones de crecimiento basadas en datos y frameworks probados.</p>
-                            <button className="btn-primary" onClick={onLogin}>
-                                Acceder a la Plataforma 🚀
-                            </button>
+                {/* ── Footer ── */}
+                <footer className="ln-footer">
+                    <div className="ln-wrap ln-footer-inner">
+                        <div className="ln-brand">
+                            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" fill="#4F46E5" />
+                            </svg>
+                            <span>Growth Hub</span>
                         </div>
-                    </div>
-                </section>
-
-                {/* Footer */}
-                <footer className="landing-footer">
-                    <div className="l-container">
-                        <p>© 2026 Growth Experiment Manager · Construido con 💜 por Laboratorio Polanco</p>
+                        <p>© 2026 Growth Hub — Laboratorio Polanco</p>
                     </div>
                 </footer>
             </div>
@@ -274,264 +228,223 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 }
 
 const landingStyles = `
-    .landing-page {
+    .landing {
+        --bg: #ffffff;
+        --bg-alt: #f6f5f1;
+        --ink: #111114;
+        --ink-soft: #3d3d42;
+        --muted: #74747c;
+        --line: rgba(17,17,20,0.12);
+        --accent: #4f46e5;
+        background: var(--bg);
+        color: var(--ink);
         font-family: 'Inter', -apple-system, sans-serif;
-        background: #0a0a0f;
-        color: #f1f5f9;
         line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
         overflow-x: hidden;
-        min-height: 100vh;
     }
+    .landing * { margin: 0; padding: 0; box-sizing: border-box; }
 
-    .landing-page * { margin: 0; padding: 0; box-sizing: border-box; }
+    .ln-wrap { max-width: 1140px; margin: 0 auto; padding: 0 32px; }
 
-    /* ─── Background Effects ─── */
-    .landing-page .bg-grid {
-        position: fixed; inset: 0;
-        background-image:
-            linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
-        background-size: 64px 64px;
-        z-index: 0; pointer-events: none;
+    /* ── Nav ── */
+    .ln-nav {
+        position: sticky; top: 0; z-index: 50;
+        background: rgba(255,255,255,0.85);
+        backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--line);
     }
-    .landing-page .bg-blob {
-        position: fixed; border-radius: 50%; filter: blur(120px);
-        opacity: 0.4; z-index: 0; pointer-events: none;
+    .ln-nav-inner {
+        display: flex; align-items: center; justify-content: space-between;
+        height: 68px;
     }
-    .blob-1 { width: 600px; height: 600px; background: #7c3aed; top: -200px; right: -150px; opacity: 0.15; }
-    .blob-2 { width: 500px; height: 500px; background: #3b82f6; bottom: 200px; left: -200px; opacity: 0.1; }
-    .blob-3 { width: 400px; height: 400px; background: #22c55e; bottom: -100px; right: 100px; opacity: 0.08; }
+    .ln-brand {
+        display: flex; align-items: center; gap: 9px;
+        font-family: 'Space Grotesk', sans-serif;
+        font-weight: 600; font-size: 1.05rem; letter-spacing: -0.01em;
+    }
+    .ln-nav-btn {
+        font-family: inherit; font-size: 0.875rem; font-weight: 500;
+        color: var(--ink); background: none; border: none; cursor: pointer;
+        padding: 8px 4px; border-bottom: 1px solid var(--ink);
+        transition: opacity 0.15s ease;
+    }
+    .ln-nav-btn:hover { opacity: 0.55; }
 
-    /* ─── Navigation ─── */
-    .landing-nav {
-        position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-        padding: 16px 40px; display: flex; align-items: center; justify-content: space-between;
-        background: rgba(10, 10, 15, 0.7); backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.06);
-    }
-    .nav-brand {
+    /* ── Shared type ── */
+    .ln-eyebrow {
         display: flex; align-items: center; gap: 12px;
-        font-weight: 700; font-size: 1.15rem; letter-spacing: -0.5px;
+        font-size: 0.72rem; font-weight: 600; letter-spacing: 0.16em;
+        text-transform: uppercase; color: var(--muted); margin-bottom: 28px;
     }
-    .nav-logo {
-        width: 36px; height: 36px;
-        background: linear-gradient(135deg, #7c3aed, #a78bfa);
-        border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px;
+    .ln-rule { display: block; width: 28px; height: 1px; background: var(--ink); opacity: 0.55; }
+    .ln-h1 {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: clamp(2.5rem, 5.4vw, 4.15rem); font-weight: 500;
+        line-height: 1.06; letter-spacing: -0.035em; max-width: 16ch;
     }
-    .nav-btn {
-        padding: 10px 24px; background: #7c3aed; color: white; border: none;
-        border-radius: 10px; font-weight: 600; font-size: 0.9rem; cursor: pointer;
-        transition: all 0.3s ease;
+    .ln-h1 em { font-style: italic; font-weight: 500; }
+    .ln-h2 {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: clamp(1.85rem, 3.3vw, 2.7rem); font-weight: 500;
+        line-height: 1.12; letter-spacing: -0.03em; max-width: 20ch;
     }
-    .nav-btn:hover { background: #6d28d9; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(124,58,237,0.25); }
-
-    /* ─── Container ─── */
-    .l-container { max-width: 1200px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
-
-    /* ─── Hero ─── */
-    .hero { padding: 160px 0 100px; text-align: center; }
-    .hero-badge {
-        display: inline-flex; align-items: center; gap: 8px;
-        padding: 8px 20px; background: rgba(124,58,237,0.08);
-        border: 1px solid rgba(124,58,237,0.2); border-radius: 100px;
-        font-size: 0.85rem; color: #a78bfa; margin-bottom: 32px;
-        animation: fadeInUp 0.6s ease;
+    .ln-lead {
+        font-size: 1.12rem; color: var(--ink-soft); line-height: 1.62;
+        max-width: 52ch; margin-top: 28px;
     }
-    .hero-badge .dot {
-        width: 8px; height: 8px; background: #22c55e; border-radius: 50%;
-        animation: pulse-dot 2s infinite;
-    }
-    @keyframes pulse-dot {
-        0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.5; transform: scale(1.3); }
-    }
-    .hero h1 {
-        font-size: clamp(2.8rem, 6vw, 4.8rem); font-weight: 800;
-        line-height: 1.1; letter-spacing: -2px; margin-bottom: 24px;
-        animation: fadeInUp 0.6s ease 0.1s both;
-    }
-    .hero h1 .gradient-text {
-        background: linear-gradient(135deg, #a78bfa 0%, #ec4899 50%, #f59e0b 100%);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-    }
-    .hero-subtitle {
-        font-size: 1.25rem; color: #94a3b8; max-width: 640px;
-        margin: 0 auto 48px; line-height: 1.7; animation: fadeInUp 0.6s ease 0.2s both;
-    }
-    .hero-cta {
-        display: flex; gap: 16px; justify-content: center;
-        animation: fadeInUp 0.6s ease 0.3s both;
-    }
-    .btn-primary {
-        padding: 16px 36px; background: linear-gradient(135deg, #7c3aed, #6d28d9);
-        color: white; border: none; border-radius: 14px; font-weight: 700; font-size: 1.05rem;
-        cursor: pointer; transition: all 0.3s ease; text-decoration: none;
-        display: inline-flex; align-items: center; gap: 10px;
-    }
-    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(124,58,237,0.25); }
-    .btn-secondary {
-        padding: 16px 36px; background: transparent; color: #f1f5f9;
-        border: 1px solid rgba(255,255,255,0.1); border-radius: 14px;
-        font-weight: 600; font-size: 1.05rem; cursor: pointer; transition: all 0.3s ease;
-        text-decoration: none; display: inline-flex; align-items: center; gap: 10px;
-    }
-    .btn-secondary:hover { background: rgba(255,255,255,0.05); border-color: #a78bfa; transform: translateY(-2px); }
-    @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-
-    /* ─── Metrics Bar ─── */
-    .metrics-bar {
-        display: flex; justify-content: center; gap: 48px; padding: 48px 0; margin-top: 64px;
-        border-top: 1px solid rgba(255,255,255,0.06); border-bottom: 1px solid rgba(255,255,255,0.06);
-    }
-    .metric-item { text-align: center; }
-    .metric-value {
-        font-size: 2.5rem; font-weight: 800;
-        background: linear-gradient(135deg, #a78bfa, #ec4899);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-    }
-    .metric-label { font-size: 0.85rem; color: #64748b; margin-top: 4px; }
-
-    /* ─── Problem Section ─── */
-    .problem-section { padding: 80px 0; }
-    .section-label {
-        display: inline-flex; align-items: center; gap: 8px;
-        font-size: 0.8rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
-        color: #a78bfa; margin-bottom: 20px;
-    }
-    .section-label .icon { font-size: 1rem; }
-    .section-title {
-        font-size: clamp(2rem, 4vw, 2.8rem); font-weight: 700;
-        letter-spacing: -1px; margin-bottom: 16px; line-height: 1.2;
-    }
-    .section-desc {
-        font-size: 1.1rem; color: #94a3b8; max-width: 600px; line-height: 1.7; margin-bottom: 48px;
-    }
-    .problem-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-    .problem-card {
-        background: #1a1a28; border: 1px solid rgba(255,255,255,0.06);
-        border-radius: 16px; padding: 32px 28px; transition: all 0.4s ease;
-        position: relative; overflow: hidden;
-    }
-    .problem-card::before {
-        content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-        background: linear-gradient(90deg, #7c3aed, #ec4899); opacity: 0; transition: opacity 0.3s ease;
-    }
-    .problem-card:hover { border-color: rgba(124,58,237,0.3); transform: translateY(-4px); box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
-    .problem-card:hover::before { opacity: 1; }
-    .problem-emoji { font-size: 2.2rem; margin-bottom: 16px; }
-    .problem-card h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 10px; }
-    .problem-card p { font-size: 0.92rem; color: #94a3b8; line-height: 1.6; }
-
-    /* ─── How Section ─── */
-    .how-section { padding: 100px 0; }
-    .steps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; position: relative; }
-    .steps-grid::before {
-        content: ''; position: absolute; top: 60px; left: 17%; right: 17%; height: 2px;
-        background: linear-gradient(90deg, transparent, #7c3aed, #22c55e, transparent); opacity: 0.3;
-    }
-    .step-card { text-align: center; position: relative; }
-    .step-number {
-        width: 64px; height: 64px; border-radius: 20px; display: flex;
-        align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 800;
-        margin: 0 auto 24px; position: relative; z-index: 2; color: white;
-    }
-    .step-1 .step-number { background: linear-gradient(135deg, #7c3aed, #6d28d9); box-shadow: 0 8px 30px rgba(124,58,237,0.25); }
-    .step-2 .step-number { background: linear-gradient(135deg, #3b82f6, #2563eb); box-shadow: 0 8px 30px rgba(59,130,246,0.25); }
-    .step-3 .step-number { background: linear-gradient(135deg, #22c55e, #16a34a); box-shadow: 0 8px 30px rgba(34,197,94,0.2); }
-    .step-card h3 { font-size: 1.3rem; font-weight: 700; margin-bottom: 12px; }
-    .step-card p { color: #94a3b8; font-size: 0.95rem; line-height: 1.65; max-width: 300px; margin: 0 auto; }
-    .step-subtitle {
-        display: inline-block; padding: 4px 12px; border-radius: 6px;
-        font-size: 0.78rem; font-weight: 600; margin-bottom: 16px;
-    }
-    .step-1 .step-subtitle { background: rgba(124,58,237,0.08); color: #a78bfa; }
-    .step-2 .step-subtitle { background: rgba(59,130,246,0.1); color: #60a5fa; }
-    .step-3 .step-subtitle { background: rgba(34,197,94,0.1); color: #4ade80; }
-
-    /* ─── ICE Preview ─── */
-    .ice-preview { display: flex; gap: 32px; justify-content: center; margin-top: 56px; }
-    .ice-item {
-        background: #1a1a28; border: 1px solid rgba(255,255,255,0.06);
-        border-radius: 10px; padding: 20px 28px; text-align: center; min-width: 140px;
-    }
-    .ice-letter { font-size: 2rem; font-weight: 800; }
-    .ice-i { color: #a78bfa; } .ice-c { color: #3b82f6; } .ice-e { color: #22c55e; }
-    .ice-word { font-size: 0.85rem; color: #94a3b8; margin-top: 4px; }
-    .ice-desc { font-size: 0.75rem; color: #64748b; margin-top: 4px; }
-
-    /* ─── Funnel Section ─── */
-    .funnel-section { padding: 80px 0; }
-    .funnel-visual { display: flex; justify-content: center; gap: 0; max-width: 800px; margin: 0 auto; }
-    .funnel-stage {
-        flex: 1; padding: 28px 16px; text-align: center; position: relative;
-        border-radius: 10px; transition: all 0.3s ease;
-    }
-    .funnel-stage:hover { transform: translateY(-4px); }
-    .funnel-stage .stage-icon { font-size: 2rem; margin-bottom: 12px; }
-    .funnel-stage h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 6px; }
-    .funnel-stage p { font-size: 0.78rem; color: #64748b; line-height: 1.4; }
-    .stage-acq { background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.15); }
-    .stage-act { background: rgba(124,58,237,0.08); border: 1px solid rgba(124,58,237,0.15); }
-    .stage-ret { background: rgba(236,72,153,0.08); border: 1px solid rgba(236,72,153,0.15); }
-    .stage-ref { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.15); }
-    .stage-rev { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.15); }
-    .funnel-arrow { display: flex; align-items: center; color: #64748b; font-size: 1.2rem; padding: 0 4px; }
-
-    /* ─── Features ─── */
-    .features-section { padding: 80px 0 100px; }
-    .features-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
-    .feature-card {
-        background: #1a1a28; border: 1px solid rgba(255,255,255,0.06);
-        border-radius: 16px; padding: 36px 32px; display: flex; gap: 20px; transition: all 0.4s ease;
-    }
-    .feature-card:hover { border-color: rgba(124,58,237,0.2); background: #22223a; transform: translateY(-2px); }
-    .feature-icon {
-        width: 52px; height: 52px; border-radius: 14px; display: flex;
-        align-items: center; justify-content: center; font-size: 1.6rem; flex-shrink: 0;
-    }
-    .feature-icon.purple { background: rgba(124,58,237,0.08); }
-    .feature-icon.blue { background: rgba(59,130,246,0.1); }
-    .feature-icon.green { background: rgba(34,197,94,0.1); }
-    .feature-icon.orange { background: rgba(245,158,11,0.1); }
-    .feature-icon.pink { background: rgba(236,72,153,0.1); }
-    .feature-icon.teal { background: rgba(20,184,166,0.1); }
-    .feature-card h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; }
-    .feature-card p { color: #94a3b8; font-size: 0.9rem; line-height: 1.55; }
-
-    /* ─── CTA ─── */
-    .cta-section { padding: 100px 0 120px; text-align: center; }
-    .cta-box {
-        background: linear-gradient(135deg, rgba(124,58,237,0.12), rgba(236,72,153,0.06));
-        border: 1px solid rgba(124,58,237,0.2); border-radius: 24px; padding: 72px 48px;
-        position: relative; overflow: hidden;
-    }
-    .cta-box::before {
-        content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
-        background: radial-gradient(circle, rgba(124,58,237,0.25) 0%, transparent 70%);
-        opacity: 0.5; pointer-events: none;
-    }
-    .cta-box h2 { font-size: clamp(2rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -1px; margin-bottom: 16px; position: relative; }
-    .cta-box p { color: #94a3b8; font-size: 1.15rem; max-width: 500px; margin: 0 auto 40px; position: relative; }
-    .cta-box .btn-primary { position: relative; font-size: 1.15rem; padding: 18px 44px; }
-
-    /* ─── Footer ─── */
-    .landing-footer {
-        padding: 32px 0; border-top: 1px solid rgba(255,255,255,0.06);
-        text-align: center; color: #64748b; font-size: 0.85rem;
+    .ln-section-lead {
+        font-size: 1.02rem; color: var(--muted); line-height: 1.6;
+        max-width: 56ch; margin-top: 18px;
     }
 
-    /* ─── Responsive ─── */
-    @media (max-width: 768px) {
-        .landing-nav { padding: 12px 20px; }
-        .hero { padding: 120px 0 60px; }
-        .problem-grid { grid-template-columns: 1fr; }
-        .steps-grid { grid-template-columns: 1fr; gap: 48px; }
-        .steps-grid::before { display: none; }
-        .features-grid { grid-template-columns: 1fr; }
-        .funnel-visual { flex-direction: column; gap: 12px; }
-        .funnel-arrow { transform: rotate(90deg); justify-content: center; }
-        .hero-cta { flex-direction: column; align-items: center; }
-        .metrics-bar { flex-wrap: wrap; gap: 24px; }
-        .ice-preview { flex-direction: column; align-items: center; }
+    /* ── Hero ── */
+    .ln-hero { padding: 116px 0 124px; }
+    .ln-hero-actions {
+        display: flex; align-items: center; gap: 28px; margin-top: 40px;
+        flex-wrap: wrap;
+    }
+    .ln-btn {
+        font-family: inherit; font-size: 0.95rem; font-weight: 500;
+        padding: 14px 28px; border: 1px solid transparent; cursor: pointer;
+        border-radius: 7px; transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+    .ln-btn:hover { transform: translateY(-1px); }
+    .ln-btn-solid { background: var(--ink); color: #fff; }
+    .ln-btn-solid:hover { opacity: 0.86; }
+    .ln-btn-light { background: #fff; color: var(--ink); }
+    .ln-btn-light:hover { opacity: 0.9; }
+    .ln-link {
+        display: inline-flex; align-items: center; gap: 7px;
+        font-size: 0.95rem; font-weight: 500; color: var(--ink);
+        text-decoration: none; transition: opacity 0.15s ease;
+    }
+    .ln-link svg { transition: transform 0.2s ease; }
+    .ln-link:hover svg { transform: translateY(3px); }
+
+    /* ── Sections ── */
+    .ln-section { padding: 104px 0; border-top: 1px solid var(--line); }
+    .ln-section-alt { background: var(--bg-alt); }
+
+    /* ── Problema ── */
+    .ln-problems {
+        display: grid; grid-template-columns: repeat(3, 1fr);
+        gap: 1px; background: var(--line); border: 1px solid var(--line);
+        margin-top: 52px;
+    }
+    .ln-problem { background: var(--bg); padding: 36px 32px; }
+    .ln-problem h3 {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1.08rem; font-weight: 600; letter-spacing: -0.01em;
+        margin-bottom: 12px;
+    }
+    .ln-problem p { font-size: 0.94rem; color: var(--muted); line-height: 1.62; }
+    .ln-section-alt .ln-problem { background: var(--bg-alt); }
+
+    /* ── Fases ── */
+    .ln-phases {
+        display: grid; grid-template-columns: repeat(3, 1fr);
+        gap: 40px; margin-top: 56px;
+    }
+    .ln-phase { padding-top: 24px; border-top: 1.5px solid var(--ink); }
+    .ln-phase-n {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 0.95rem; font-weight: 600; color: var(--muted);
+    }
+    .ln-phase-kicker {
+        display: block; margin-top: 18px;
+        font-size: 0.7rem; font-weight: 600; letter-spacing: 0.14em;
+        text-transform: uppercase; color: var(--accent);
+    }
+    .ln-phase h3 {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1.5rem; font-weight: 500; letter-spacing: -0.02em;
+        margin: 8px 0 14px;
+    }
+    .ln-phase p { font-size: 0.95rem; color: var(--muted); line-height: 1.62; }
+
+    /* ── ICE ── */
+    .ln-ice { margin-top: 72px; padding-top: 40px; border-top: 1px solid var(--line); }
+    .ln-ice-label {
+        font-size: 0.72rem; font-weight: 600; letter-spacing: 0.14em;
+        text-transform: uppercase; color: var(--muted); margin-bottom: 24px;
+    }
+    .ln-ice-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 36px; }
+    .ln-ice-item { display: flex; gap: 16px; align-items: flex-start; }
+    .ln-ice-letter {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1.7rem; font-weight: 500; line-height: 1;
+        color: var(--ink); flex-shrink: 0;
+    }
+    .ln-ice-item strong {
+        display: block; font-size: 0.95rem; font-weight: 600; margin-bottom: 3px;
+    }
+    .ln-ice-item span { font-size: 0.86rem; color: var(--muted); line-height: 1.5; }
+
+    /* ── Funnel ── */
+    .ln-funnel {
+        display: grid; grid-template-columns: repeat(5, 1fr);
+        gap: 1px; background: var(--line); border: 1px solid var(--line);
+        margin-top: 52px;
+    }
+    .ln-funnel-stage { background: var(--bg); padding: 30px 22px; }
+    .ln-funnel-n {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 0.82rem; font-weight: 600; color: var(--muted);
+    }
+    .ln-funnel-stage h3 {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1.05rem; font-weight: 600; letter-spacing: -0.01em;
+        margin: 14px 0 6px;
+    }
+    .ln-funnel-stage p { font-size: 0.83rem; color: var(--muted); line-height: 1.5; }
+
+    /* ── Funcionalidades ── */
+    .ln-features {
+        display: grid; grid-template-columns: repeat(3, 1fr);
+        gap: 1px; background: var(--line); border: 1px solid var(--line);
+        margin-top: 52px;
+    }
+    .ln-feature { background: var(--bg-alt); padding: 36px 30px; }
+    .ln-feature-icon { color: var(--ink); margin-bottom: 20px; display: block; }
+    .ln-feature h3 {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1.08rem; font-weight: 600; letter-spacing: -0.01em;
+        margin-bottom: 10px;
+    }
+    .ln-feature p { font-size: 0.92rem; color: var(--muted); line-height: 1.6; }
+
+    /* ── Cierre ── */
+    .ln-cta { background: var(--ink); color: #fff; padding: 104px 0; }
+    .ln-cta h2 {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: clamp(1.9rem, 3.4vw, 2.8rem); font-weight: 500;
+        line-height: 1.12; letter-spacing: -0.03em; max-width: 18ch;
+    }
+    .ln-cta p {
+        font-size: 1.05rem; color: rgba(255,255,255,0.62);
+        max-width: 48ch; margin: 22px 0 36px; line-height: 1.6;
+    }
+
+    /* ── Footer ── */
+    .ln-footer { border-top: 1px solid var(--line); padding: 36px 0; }
+    .ln-footer-inner {
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: 12px;
+    }
+    .ln-footer p { font-size: 0.84rem; color: var(--muted); }
+
+    /* ── Responsive ── */
+    @media (max-width: 860px) {
+        .ln-wrap { padding: 0 22px; }
+        .ln-hero { padding: 80px 0 84px; }
+        .ln-section { padding: 72px 0; }
+        .ln-cta { padding: 80px 0; }
+        .ln-problems, .ln-phases, .ln-ice-row { grid-template-columns: 1fr; }
+        .ln-phases { gap: 0; }
+        .ln-phase { margin-top: 0; }
+        .ln-features { grid-template-columns: 1fr; }
+        .ln-funnel { grid-template-columns: 1fr; }
+        .ln-ice-row { gap: 24px; }
     }
 `
