@@ -21,8 +21,8 @@ interface SettingsViewProps {
   userId?: string;
   userPanelLogoUrl?: string | null;
   onUpdateUserPanelLogo?: (logoUrl: string | null) => Promise<void>;
-  userArea?: UserArea | null;
-  onUpdateArea?: (area: UserArea) => Promise<void>;
+  userArea?: UserArea[] | null;
+  onUpdateArea?: (areas: UserArea[]) => Promise<void>;
   onResetData?: () => void;
   onSignOut?: () => void;
 }
@@ -328,38 +328,49 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
           )}
 
-          {/* My Area Section */}
+          {/* My Areas Section */}
           {onUpdateArea && (
             <div style={{
               padding: '20px', background: '#f9fafb', borderRadius: '12px',
               border: '1px solid #e5e7eb', marginBottom: '24px'
             }}>
               <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>
-                Mi área de trabajo
+                Mis áreas de trabajo
               </div>
-              <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '10px' }}>
-                Se usa para segmentar las métricas de adopción por disciplina.
+              <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '12px' }}>
+                Se usan para segmentar las métricas de adopción por disciplina. Puedes seleccionar más de una.
               </div>
-              <select
-                value={userArea || ''}
-                onChange={async (e) => {
-                  const v = e.target.value as UserArea;
-                  if (!v) return;
-                  try {
-                    await onUpdateArea(v);
-                  } catch (err) {
-                    console.error('Error updating area:', err);
-                    alert('Error al actualizar el área');
-                  }
-                }}
-                style={{
-                  padding: '10px 14px', border: '1px solid #d1d5db', borderRadius: '8px',
-                  fontSize: '14px', background: 'white', cursor: 'pointer', minWidth: '220px'
-                }}
-              >
-                <option value="" disabled>Selecciona tu área…</option>
-                {areas.map(a => <option key={a.id} value={a.name}>{a.name}</option>)}
-              </select>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {areas.map(a => {
+                  const on = (userArea || []).includes(a.name);
+                  return (
+                    <button
+                      key={a.id}
+                      onClick={async () => {
+                        const current = userArea || [];
+                        const next = on
+                          ? current.filter(x => x !== a.name)
+                          : [...current, a.name];
+                        try {
+                          await onUpdateArea(next);
+                        } catch (err) {
+                          console.error('Error updating areas:', err);
+                          alert('Error al actualizar las áreas');
+                        }
+                      }}
+                      style={{
+                        padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
+                        cursor: 'pointer',
+                        border: '2px solid ' + (on ? '#4F46E5' : '#e5e7eb'),
+                        background: on ? '#eef2ff' : 'white',
+                        color: on ? '#4F46E5' : '#374151',
+                      }}
+                    >
+                      {a.name}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
 

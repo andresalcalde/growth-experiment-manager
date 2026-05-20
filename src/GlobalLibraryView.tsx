@@ -11,7 +11,7 @@ interface GlobalExperimentRow {
   status: string;
   owner_name: string;
   owner_avatar: string;
-  owner_area: string | null;
+  owner_area: string[] | null;
   hypothesis: string;
   observation: string | null;
   problem: string | null;
@@ -70,7 +70,7 @@ export const GlobalLibraryView: React.FC = () => {
 
   const filtered = useMemo(() => {
     return rows.filter(r => {
-      if (areaFilter !== 'All' && r.owner_area !== areaFilter) return false;
+      if (areaFilter !== 'All' && !(r.owner_area || []).includes(areaFilter)) return false;
       if (brandFilter !== 'All' && r.project_name !== brandFilter) return false;
       if (search && !r.title.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
@@ -148,9 +148,9 @@ export const GlobalLibraryView: React.FC = () => {
                 <div style={{ padding: '16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
                   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
                     <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '6px', background: '#eef2ff', color: '#4F46E5' }}>{r.project_name}</span>
-                    {r.owner_area && (
-                      <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '6px', background: '#f3f4f6', color: '#6b7280' }}>{r.owner_area}</span>
-                    )}
+                    {(r.owner_area || []).map(ar => (
+                      <span key={ar} style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '6px', background: '#f3f4f6', color: '#6b7280' }}>{ar}</span>
+                    ))}
                   </div>
                   <h3 style={{ fontSize: '15px', fontWeight: 600, marginBottom: '8px', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{r.title}</h3>
                   <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', marginBottom: '12px' }}>
@@ -183,7 +183,7 @@ const DetailModal: React.FC<{ row: GlobalExperimentRow; onClose: () => void }> =
               <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
                 <span style={{ background: badge.bg, color: badge.color, padding: '3px 10px', borderRadius: '99px', fontSize: '11px', fontWeight: 700 }}>{badge.text}</span>
                 <span style={{ fontSize: '11px', fontWeight: 600, padding: '3px 10px', borderRadius: '99px', background: '#eef2ff', color: '#4F46E5' }}>{row.project_name}</span>
-                {row.owner_area && <span style={{ fontSize: '11px', fontWeight: 600, padding: '3px 10px', borderRadius: '99px', background: '#f3f4f6', color: '#6b7280' }}>{row.owner_area}</span>}
+                {(row.owner_area || []).map(ar => <span key={ar} style={{ fontSize: '11px', fontWeight: 600, padding: '3px 10px', borderRadius: '99px', background: '#f3f4f6', color: '#6b7280' }}>{ar}</span>)}
               </div>
               <h1 style={{ fontSize: '24px', lineHeight: 1.2 }}>{row.title}</h1>
             </div>

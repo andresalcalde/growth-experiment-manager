@@ -100,7 +100,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ projects, onBack }) => {
   // Adopción por área: usuarios activos (≤30d) por área
   const adoptionByArea = useMemo(() => {
     return areas.map(({ name }) => {
-      const inArea = users.filter(u => u.area === name);
+      const inArea = users.filter(u => (u.area || []).includes(name));
       const active = inArea.filter(u => daysSince(u.last_seen_at) <= 30).length;
       return { area: name, total: inArea.length, active };
     });
@@ -167,7 +167,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ projects, onBack }) => {
 
   const filteredUserRows = useMemo(() => {
     return userRows.filter(r => {
-      if (areaFilter !== 'All' && r.area !== areaFilter) return false;
+      if (areaFilter !== 'All' && !(r.area || []).includes(areaFilter)) return false;
       if (stateFilter !== 'All' && r.state !== stateFilter) return false;
       if (search) {
         const q = search.toLowerCase();
@@ -209,7 +209,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ projects, onBack }) => {
     const rows = filteredUserRows.map(r => [
       r.full_name || '',
       r.email || '',
-      r.area || '',
+      (r.area || []).join('; '),
       r.last_seen_at ? new Date(r.last_seen_at).toISOString().split('T')[0] : 'Nunca',
       String(r.activeExperiments),
       r.state,
@@ -379,7 +379,7 @@ const ManageTab: React.FC<{
                   {u.id === currentUserId && <span style={{ marginLeft: '6px', fontSize: '11px', color: '#9ca3af' }}>(tú)</span>}
                 </td>
                 <td style={{ padding: '12px 16px', fontSize: '13px', color: '#6b7280' }}>{u.email}</td>
-                <td style={{ padding: '12px 16px', fontSize: '13px' }}>{u.area || '—'}</td>
+                <td style={{ padding: '12px 16px', fontSize: '13px' }}>{u.area && u.area.length ? u.area.join(', ') : '—'}</td>
                 <td style={{ padding: '12px 16px' }}>
                   <span style={{
                     fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px',
@@ -473,7 +473,7 @@ const AreasSection: React.FC<{ users: Profile[] }> = ({ users }) => {
   };
 
   const handleDelete = async (area: UserAreaRecord) => {
-    const inUse = users.filter(u => u.area === area.name).length;
+    const inUse = users.filter(u => (u.area || []).includes(area.name)).length;
     if (inUse > 0) {
       alert(`No se puede eliminar "${area.name}": ${inUse} usuario(s) la tienen asignada. Reasígnalos primero.`);
       return;
@@ -528,7 +528,7 @@ const AreasSection: React.FC<{ users: Profile[] }> = ({ users }) => {
         {areas.length === 0 ? (
           <div style={{ fontSize: '13px', color: '#9ca3af' }}>Aún no hay áreas.</div>
         ) : areas.map(a => {
-          const inUse = users.filter(u => u.area === a.name).length;
+          const inUse = users.filter(u => (u.area || []).includes(a.name)).length;
           return (
             <div
               key={a.id}
@@ -727,7 +727,7 @@ const UsageTab: React.FC<{
                     {r.full_name || '—'}
                     <div style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 400 }}>{r.email}</div>
                   </td>
-                  <td style={{ padding: '10px 16px', fontSize: '13px' }}>{r.area || '—'}</td>
+                  <td style={{ padding: '10px 16px', fontSize: '13px' }}>{r.area && r.area.length ? r.area.join(', ') : '—'}</td>
                   <td style={{ padding: '10px 16px', fontSize: '13px', color: '#6b7280' }}>
                     {r.last_seen_at ? new Date(r.last_seen_at).toLocaleDateString() : 'Nunca'}
                   </td>

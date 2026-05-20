@@ -25,7 +25,7 @@ export interface Profile {
     avatar_url: string | null
     global_role: GlobalRole
     panel_logo_url: string | null
-    area: UserArea | null
+    area: UserArea[] | null
     last_seen_at: string | null
 }
 
@@ -40,7 +40,7 @@ interface AuthContextValue {
     signUp: (email: string, password: string, fullName?: string) => Promise<{ error: any }>
     signOut: () => Promise<void>
     updatePanelLogo: (logoUrl: string | null) => Promise<void>
-    updateArea: (area: UserArea) => Promise<void>
+    updateArea: (areas: UserArea[]) => Promise<void>
     updateUserGlobalRole: (userId: string, role: GlobalRole) => Promise<void>
     addArea: (name: string) => Promise<void>
     deleteArea: (id: string) => Promise<void>
@@ -261,14 +261,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile((prev) => (prev ? { ...prev, panel_logo_url: logoUrl } : prev))
     }
 
-    const updateArea = async (area: UserArea) => {
+    const updateArea = async (areas: UserArea[]) => {
         if (!session?.user) throw new Error('Not authenticated')
         const { error } = await supabase
             .from('profiles')
-            .update({ area })
+            .update({ area: areas })
             .eq('id', session.user.id)
         if (error) throw error
-        setProfile((prev) => (prev ? { ...prev, area } : prev))
+        setProfile((prev) => (prev ? { ...prev, area: areas } : prev))
     }
 
     const addArea = async (name: string) => {
