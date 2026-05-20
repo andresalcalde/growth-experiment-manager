@@ -4,7 +4,7 @@ import { LandingPage } from './LandingPage'
 
 /**
  * AuthGate wraps the app and shows a login/signup screen when not authenticated.
- * The visual design matches the existing Growth Lab aesthetic.
+ * The visual design matches the existing Growth Hub aesthetic.
  */
 export function AuthGate({ children }: { children: React.ReactNode }) {
     const { session, loading, signIn, signUp } = useAuth()
@@ -42,7 +42,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                         animation: 'spin 1s linear infinite',
                     }} />
                     <span style={{ color: 'white', fontSize: '16px', fontWeight: 500, opacity: 0.9 }}>
-                        Inicializando Growth Lab...
+                        Inicializando Growth Hub...
                     </span>
                 </div>
                 <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -122,7 +122,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                             letterSpacing: '-0.5px',
                             color: '#1a1a2e',
                         }}>
-                            Growth Lab
+                            Growth Hub
                         </span>
                     </div>
                     <p style={{

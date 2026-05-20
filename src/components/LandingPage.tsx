@@ -21,7 +21,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                             <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" fill="#4F46E5" stroke="#4F46E5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                             <circle cx="12" cy="12" r="10" stroke="#4F46E5" strokeWidth="1" strokeDasharray="2 2" />
                         </svg>
-                        Growth Lab
+                        Growth Hub
                     </div>
                     <button className="nav-btn" onClick={onLogin}>
                         Iniciar Sesión →
