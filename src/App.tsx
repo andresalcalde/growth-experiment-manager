@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   Plus,
   LayoutDashboard,
@@ -50,6 +50,9 @@ import { NorthStarBar } from './components/NorthStarBar';
 import { StatusChip } from './components/StatusChip';
 import { useProjectContext } from './contexts/ProjectContext';
 import { useAuth } from './contexts/AuthContext';
+import { AdminView } from './AdminView';
+import { GlobalLibraryView } from './GlobalLibraryView';
+import { AreaPromptModal } from './components/AreaPromptModal';
 
 
 // Original MOCK_EXPERIMENTS replaced with Laboratorio Polanco data
@@ -57,19 +60,6 @@ import { useAuth } from './contexts/AuthContext';
 
 // Board only shows these columns
 const BOARD_COLUMNS: Status[] = ['Prioritized', 'Building', 'Live Testing', 'Analysis'];
-
-
-const getStatusColor = (status: Status) => {
-  switch (status) {
-    case 'Idea': return 'var(--status-idea)';
-    case 'Prioritized': return 'var(--status-prioritized)';
-    case 'Live Testing': return 'var(--status-testing)';
-    case 'Building': return 'var(--status-dev)';
-    case 'Finished - Winner': return 'var(--status-winner)';
-    case 'Finished - Loser': return 'var(--status-loser)';
-    default: return 'var(--status-inconclusive)';
-  }
-};
 
 
 const IceBadge = ({ impact, confidence, ease, score }: { impact: number, confidence: number, ease: number, score: number }) => {
@@ -272,7 +262,7 @@ const LibraryCard = ({ experiment, onClick }: { experiment: Experiment; onClick:
           {experiment.title}
         </h3>
         <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.5', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', marginBottom: '16px' }}>
-          {experiment.keyLearnings || experiment.hypothesis}
+          {experiment.verdict || experiment.keyLearnings || experiment.hypothesis}
         </p>
 
         <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-subtle)', borderTop: '1px solid var(--border-subtle)', paddingTop: '12px' }}>
@@ -332,8 +322,12 @@ const CaseStudyModal = ({ experiment, onClose }: { experiment: Experiment; onClo
                 <h3 style={{ fontSize: '14px', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-subtle)', marginBottom: '12px' }}>The Evidence</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   {experiment.visualProof?.map((proof, i) => (
-                    <div key={i} style={{ aspectRatio: '16/9', background: '#f3f4f6', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-subtle)' }}>
-                      <span style={{ fontSize: '12px', color: 'var(--text-subtle)' }}>{proof}</span>
+                    <div key={i} style={{ aspectRatio: '16/9', background: '#f3f4f6', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-subtle)', overflow: 'hidden' }}>
+                      {isUrl(proof) ? (
+                        <img src={proof} alt="Evidencia visual" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                      ) : (
+                        <span style={{ fontSize: '12px', color: 'var(--text-subtle)' }}>{proof}</span>
+                      )}
                     </div>
                   ))}
                   {(!experiment.visualProof || experiment.visualProof.length === 0) && (
@@ -344,11 +338,20 @@ const CaseStudyModal = ({ experiment, onClose }: { experiment: Experiment; onClo
                 </div>
               </div>
 
-              <div>
+              <div style={{ marginBottom: '32px' }}>
                 <h3 style={{ fontSize: '14px', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-subtle)', marginBottom: '12px' }}>The Verdict</h3>
                 <div style={{ background: highlightColor, padding: '24px', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.05)' }}>
                   <p style={{ fontSize: '18px', fontWeight: 500, lineHeight: '1.5' }}>
-                    {experiment.keyLearnings || "No key learnings recorded."}
+                    {experiment.verdict || experiment.keyLearnings || "Sin veredicto registrado."}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <h3 style={{ fontSize: '14px', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-subtle)', marginBottom: '12px' }}>Key Learnings</h3>
+                <div style={{ background: 'var(--bg-sidebar)', padding: '24px', borderRadius: '12px', border: '1px solid var(--border-subtle)' }}>
+                  <p style={{ fontSize: '15px', lineHeight: '1.6', color: 'var(--text-main)' }}>
+                    {experiment.keyLearnings || "Sin Key Learnings detallados. Edítalos en el detalle del experimento."}
                   </p>
                 </div>
               </div>
@@ -396,9 +399,9 @@ const CaseStudyModal = ({ experiment, onClose }: { experiment: Experiment; onClo
 
 const App: React.FC = () => {
   if (import.meta.env.DEV) console.log("App rendering");
-  const [view, setView] = useState<'portfolio' | 'board' | 'table' | 'library' | 'roadmap'>('portfolio');
+  const [view, setView] = useState<'portfolio' | 'board' | 'table' | 'library' | 'roadmap' | 'admin'>('portfolio');
 
-  const { signOut, profile } = useAuth();
+  const { signOut, profile, updatePanelLogo, updateArea, isSuperAdmin } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   // Multi-Project State Management via Context
@@ -421,9 +424,12 @@ const App: React.FC = () => {
     deleteStrategy,
     addExperiment,
     updateExperiment,
+    deleteExperiment,
     setExperiments,
     createProject: ctxCreateProject,
+    deleteProject,
     updateProjectLogo,
+    updateProjectName,
     addTeamMember: ctxAddTeamMember,
     updateTeamMemberRole: ctxUpdateTeamMemberRole,
     removeTeamMember: ctxRemoveTeamMember,
@@ -445,6 +451,7 @@ const App: React.FC = () => {
   // Library Filters
   const [libraryFilterResult, setLibraryFilterResult] = useState<'All' | 'Winners' | 'Losers'>('All');
   const [libraryFilterStage, setLibraryFilterStage] = useState<string>('All');
+  const [libraryMode, setLibraryMode] = useState<'project' | 'global'>('project');
   const [iceSortDirection, setIceSortDirection] = useState<'desc' | 'asc'>('desc'); // Default: highest first
 
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -537,7 +544,7 @@ const App: React.FC = () => {
     if (pendingExperimentId && pendingStatus) {
       updateExperiment(pendingExperimentId, {
         status: pendingStatus,
-        keyLearnings: learning,
+        verdict: learning,
         endDate: new Date().toISOString().split('T')[0]
       });
       setIsLearningModalOpen(false);
@@ -552,6 +559,11 @@ const App: React.FC = () => {
     if (selectedExperiment && selectedExperiment.id === id) {
       setSelectedExperiment(prev => prev ? { ...prev, ...updates } : null);
     }
+  };
+
+  const handleDeleteExperiment = (id: string) => {
+    deleteExperiment(id);
+    setSelectedExperiment(null);
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -709,6 +721,12 @@ const App: React.FC = () => {
     }
   };
 
+  const handleDeleteProject = async (id: string) => {
+    await deleteProject(id);
+    setIsSettingsOpen(false);
+    setView('portfolio');
+  };
+
   // Team Management Handlers
   const handleAddTeamMember = (member: TeamMember) => {
     ctxAddTeamMember(member.email, member.role);
@@ -731,6 +749,15 @@ const App: React.FC = () => {
   // ============================================================================
 
   // Portfolio View - Show when no project is selected or view is 'portfolio'
+  if (view === 'admin' && isSuperAdmin) {
+    return (
+      <>
+        <AdminView projects={projects} onBack={() => setView('portfolio')} />
+        <AreaPromptModal />
+      </>
+    );
+  }
+
   if (view === 'portfolio') {
     return (
       <>
@@ -739,12 +766,14 @@ const App: React.FC = () => {
           onSelectProject={handleSelectProjectFromPortfolio}
           onCreateProject={() => setIsCreateProjectOpen(true)}
           onSignOut={signOut}
+          onOpenAdmin={isSuperAdmin ? () => setView('admin') : undefined}
         />
         <CreateProjectModal
           isOpen={isCreateProjectOpen}
           onClose={() => setIsCreateProjectOpen(false)}
           onSave={handleCreateProject}
         />
+        <AreaPromptModal />
       </>
     );
   }
@@ -761,6 +790,12 @@ const App: React.FC = () => {
               alt={activeProject.metadata.name}
               style={{ width: '32px', height: '32px', borderRadius: '8px', objectFit: 'cover' }}
             />
+          ) : profile?.panel_logo_url ? (
+            <img
+              src={profile.panel_logo_url}
+              alt="Panel logo"
+              style={{ width: '32px', height: '32px', borderRadius: '8px', objectFit: 'cover' }}
+            />
           ) : (
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" fill="#4F46E5" stroke="#4F46E5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -768,7 +803,11 @@ const App: React.FC = () => {
             </svg>
           )}
           <span style={{ fontWeight: 800, fontSize: '18px', letterSpacing: '-0.5px', fontFamily: 'var(--font-sans)' }}>
-            {activeProject?.metadata.logoUrl ? activeProject.metadata.name : 'Growth Lab'}
+            {activeProject?.metadata.logoUrl
+              ? activeProject.metadata.name
+              : profile?.panel_logo_url
+                ? ''
+                : 'Growth Hub'}
           </span>
         </div>
 
@@ -1172,7 +1211,28 @@ const App: React.FC = () => {
           </div>
           </>
         ) : view === 'library' ? (
-          <div style={{ padding: '0 32px 32px 32px', overflowY: 'auto', height: '100%' }}>
+          <div style={{ overflowY: 'auto', height: '100%' }}>
+            {/* Library mode toggle: este proyecto vs biblioteca global */}
+            <div style={{ display: 'flex', gap: '8px', padding: '24px 32px 0' }}>
+              {(['project', 'global'] as const).map(mode => (
+                <button
+                  key={mode}
+                  onClick={() => setLibraryMode(mode)}
+                  style={{
+                    padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+                    border: '1px solid ' + (libraryMode === mode ? '#4F46E5' : 'var(--border-subtle)'),
+                    background: libraryMode === mode ? '#eef2ff' : 'white',
+                    color: libraryMode === mode ? '#4F46E5' : 'var(--text-muted)',
+                  }}
+                >
+                  {mode === 'project' ? 'Este Proyecto' : 'Biblioteca Global'}
+                </button>
+              ))}
+            </div>
+            {libraryMode === 'global' ? (
+              <GlobalLibraryView />
+            ) : (
+            <div style={{ padding: '0 32px 32px 32px' }}>
             {/* Filter Tabs */}
             <div style={{ display: 'flex', gap: '16px', margin: '24px 0', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '16px' }}>
               {['All', 'Winners', 'Losers'].map(f => (
@@ -1221,6 +1281,8 @@ const App: React.FC = () => {
                 ))}
               </div>
             )}
+            </div>
+            )}
           </div>
         ) : view === 'roadmap' ? (
           <RoadmapView
@@ -1251,6 +1313,7 @@ const App: React.FC = () => {
           objectives={objectives}
           strategies={strategies}
           onExperimentUpdate={handleExperimentUpdate}
+          onDelete={handleDeleteExperiment}
           teamMembers={teamMembers}
         />
       )}
@@ -1297,8 +1360,17 @@ const App: React.FC = () => {
         onRemoveMember={handleRemoveTeamMember}
         onUpdateMember={handleUpdateTeamMember}
         onUpdateProjectLogo={updateProjectLogo}
+        onUpdateProjectName={updateProjectName}
+        onDeleteProject={handleDeleteProject}
+        userId={profile?.id}
+        userPanelLogoUrl={profile?.panel_logo_url ?? null}
+        onUpdateUserPanelLogo={updatePanelLogo}
+        userArea={profile?.area ?? null}
+        onUpdateArea={updateArea}
         onSignOut={signOut}
       />
+
+      <AreaPromptModal />
     </div>
   );
 };

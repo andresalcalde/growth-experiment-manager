@@ -4,10 +4,12 @@ import {
     TrendingUp,
     ChevronRight,
     Plus,
-    Search
+    Search,
+    Shield
 } from 'lucide-react';
 import type { Project } from './types';
 import { SectionGuide } from './components/SectionGuide';
+import { useAuth } from './contexts/AuthContext';
 
 // ============================================================================
 // RoleBadge Component
@@ -231,6 +233,7 @@ interface PortfolioViewProps {
     onSelectProject: (projectId: string) => void;
     onCreateProject: () => void;
     onSignOut?: () => void;
+    onOpenAdmin?: () => void;
 }
 
 export const PortfolioView: React.FC<PortfolioViewProps> = ({
@@ -238,7 +241,9 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
     onSelectProject,
     onCreateProject,
     onSignOut,
+    onOpenAdmin,
 }) => {
+    const { profile } = useAuth();
     const [showUserMenu, setShowUserMenu] = React.useState(false);
     const [searchQuery, setSearchQuery] = React.useState('');
 
@@ -263,12 +268,36 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                        <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" fill="#4F46E5" stroke="#4F46E5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                    <span style={{ fontWeight: 800, fontSize: '17px', letterSpacing: '-0.5px', color: '#111827' }}>Growth Lab</span>
+                    {profile?.panel_logo_url ? (
+                        <img
+                            src={profile.panel_logo_url}
+                            alt="Panel logo"
+                            style={{ width: '28px', height: '28px', borderRadius: '6px', objectFit: 'cover' }}
+                        />
+                    ) : (
+                        <>
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                                <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" fill="#4F46E5" stroke="#4F46E5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                            <span style={{ fontWeight: 800, fontSize: '17px', letterSpacing: '-0.5px', color: '#111827' }}>Growth Hub</span>
+                        </>
+                    )}
                 </div>
-                <div style={{ position: 'relative' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  {onOpenAdmin && (
+                    <button
+                      onClick={onOpenAdmin}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px',
+                        border: '1px solid #c7d2fe', borderRadius: '8px', background: '#eef2ff',
+                        color: '#4F46E5', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+                      }}
+                    >
+                      <Shield size={16} />
+                      Admin
+                    </button>
+                  )}
+                  <div style={{ position: 'relative' }}>
                     <div
                         onClick={() => setShowUserMenu(!showUserMenu)}
                         style={{
@@ -295,6 +324,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                             </div>
                         </>
                     )}
+                  </div>
                 </div>
             </div>
 
