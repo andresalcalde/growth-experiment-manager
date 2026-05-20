@@ -25,24 +25,24 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                background: '#f6f5f1',
             }}>
                 <div style={{
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    gap: '20px',
+                    gap: '16px',
                 }}>
                     <div style={{
-                        width: '48px',
-                        height: '48px',
-                        border: '4px solid rgba(255,255,255,0.3)',
-                        borderTopColor: 'white',
+                        width: '32px',
+                        height: '32px',
+                        border: '2.5px solid rgba(17,17,20,0.15)',
+                        borderTopColor: '#111114',
                         borderRadius: '50%',
-                        animation: 'spin 1s linear infinite',
+                        animation: 'spin 0.7s linear infinite',
                     }} />
-                    <span style={{ color: 'white', fontSize: '16px', fontWeight: 500, opacity: 0.9 }}>
-                        Inicializando Growth Hub...
+                    <span style={{ color: '#74747c', fontSize: '14px', fontWeight: 500 }}>
+                        Inicializando Growth Hub…
                     </span>
                 </div>
                 <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -93,16 +93,16 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            background: '#f6f5f1',
             padding: '20px',
         }}>
             <div style={{
                 width: '100%',
-                maxWidth: '420px',
+                maxWidth: '400px',
                 background: 'white',
-                borderRadius: '20px',
-                padding: '48px 40px',
-                boxShadow: '0 25px 60px rgba(0,0,0,0.3)',
+                borderRadius: '10px',
+                padding: '44px 38px',
+                border: '1px solid rgba(17,17,20,0.12)',
             }}>
                 {/* Logo */}
                 <div style={{ textAlign: 'center', marginBottom: '32px' }}>
@@ -112,15 +112,15 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                         gap: '12px',
                         marginBottom: '8px',
                     }}>
-                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" fill="#4F46E5" stroke="#4F46E5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            <circle cx="12" cy="12" r="10" stroke="#4F46E5" strokeWidth="1" strokeDasharray="2 2" />
+                        <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" fill="#4F46E5" />
                         </svg>
                         <span style={{
-                            fontWeight: 800,
-                            fontSize: '22px',
-                            letterSpacing: '-0.5px',
-                            color: '#1a1a2e',
+                            fontFamily: "'Space Grotesk', sans-serif",
+                            fontWeight: 600,
+                            fontSize: '20px',
+                            letterSpacing: '-0.01em',
+                            color: '#111114',
                         }}>
                             Growth Hub
                         </span>
@@ -274,7 +274,7 @@ const labelStyle: React.CSSProperties = {
 const inputStyle: React.CSSProperties = {
     width: '100%',
     padding: '12px 14px',
-    borderRadius: '10px',
+    borderRadius: '8px',
     border: '1px solid #e5e7eb',
     fontSize: '14px',
     outline: 'none',
@@ -284,15 +284,14 @@ const inputStyle: React.CSSProperties = {
 
 const buttonStyle: React.CSSProperties = {
     width: '100%',
-    padding: '14px',
-    borderRadius: '12px',
+    padding: '13px',
+    borderRadius: '8px',
     border: 'none',
-    background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)',
+    background: '#111114',
     color: 'white',
-    fontSize: '15px',
-    fontWeight: 700,
+    fontSize: '14px',
+    fontWeight: 600,
     cursor: 'pointer',
     marginTop: '8px',
-    transition: 'transform 0.1s, box-shadow 0.2s',
-    boxShadow: '0 4px 14px rgba(79, 70, 229, 0.4)',
+    transition: 'opacity 0.15s ease',
 }
