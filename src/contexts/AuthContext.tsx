@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react'
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { logActivity } from '../lib/activityLog'
 import type { Session, User } from '@supabase/supabase-js'
 
 // ============================================================================
@@ -8,12 +9,24 @@ import type { Session, User } from '@supabase/supabase-js'
 
 export type GlobalRole = 'superadmin' | 'user'
 
+// Las áreas ya no son un enum fijo: se gestionan desde la tabla `user_areas`.
+// `UserArea` queda como alias de string para compatibilidad con imports previos.
+export type UserArea = string
+
+export interface UserAreaRecord {
+    id: string
+    name: string
+}
+
 export interface Profile {
     id: string
     email: string
     full_name: string | null
     avatar_url: string | null
     global_role: GlobalRole
+    panel_logo_url: string | null
+    area: UserArea | null
+    last_seen_at: string | null
 }
 
 interface AuthContextValue {
@@ -22,9 +35,15 @@ interface AuthContextValue {
     profile: Profile | null
     loading: boolean
     isSuperAdmin: boolean
+    areas: UserAreaRecord[]
     signIn: (email: string, password: string) => Promise<{ error: any }>
     signUp: (email: string, password: string, fullName?: string) => Promise<{ error: any }>
     signOut: () => Promise<void>
+    updatePanelLogo: (logoUrl: string | null) => Promise<void>
+    updateArea: (area: UserArea) => Promise<void>
+    updateUserGlobalRole: (userId: string, role: GlobalRole) => Promise<void>
+    addArea: (name: string) => Promise<void>
+    deleteArea: (id: string) => Promise<void>
 }
 
 // ============================================================================
@@ -40,6 +59,27 @@ export function useAuth(): AuthContextValue {
 }
 
 // ============================================================================
+// last_seen_at — ping con throttle (1× cada 15 min) para evitar amplificación
+// de escritura por los múltiples disparos de onAuthStateChange (focus de tab).
+// ============================================================================
+
+async function pingLastSeen(userId: string) {
+    try {
+        const key = 'lastSeenPing'
+        const last = localStorage.getItem(key)
+        const now = Date.now()
+        if (last && now - Number(last) < 15 * 60 * 1000) return
+        localStorage.setItem(key, String(now))
+        await supabase
+            .from('profiles')
+            .update({ last_seen_at: new Date().toISOString() })
+            .eq('id', userId)
+    } catch (err) {
+        console.warn('last_seen ping failed (non-critical):', err)
+    }
+}
+
+// ============================================================================
 // Provider
 // ============================================================================
 
@@ -47,6 +87,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [session, setSession] = useState<Session | null>(null)
     const [profile, setProfile] = useState<Profile | null>(null)
     const [loading, setLoading] = useState(true)
+    const [areas, setAreas] = useState<UserAreaRecord[]>([])
+
+    // Áreas: legibles por todos (RLS select=true), se cargan al montar.
+    const loadAreas = useCallback(async () => {
+        const { data, error } = await supabase
+            .from('user_areas')
+            .select('id, name')
+            .order('name')
+        if (error) {
+            console.error('Error loading areas:', error)
+            return
+        }
+        setAreas((data as UserAreaRecord[]) || [])
+    }, [])
+
+    // Carga inicial de áreas (fetch on mount); el setState ocurre tras el await.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    useEffect(() => { loadAreas() }, [loadAreas])
 
     // Helper: check if error is an abort (safe to ignore)
     const isAbortError = (err: any) =>
@@ -110,6 +168,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     const p = await fetchProfile(existingSession.user.id)
                     if (cancelled) return
                     setProfile(p)
+                    pingLastSeen(existingSession.user.id)
                 } catch (err: any) {
                     if (isAbortError(err)) return
                     console.error('Profile fetch failed:', err)
@@ -142,6 +201,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         const p = await fetchProfile(newSession.user.id)
                         if (cancelled) return
                         setProfile(p)
+                        pingLastSeen(newSession.user.id)
                     } catch (err: any) {
                         if (isAbortError(err)) return
                         console.error('Profile fetch failed on auth change:', err)
@@ -191,15 +251,75 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem('lastActiveProjectId')
     }
 
+    const updatePanelLogo = async (logoUrl: string | null) => {
+        if (!session?.user) throw new Error('Not authenticated')
+        const { error } = await supabase
+            .from('profiles')
+            .update({ panel_logo_url: logoUrl })
+            .eq('id', session.user.id)
+        if (error) throw error
+        setProfile((prev) => (prev ? { ...prev, panel_logo_url: logoUrl } : prev))
+    }
+
+    const updateArea = async (area: UserArea) => {
+        if (!session?.user) throw new Error('Not authenticated')
+        const { error } = await supabase
+            .from('profiles')
+            .update({ area })
+            .eq('id', session.user.id)
+        if (error) throw error
+        setProfile((prev) => (prev ? { ...prev, area } : prev))
+    }
+
+    const addArea = async (name: string) => {
+        const trimmed = name.trim()
+        if (!trimmed) throw new Error('El nombre del área no puede estar vacío')
+        // RLS exige superadmin para insertar.
+        const { error } = await supabase.from('user_areas').insert({ name: trimmed })
+        if (error) throw error
+        await loadAreas()
+    }
+
+    const deleteArea = async (id: string) => {
+        // RLS exige superadmin para eliminar.
+        const { error } = await supabase.from('user_areas').delete().eq('id', id)
+        if (error) throw error
+        await loadAreas()
+    }
+
+    const updateUserGlobalRole = async (userId: string, role: GlobalRole) => {
+        // El trigger trg_protect_global_role en la DB exige superadmin y bloquea
+        // degradar al último superadmin; aquí solo propagamos el error.
+        const { error } = await supabase
+            .from('profiles')
+            .update({ global_role: role })
+            .eq('id', userId)
+        if (error) throw error
+        if (session?.user) {
+            logActivity({
+                userId: session.user.id,
+                action: 'role_changed',
+                entityType: 'profile',
+                entityId: userId,
+            })
+        }
+    }
+
     const value: AuthContextValue = {
         session,
         user: session?.user || null,
         profile,
         loading,
         isSuperAdmin: profile?.global_role === 'superadmin',
+        areas,
         signIn,
         signUp,
         signOut,
+        updatePanelLogo,
+        updateArea,
+        updateUserGlobalRole,
+        addArea,
+        deleteArea,
     }
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
