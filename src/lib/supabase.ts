@@ -21,6 +21,23 @@ if (!supabaseUrl || !supabaseAnonKey) {
  */
 let cachedAccessToken: string | null = null
 
+/**
+ * Token readiness gate.
+ *
+ * The cached token is populated asynchronously (getSession() below). Any query
+ * that fires before that resolves would go out with only the anon key, which
+ * RLS blocks → empty/broken screens that "fix themselves" on reload.
+ *
+ * customFetch awaits this gate so authenticated queries wait for the initial
+ * token. A 2s timeout guarantees customFetch can never hang (e.g. if the
+ * token endpoint itself routes through customFetch during a refresh).
+ */
+let tokenReady = false
+let resolveTokenReady: () => void = () => {}
+const tokenReadyPromise = new Promise<void>((resolve) => {
+  resolveTokenReady = resolve
+})
+
 export function setCachedAccessToken(token: string | null) {
   cachedAccessToken = token
 }
@@ -30,6 +47,13 @@ export function setCachedAccessToken(token: string | null) {
  * This bypasses Supabase's internal fetchWithAuth → getSession() → navigator.locks chain.
  */
 const customFetch: typeof fetch = async (input, init) => {
+  if (!tokenReady) {
+    await Promise.race([
+      tokenReadyPromise,
+      new Promise<void>((resolve) => setTimeout(resolve, 2000)),
+    ])
+  }
+
   const headers = new Headers(init?.headers)
 
   if (!headers.has('apikey')) {
@@ -50,7 +74,7 @@ const customFetch: typeof fetch = async (input, init) => {
  * (getSession -> token refresh -> storage) never releases, blocking
  * all subsequent Supabase calls forever.
  */
-const simpleLock = async (name: string, _mode: any, callback: any) => {
+const simpleLock = async (_name: string, _mode: any, callback: any) => {
   // If called with 2 args: lock(name, callback)
   const cb = typeof _mode === 'function' ? _mode : callback
   return await cb()
@@ -77,6 +101,9 @@ supabase.auth.getSession().then(({ data }) => {
   }
 }).catch(err => {
   console.warn('⚠️ Could not get initial session:', err?.message)
+}).finally(() => {
+  tokenReady = true
+  resolveTokenReady()
 })
 
 // Keep the token updated via auth state changes
