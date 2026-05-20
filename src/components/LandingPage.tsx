@@ -1,5 +1,5 @@
 import React from 'react'
-import { Target, Route, BarChart3, Columns3, FolderKanban, BookOpen, ArrowDown, ArrowRight } from 'lucide-react'
+import { Target, Route, BarChart3, Columns3, FolderKanban, BookOpen, ArrowRight } from 'lucide-react'
 
 interface LandingPageProps {
     onLogin: () => void
@@ -60,9 +60,10 @@ const FEATURES = [
 ]
 
 const PREVIEW_BOARD = [
-    { label: 'Building', count: 2, cards: [{ t: 'Checkout en 2 pasos', ice: 88 }, { t: 'Hero — copy A/B', ice: 84 }] },
-    { label: 'Live Testing', count: 1, cards: [{ t: 'Secuencia de onboarding', ice: 91 }] },
-    { label: 'Analysis', count: 1, cards: [{ t: 'Rediseño de pricing', ice: 72 }] },
+    { label: 'Prioritized', cards: [{ t: 'Rediseño de pricing', ice: 76 }, { t: 'Incentivo de referidos', ice: 68 }] },
+    { label: 'Building', cards: [{ t: 'Checkout en 2 pasos', ice: 88 }, { t: 'Hero — copy A/B', ice: 84 }] },
+    { label: 'Live Testing', cards: [{ t: 'Secuencia de onboarding', ice: 91 }] },
+    { label: 'Analysis', cards: [{ t: 'Búsqueda con filtros', ice: 72 }] },
 ]
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
@@ -92,13 +93,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
                 {/* ── Hero ── */}
                 <header className="ln-hero">
-                    <div className="ln-wrap ln-hero-grid">
-                        <div className="ln-hero-copy">
-                            <p className="ln-eyebrow"><i className="ln-rule" />Plataforma de growth</p>
-                            <h1 className="ln-h1">
-                                Del caos a la claridad en tu
-                                estrategia de <em>crecimiento</em>.
-                            </h1>
+                    <div className="ln-wrap">
+                        <p className="ln-eyebrow"><i className="ln-rule" />Plataforma de growth</p>
+                        <h1 className="ln-h1">
+                            Del caos a la claridad en tu
+                            estrategia de <em>crecimiento</em>.
+                        </h1>
+                        <div className="ln-hero-row">
                             <p className="ln-lead">
                                 Diseña hipótesis, prioriza con ICE scoring, ejecuta experimentos
                                 y documenta los aprendizajes clave. Un solo lugar para el trabajo
@@ -106,20 +107,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                             </p>
                             <div className="ln-hero-actions">
                                 <button className="ln-btn ln-btn-solid" onClick={onLogin}>
-                                    Entrar a la plataforma
+                                    Entrar a la plataforma <ArrowRight size={16} />
                                 </button>
-                                <a href="#metodologia" className="ln-link">
-                                    Ver la metodología <ArrowDown size={15} />
-                                </a>
+                                <a href="#metodologia" className="ln-link">Ver la metodología</a>
                             </div>
                         </div>
+                    </div>
 
-                        {/* Product preview */}
+                    {/* Product preview */}
+                    <div className="ln-wrap">
                         <div className="ln-preview" aria-hidden="true">
                             <div className="ln-preview-bar">
                                 <span className="ln-preview-mark" />
                                 <span className="ln-preview-name">Acquisition Q2</span>
                                 <span className="ln-preview-tabs">
+                                    <span>Design</span>
                                     <span>Explore</span>
                                     <span className="on">Be Agile</span>
                                     <span>Learning</span>
@@ -129,16 +131,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                                 <div className="ln-preview-ns">
                                     <div className="ln-preview-ns-head">
                                         <span>North Star · Revenue</span>
-                                        <strong>$1.24M</strong>
+                                        <strong>$1.24M <i>/ $2M</i></strong>
                                     </div>
-                                    <div className="ln-preview-track"><i style={{ width: '64%' }} /></div>
+                                    <div className="ln-preview-track"><i style={{ width: '62%' }} /></div>
                                 </div>
                                 <div className="ln-preview-board">
                                     {PREVIEW_BOARD.map(col => (
                                         <div key={col.label} className="ln-preview-col">
                                             <div className="ln-preview-colhead">
                                                 <span>{col.label}</span>
-                                                <span className="ln-preview-count">{col.count}</span>
+                                                <span className="ln-preview-count">{col.cards.length}</span>
                                             </div>
                                             {col.cards.map(c => (
                                                 <div key={c.t} className="ln-preview-card">
@@ -334,7 +336,7 @@ const landingStyles = `
     }
     .landing * { margin: 0; padding: 0; box-sizing: border-box; }
 
-    .ln-wrap { max-width: 1140px; margin: 0 auto; padding: 0 32px; }
+    .ln-wrap { max-width: 1160px; margin: 0 auto; padding: 0 32px; }
 
     /* ── Nav ── */
     .ln-nav {
@@ -368,156 +370,157 @@ const landingStyles = `
     /* ── Shared type ── */
     .ln-eyebrow {
         display: flex; align-items: center; gap: 12px;
-        font-size: 0.72rem; font-weight: 600; letter-spacing: 0.16em;
-        text-transform: uppercase; color: var(--muted); margin-bottom: 22px;
+        font-size: 0.74rem; font-weight: 600; letter-spacing: 0.16em;
+        text-transform: uppercase; color: var(--muted); margin-bottom: 28px;
     }
-    .ln-rule { display: block; width: 28px; height: 1px; background: var(--ink); opacity: 0.55; }
-    .ln-h1 {
-        font-family: 'Space Grotesk', sans-serif;
-        font-size: clamp(2.3rem, 3.9vw, 3.5rem); font-weight: 500;
-        line-height: 1.07; letter-spacing: -0.035em;
-    }
-    .ln-h1 em { font-style: italic; font-weight: 500; }
+    .ln-rule { display: block; width: 30px; height: 1px; background: var(--ink); opacity: 0.55; }
     .ln-h2 {
         font-family: 'Space Grotesk', sans-serif;
-        font-size: clamp(1.85rem, 3.2vw, 2.6rem); font-weight: 500;
-        line-height: 1.12; letter-spacing: -0.03em; max-width: 20ch;
+        font-size: clamp(2rem, 3.6vw, 3rem); font-weight: 500;
+        line-height: 1.1; letter-spacing: -0.032em; max-width: 19ch;
     }
-    .ln-lead {
-        font-size: 1.08rem; color: var(--ink-soft); line-height: 1.62;
-        max-width: 46ch; margin-top: 24px;
-    }
-    .ln-section-head { margin-bottom: 52px; }
+    .ln-section-head { margin-bottom: 56px; }
     .ln-section-lead {
-        font-size: 1.02rem; color: var(--muted); line-height: 1.6;
-        max-width: 56ch; margin-top: 16px;
+        font-size: 1.05rem; color: var(--muted); line-height: 1.6;
+        max-width: 58ch; margin-top: 18px;
     }
 
     /* ── Hero ── */
-    .ln-hero { padding: 92px 0 100px; }
-    .ln-hero-grid {
-        display: grid; grid-template-columns: 1fr 1.04fr;
-        gap: 56px; align-items: center;
+    .ln-hero { padding: 84px 0 108px; }
+    .ln-h1 {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: clamp(2.7rem, 7vw, 5.2rem); font-weight: 500;
+        line-height: 1.02; letter-spacing: -0.04em; max-width: 17ch;
+    }
+    .ln-h1 em { font-style: italic; font-weight: 500; color: var(--accent); }
+    .ln-hero-row {
+        display: flex; align-items: flex-end; justify-content: space-between;
+        gap: 56px; margin-top: 44px; flex-wrap: wrap;
+    }
+    .ln-lead {
+        font-size: 1.12rem; color: var(--ink-soft); line-height: 1.62;
+        max-width: 44ch;
     }
     .ln-hero-actions {
-        display: flex; align-items: center; gap: 26px; margin-top: 36px;
-        flex-wrap: wrap;
+        display: flex; align-items: center; gap: 24px; flex-shrink: 0;
     }
     .ln-btn {
         display: inline-flex; align-items: center; gap: 9px;
         font-family: inherit; font-size: 0.95rem; font-weight: 500;
-        padding: 14px 26px; border: 1px solid transparent; cursor: pointer;
-        border-radius: 7px; transition: opacity 0.15s ease, transform 0.15s ease;
+        padding: 15px 28px; border: 1px solid transparent; cursor: pointer;
+        border-radius: 8px; transition: opacity 0.15s ease, transform 0.15s ease;
+        white-space: nowrap;
     }
     .ln-btn:hover { transform: translateY(-1px); }
+    .ln-btn svg { transition: transform 0.2s ease; }
+    .ln-btn:hover svg { transform: translateX(3px); }
     .ln-btn-solid { background: var(--ink); color: #fff; }
-    .ln-btn-solid:hover { opacity: 0.86; }
+    .ln-btn-solid:hover { opacity: 0.88; }
     .ln-btn-light { background: #fff; color: var(--ink); }
     .ln-btn-light:hover { opacity: 0.9; }
     .ln-link {
-        display: inline-flex; align-items: center; gap: 7px;
         font-size: 0.95rem; font-weight: 500; color: var(--ink);
-        text-decoration: none;
+        text-decoration: none; border-bottom: 1px solid var(--ink);
+        padding-bottom: 2px; white-space: nowrap;
     }
-    .ln-link svg { transition: transform 0.2s ease; }
-    .ln-link:hover svg { transform: translateY(3px); }
+    .ln-link:hover { opacity: 0.6; }
 
     /* ── Product preview ── */
     .ln-preview {
+        margin-top: 64px;
         background: #fff; border: 1px solid var(--line);
-        border-radius: 13px; overflow: hidden;
-        box-shadow: 0 32px 64px -28px rgba(17,17,20,0.28);
+        border-radius: 14px; overflow: hidden;
+        box-shadow: 0 44px 86px -36px rgba(17,17,20,0.34);
     }
     .ln-preview-bar {
-        display: flex; align-items: center; gap: 12px;
-        padding: 13px 18px; border-bottom: 1px solid var(--line-soft);
+        display: flex; align-items: center; gap: 13px;
+        padding: 15px 22px; border-bottom: 1px solid var(--line-soft);
     }
     .ln-preview-mark {
-        width: 13px; height: 13px; border-radius: 4px;
+        width: 15px; height: 15px; border-radius: 5px;
         background: var(--accent); flex-shrink: 0;
     }
     .ln-preview-name {
         font-family: 'Space Grotesk', sans-serif;
-        font-weight: 600; font-size: 0.86rem;
+        font-weight: 600; font-size: 0.94rem;
     }
-    .ln-preview-tabs { display: flex; gap: 14px; margin-left: auto; }
+    .ln-preview-tabs { display: flex; gap: 20px; margin-left: auto; }
     .ln-preview-tabs span {
-        font-size: 0.72rem; font-weight: 500; color: var(--muted);
+        font-size: 0.8rem; font-weight: 500; color: var(--muted);
     }
     .ln-preview-tabs .on {
-        color: var(--ink); border-bottom: 1.5px solid var(--accent); padding-bottom: 2px;
+        color: var(--ink); border-bottom: 2px solid var(--accent); padding-bottom: 3px;
     }
-    .ln-preview-body { padding: 18px; background: #faf9f6; }
+    .ln-preview-body { padding: 24px; background: #faf9f6; }
     .ln-preview-ns {
         background: #fff; border: 1px solid var(--line-soft);
-        border-radius: 9px; padding: 13px 15px; margin-bottom: 14px;
+        border-radius: 10px; padding: 16px 18px; margin-bottom: 18px;
     }
     .ln-preview-ns-head {
         display: flex; align-items: baseline; justify-content: space-between;
-        margin-bottom: 9px;
+        margin-bottom: 11px;
     }
-    .ln-preview-ns-head span {
-        font-size: 0.68rem; font-weight: 600; letter-spacing: 0.08em;
+    .ln-preview-ns-head > span {
+        font-size: 0.7rem; font-weight: 600; letter-spacing: 0.09em;
         text-transform: uppercase; color: var(--muted);
     }
     .ln-preview-ns-head strong {
         font-family: 'Space Grotesk', sans-serif;
-        font-size: 1.05rem; font-weight: 600;
+        font-size: 1.32rem; font-weight: 600;
+    }
+    .ln-preview-ns-head strong i {
+        font-style: normal; font-size: 0.9rem; font-weight: 500; color: var(--muted);
     }
     .ln-preview-track {
-        height: 5px; background: rgba(17,17,20,0.07); border-radius: 3px;
+        height: 6px; background: rgba(17,17,20,0.07); border-radius: 3px;
     }
     .ln-preview-track i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
-    .ln-preview-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+    .ln-preview-board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
     .ln-preview-colhead {
         display: flex; align-items: center; justify-content: space-between;
-        margin-bottom: 8px;
+        margin-bottom: 10px;
     }
     .ln-preview-colhead span:first-child {
-        font-size: 0.66rem; font-weight: 700; letter-spacing: 0.06em;
+        font-size: 0.68rem; font-weight: 700; letter-spacing: 0.07em;
         text-transform: uppercase; color: var(--muted);
     }
     .ln-preview-count {
-        font-size: 0.62rem; font-weight: 700; color: var(--muted);
-        background: rgba(17,17,20,0.06); border-radius: 4px; padding: 1px 5px;
+        font-size: 0.64rem; font-weight: 700; color: var(--muted);
+        background: rgba(17,17,20,0.06); border-radius: 5px; padding: 2px 6px;
     }
     .ln-preview-card {
         background: #fff; border: 1px solid var(--line-soft);
-        border-radius: 7px; padding: 9px 10px; margin-bottom: 7px;
-        display: flex; flex-direction: column; gap: 7px;
+        border-radius: 8px; padding: 12px; margin-bottom: 9px;
+        display: flex; flex-direction: column; gap: 9px;
     }
     .ln-preview-card span {
-        font-size: 0.72rem; font-weight: 500; line-height: 1.35; color: var(--ink);
+        font-size: 0.8rem; font-weight: 500; line-height: 1.4; color: var(--ink);
     }
     .ln-preview-card em {
         font-style: normal; align-self: flex-start;
-        font-size: 0.6rem; font-weight: 700; letter-spacing: 0.03em;
+        font-size: 0.62rem; font-weight: 700; letter-spacing: 0.03em;
         color: var(--accent); background: rgba(79,70,229,0.09);
-        border-radius: 4px; padding: 2px 6px;
+        border-radius: 5px; padding: 3px 7px;
     }
 
     /* ── Stats band ── */
     .ln-stats { background: var(--ink); color: #fff; }
-    .ln-stats-grid {
-        display: grid; grid-template-columns: repeat(4, 1fr);
-    }
+    .ln-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); }
     .ln-stat {
-        padding: 44px 28px 44px 0; border-left: 1px solid rgba(255,255,255,0.13);
-        padding-left: 28px;
+        padding: 52px 28px; border-left: 1px solid rgba(255,255,255,0.13);
     }
     .ln-stat:first-child { border-left: none; padding-left: 0; }
     .ln-stat-v {
         display: block; font-family: 'Space Grotesk', sans-serif;
-        font-size: 2.6rem; font-weight: 500; letter-spacing: -0.03em; line-height: 1;
+        font-size: 3.2rem; font-weight: 500; letter-spacing: -0.035em; line-height: 1;
     }
     .ln-stat-l {
-        display: block; margin-top: 10px;
-        font-size: 0.84rem; color: rgba(255,255,255,0.55); line-height: 1.45;
+        display: block; margin-top: 12px;
+        font-size: 0.86rem; color: rgba(255,255,255,0.55); line-height: 1.45;
     }
 
     /* ── Sections ── */
-    .ln-section { padding: 104px 0; border-top: 1px solid var(--line); }
-    .ln-section:first-of-type { border-top: none; }
+    .ln-section { padding: 108px 0; border-top: 1px solid var(--line); }
     .ln-section-alt { background: var(--bg-alt); }
 
     /* ── Problema ── */
@@ -525,119 +528,119 @@ const landingStyles = `
         display: grid; grid-template-columns: repeat(3, 1fr);
         gap: 1px; background: var(--line); border: 1px solid var(--line);
     }
-    .ln-problem { background: var(--bg); padding: 34px 30px; }
+    .ln-problem { background: var(--bg); padding: 36px 32px; }
     .ln-problem-n {
         font-family: 'Space Grotesk', sans-serif;
-        font-size: 0.82rem; font-weight: 600; color: var(--accent);
+        font-size: 0.85rem; font-weight: 600; color: var(--accent);
     }
     .ln-problem h3 {
         font-family: 'Space Grotesk', sans-serif;
-        font-size: 1.12rem; font-weight: 600; letter-spacing: -0.01em;
-        margin: 14px 0 11px;
+        font-size: 1.16rem; font-weight: 600; letter-spacing: -0.01em;
+        margin: 16px 0 12px;
     }
-    .ln-problem p { font-size: 0.94rem; color: var(--muted); line-height: 1.62; }
+    .ln-problem p { font-size: 0.95rem; color: var(--muted); line-height: 1.62; }
 
     /* ── Fases ── */
     .ln-phases {
         display: grid; grid-template-columns: repeat(3, 1fr);
         gap: 32px;
     }
-    .ln-phase { padding-top: 22px; border-top: 1.5px solid var(--ink); }
+    .ln-phase { padding-top: 24px; border-top: 2px solid var(--ink); }
     .ln-phase-top {
         display: flex; align-items: center; justify-content: space-between;
     }
     .ln-phase-n {
         font-family: 'Space Grotesk', sans-serif;
-        font-size: 1rem; font-weight: 600; color: var(--muted);
+        font-size: 1.05rem; font-weight: 600; color: var(--muted);
     }
     .ln-phase-arrow { color: rgba(17,17,20,0.25); }
     .ln-phase-kicker {
-        display: block; margin-top: 20px;
+        display: block; margin-top: 22px;
         font-size: 0.7rem; font-weight: 600; letter-spacing: 0.14em;
         text-transform: uppercase; color: var(--accent);
     }
     .ln-phase h3 {
         font-family: 'Space Grotesk', sans-serif;
-        font-size: 1.55rem; font-weight: 500; letter-spacing: -0.02em;
-        margin: 8px 0 14px;
+        font-size: 1.7rem; font-weight: 500; letter-spacing: -0.02em;
+        margin: 8px 0 16px;
     }
-    .ln-phase p { font-size: 0.95rem; color: var(--muted); line-height: 1.62; }
+    .ln-phase p { font-size: 0.96rem; color: var(--muted); line-height: 1.62; }
 
     /* ── ICE ── */
-    .ln-ice { margin-top: 64px; padding-top: 40px; border-top: 1px solid var(--line); }
+    .ln-ice { margin-top: 68px; padding-top: 44px; border-top: 1px solid var(--line); }
     .ln-ice-label {
         font-size: 0.72rem; font-weight: 600; letter-spacing: 0.14em;
-        text-transform: uppercase; color: var(--muted); margin-bottom: 24px;
+        text-transform: uppercase; color: var(--muted); margin-bottom: 26px;
     }
     .ln-ice-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 36px; }
-    .ln-ice-item { display: flex; gap: 16px; align-items: flex-start; }
+    .ln-ice-item { display: flex; gap: 18px; align-items: flex-start; }
     .ln-ice-letter {
         font-family: 'Space Grotesk', sans-serif;
-        font-size: 1.7rem; font-weight: 500; line-height: 1;
+        font-size: 2rem; font-weight: 500; line-height: 1;
         color: var(--accent); flex-shrink: 0;
     }
     .ln-ice-item strong {
-        display: block; font-size: 0.95rem; font-weight: 600; margin-bottom: 3px;
+        display: block; font-size: 0.98rem; font-weight: 600; margin-bottom: 4px;
     }
-    .ln-ice-item span { font-size: 0.86rem; color: var(--muted); line-height: 1.5; }
+    .ln-ice-item span { font-size: 0.88rem; color: var(--muted); line-height: 1.5; }
 
     /* ── Funnel ── */
     .ln-funnel {
         display: grid; grid-template-columns: repeat(5, 1fr);
-        gap: 14px; position: relative;
+        gap: 16px; position: relative;
     }
     .ln-funnel-line {
-        position: absolute; top: 17px; left: 5%; right: 5%;
+        position: absolute; top: 19px; left: 6%; right: 6%;
         height: 1px; background: var(--line);
     }
     .ln-funnel-stage { position: relative; }
     .ln-funnel-node {
         display: flex; align-items: center; justify-content: center;
-        width: 34px; height: 34px; border-radius: 50%;
-        background: var(--bg); border: 1px solid var(--line);
+        width: 38px; height: 38px; border-radius: 50%;
+        background: var(--bg); border: 1px solid var(--ink);
         font-family: 'Space Grotesk', sans-serif;
-        font-size: 0.78rem; font-weight: 600; color: var(--ink);
-        margin-bottom: 18px;
+        font-size: 0.82rem; font-weight: 600; color: var(--ink);
+        margin-bottom: 22px;
     }
     .ln-funnel-stage h3 {
         font-family: 'Space Grotesk', sans-serif;
-        font-size: 1.05rem; font-weight: 600; letter-spacing: -0.01em;
-        margin-bottom: 6px;
+        font-size: 1.12rem; font-weight: 600; letter-spacing: -0.01em;
+        margin-bottom: 7px;
     }
-    .ln-funnel-stage p { font-size: 0.85rem; color: var(--muted); line-height: 1.5; }
+    .ln-funnel-stage p { font-size: 0.87rem; color: var(--muted); line-height: 1.5; }
 
     /* ── Funcionalidades ── */
     .ln-features {
         display: grid; grid-template-columns: repeat(3, 1fr);
         gap: 1px; background: var(--line); border: 1px solid var(--line);
     }
-    .ln-feature { background: var(--bg-alt); padding: 34px 30px; }
-    .ln-feature-icon { color: var(--ink); margin-bottom: 18px; display: block; }
+    .ln-feature { background: var(--bg-alt); padding: 38px 32px; }
+    .ln-feature-icon { color: var(--ink); margin-bottom: 20px; display: block; }
     .ln-feature h3 {
         font-family: 'Space Grotesk', sans-serif;
-        font-size: 1.08rem; font-weight: 600; letter-spacing: -0.01em;
-        margin-bottom: 10px;
+        font-size: 1.12rem; font-weight: 600; letter-spacing: -0.01em;
+        margin-bottom: 11px;
     }
-    .ln-feature p { font-size: 0.92rem; color: var(--muted); line-height: 1.6; }
+    .ln-feature p { font-size: 0.93rem; color: var(--muted); line-height: 1.6; }
 
     /* ── Cierre ── */
-    .ln-cta { background: var(--ink); color: #fff; padding: 92px 0; }
+    .ln-cta { background: var(--ink); color: #fff; padding: 104px 0; }
     .ln-cta-inner {
         display: flex; align-items: center; justify-content: space-between;
         gap: 48px; flex-wrap: wrap;
     }
     .ln-cta h2 {
         font-family: 'Space Grotesk', sans-serif;
-        font-size: clamp(1.8rem, 3vw, 2.5rem); font-weight: 500;
-        line-height: 1.13; letter-spacing: -0.03em; max-width: 16ch;
+        font-size: clamp(2rem, 3.4vw, 2.9rem); font-weight: 500;
+        line-height: 1.1; letter-spacing: -0.032em; max-width: 16ch;
     }
     .ln-cta p {
-        font-size: 1.02rem; color: rgba(255,255,255,0.6);
+        font-size: 1.04rem; color: rgba(255,255,255,0.6);
         max-width: 42ch; margin-top: 16px; line-height: 1.6;
     }
 
     /* ── Footer ── */
-    .ln-footer { border-top: 1px solid var(--line); padding: 34px 0; }
+    .ln-footer { border-top: 1px solid var(--line); padding: 36px 0; }
     .ln-footer-inner {
         display: flex; align-items: center; justify-content: space-between;
         flex-wrap: wrap; gap: 12px;
@@ -646,20 +649,23 @@ const landingStyles = `
 
     /* ── Responsive ── */
     @media (max-width: 940px) {
-        .ln-hero-grid { grid-template-columns: 1fr; gap: 44px; }
         .ln-nav-links { display: none; }
+        .ln-hero-row { gap: 32px; }
+        .ln-preview-board { grid-template-columns: repeat(2, 1fr); }
     }
-    @media (max-width: 760px) {
+    @media (max-width: 720px) {
         .ln-wrap { padding: 0 22px; }
-        .ln-hero { padding: 60px 0 72px; }
+        .ln-hero { padding: 56px 0 72px; }
         .ln-section { padding: 68px 0; }
-        .ln-cta { padding: 64px 0; }
+        .ln-cta { padding: 68px 0; }
+        .ln-hero-row { flex-direction: column; align-items: flex-start; }
+        .ln-hero-actions { flex-direction: column; align-items: flex-start; gap: 16px; }
         .ln-stats-grid { grid-template-columns: repeat(2, 1fr); }
-        .ln-stat { padding: 30px 0 30px 24px; }
+        .ln-stat { padding: 32px 0 32px 24px; }
         .ln-stat:nth-child(odd) { border-left: none; padding-left: 0; }
         .ln-problems, .ln-phases, .ln-ice-row, .ln-features { grid-template-columns: 1fr; }
         .ln-phases { gap: 0; }
-        .ln-funnel { grid-template-columns: 1fr 1fr; gap: 28px 14px; }
+        .ln-funnel { grid-template-columns: 1fr 1fr; gap: 30px 16px; }
         .ln-funnel-line { display: none; }
         .ln-cta-inner { flex-direction: column; align-items: flex-start; }
     }
