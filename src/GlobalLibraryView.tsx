@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Book, Search, X, Target } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { useAuth } from './contexts/AuthContext';
+import { Lightbox, type LightboxItem } from './components/Lightbox';
 
 interface GlobalExperimentRow {
   id: string;
@@ -174,6 +175,10 @@ export const GlobalLibraryView: React.FC = () => {
 
 const DetailModal: React.FC<{ row: GlobalExperimentRow; onClose: () => void }> = ({ row, onClose }) => {
   const badge = statusBadge(row.status);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const lightboxItems: LightboxItem[] = (row.visual_proof || [])
+    .filter(isUrl)
+    .map(src => ({ src }));
   return (
     <div className="drawer-overlay" style={{ alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
       <div style={{ background: 'white', borderRadius: '16px', width: '720px', maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
@@ -208,8 +213,36 @@ const DetailModal: React.FC<{ row: GlobalExperimentRow; onClose: () => void }> =
             <Section title="Evidencia visual">
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 {row.visual_proof.filter(isUrl).map((src, i) => (
-                  <div key={i} style={{ aspectRatio: '16/9', background: '#f3f4f6', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
-                    <img src={src} alt="Evidencia" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  <div
+                    key={i}
+                    onClick={() => setLightboxIndex(i)}
+                    style={{
+                      aspectRatio: '16/9',
+                      maxHeight: '70vh',
+                      background: '#f3f4f6',
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      border: '1px solid var(--border-subtle)',
+                      cursor: 'zoom-in',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.02)';
+                      e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.12)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  >
+                    <img
+                      src={src}
+                      alt="Evidencia"
+                      style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', objectFit: 'contain' }}
+                    />
                   </div>
                 ))}
               </div>
@@ -221,6 +254,14 @@ const DetailModal: React.FC<{ row: GlobalExperimentRow; onClose: () => void }> =
           </div>
         </div>
       </div>
+      {lightboxIndex !== null && lightboxItems.length > 0 && (
+        <Lightbox
+          items={lightboxItems}
+          index={lightboxIndex}
+          onIndexChange={setLightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
+      )}
     </div>
   );
 };

@@ -14,12 +14,29 @@ export type FunnelStage = 'Acquisition' | 'Activation' | 'Retention' | 'Referral
 
 export type MetricType = 'currency' | 'count' | 'percentage' | 'ratio';
 
+export type NSMSourceType = 'manual' | 'google_sheets' | 'webhook';
+
+export interface NSMSourceConfig {
+  // Google Sheets specifics
+  sheetName?: string;
+  column?: string;       // e.g. "B"
+  row?: number;          // e.g. 2
+  headerRow?: number;    // first row to skip
+}
+
 export interface NorthStarMetric {
   name: string;
   currentValue: number;
   targetValue: number;
   unit: string;
   type: MetricType;  // 'currency', 'numeric', or 'percentage'
+  // Auto-sync (added in migration_growth_hub_v2_nicolas.sql)
+  sourceType?: NSMSourceType;
+  sourceUrl?: string | null;
+  sourceConfig?: NSMSourceConfig;
+  lastSyncedAt?: string | null;
+  syncStatus?: string | null;
+  webhookToken?: string | null;
 }
 
 export interface Objective {

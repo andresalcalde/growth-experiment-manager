@@ -20,7 +20,10 @@ Copy `.env.example` to `.env` and fill in Supabase credentials:
 ```
 VITE_SUPABASE_URL=https://xxxxx.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJhbGci...
+VITE_OPENAI_API_KEY=sk-...   # opcional — habilita el Design Assistant (IA)
 ```
+
+`VITE_OPENAI_API_KEY` activa el chatbot IA en la etapa Design (`src/components/DesignAssistant.tsx`). Si está vacía, el panel se muestra pero responde con un mensaje canned. **No commitear la API key real al repo.** Para producción mover la llamada a una Supabase Edge Function (TODO en `src/services/aiAssistant.ts`).
 
 Database schema lives in `supabase/migration.sql` — run it in Supabase SQL Editor to bootstrap.
 
@@ -37,8 +40,8 @@ User action → Component → Custom Hook → Supabase Client → PostgreSQL
 
 ### State management
 
-- **AuthContext** (`src/contexts/AuthContext.tsx`): Supabase session, user profile, global role
-- **ProjectContext** (`src/contexts/ProjectContext.tsx`): Active project, all entity CRUD (experiments, objectives, strategies, north star metrics, team members). This is the largest file (~950 lines) and the central state hub. Key functions: `createProject` (uses RPC `create_project_with_membership`), `deleteProject`, `addExperiment`, `updateExperiment`, etc.
+- **AuthContext** (`src/contexts/AuthContext.tsx`): Supabase session, user profile, global role (`superadmin`/`user`), admin-managed work areas (`user_areas` table), and per-user panel logo
+- **ProjectContext** (`src/contexts/ProjectContext.tsx`): Active project, all entity CRUD (experiments, objectives, strategies, north star metrics, team members). The central state hub. Key functions: `createProject` (uses RPC `create_project_with_membership`), `deleteProject`, `updateProjectName`, `updateProjectLogo`, `updateProjectPlatformLogo`, `addExperiment`, `updateExperiment`, etc.
 - **Custom hooks** (`src/hooks/`): `useExperiments`, `useNorthStar`, `useProjects` — each wraps Supabase queries + realtime subscriptions
 - No Redux/Zustand — state is React Context + hooks only
 
@@ -49,7 +52,7 @@ The app tracks growth experiments through an 8-stage pipeline:
 
 Each experiment has ICE scoring (Impact × Confidence × Ease) and maps to a funnel stage (Acquisition, Activation, Retention, Referral, Revenue).
 
-Key entities: `projects` → `objectives` → `strategies` → `experiments`, plus `north_star_metrics` and `team_members`. Types defined in `src/types.ts`, DB types auto-generated in `src/lib/database.types.ts`.
+Key entities: `projects` → `objectives` → `strategies` → `experiments`, plus `north_star_metrics` and `team_members`. Cross-cutting: `user_areas` (admin-managed work areas) and `activity_log` (usage tracking). Types defined in `src/types.ts`; `src/lib/database.types.ts` exists but the Supabase client is created untyped, so DB types are not enforced on queries.
 
 ### Views (4-stage methodology)
 
@@ -60,17 +63,22 @@ Key entities: `projects` → `objectives` → `strategies` → `experiments`, pl
 | 02. Explore | `src/App.tsx` (table mode) | Experiment table with ICE scoring |
 | 03. Be Agile | `src/App.tsx` (board mode) | Kanban with drag-and-drop (dnd-kit) |
 | 04. Learning | `src/App.tsx` (library mode) | Finished experiments & key learnings |
+| Admin | `src/AdminView.tsx` | Superadmin-only panel — user/area management (Gestión tab) + usage & adoption metrics (Uso tab) |
+| Global Library | `src/GlobalLibraryView.tsx` | Cross-project repository of finished experiments and learnings |
 
-`App.tsx` (~1300 lines) hosts the Explore/BeAgile/Learning views via internal mode switching. It also wires `handleDeleteProject` (calls `deleteProject` from context, then navigates to portfolio) and passes it to both `SettingsView` and `PortfolioView`.
+`App.tsx` hosts the Explore/BeAgile/Learning views via internal mode switching. It also wires `handleDeleteProject` (calls `deleteProject` from context, then navigates to portfolio) and passes it to both `SettingsView` and `PortfolioView`.
 
 ### Key patterns
 
 - **Auth gate**: `AuthGate.tsx` wraps protected content; Supabase Auth with email/password
-- **Token caching + custom lock**: `src/lib/supabase.ts` has a custom fetch override to cache access tokens AND a custom `auth.lock` implementation (`simpleLock`) that replaces `navigator.locks`. This prevents deadlocks where `getSession()` acquires the exclusive lock but hangs internally (token refresh/storage), blocking all subsequent Supabase calls forever. **Do not remove the custom lock — it fixes a critical production hang.**
-- **Modals/Drawers**: `ExperimentModal.tsx` (create), `ExperimentDrawer.tsx` (detail), `KeyLearningModal.tsx` (triggered on move to Finished)
+- **Token caching + custom lock**: `src/lib/supabase.ts` has a custom fetch override (`customFetch`) to cache access tokens AND a custom `auth.lock` implementation (`simpleLock`) that replaces `navigator.locks`. This prevents deadlocks where `getSession()` acquires the exclusive lock but hangs internally (token refresh/storage), blocking all subsequent Supabase calls forever. **Do not remove the custom lock — it fixes a critical production hang.** `customFetch` also gates authenticated queries on a `tokenReady` promise (resolved from `onAuthStateChange`) so requests don't fire with only the anon key and get RLS-blocked → empty screens.
+- **Modals/Drawers**: `ExperimentModal.tsx` (create), `ExperimentDrawer.tsx` (detail), `KeyLearningModal.tsx` (triggered on move to Finished), `AreaPromptModal.tsx` (mandatory work-area prompt on first use)
 - **Drag-and-drop**: dnd-kit (`@dnd-kit/core` + `@dnd-kit/sortable`) for Kanban columns
 - **Styling**: Mix of CSS variables (`src/index.css`), utility classes, inline styles, and Tailwind via `clsx`/`tailwind-merge`
-- **Role mapping**: Frontend roles (Admin/Lead/Viewer) map to DB roles (admin/editor/viewer)
+- **Role mapping**: Frontend roles (Admin/Lead/Viewer) map to DB project roles (admin/editor/viewer)
+- **Global roles**: `profiles.global_role` is `superadmin` or `user`; superadmins access `AdminView`. The `is_superadmin()` SQL function and `trg_protect_global_role` trigger guard role changes (can't demote the last superadmin)
+- **Work areas**: `profiles.area` is `text[]` — a user can belong to multiple areas, all admin-managed via `user_areas`
+- **Logos**: three independent logos — the project icon (`projects.logo_url`, shown in the portfolio), the per-project platform logo (`projects.platform_logo_url`, replaces the "Growth Hub" header branding), and the per-user panel logo (`profiles.panel_logo_url`). Header resolution order: user panel logo → project platform logo → default
 
 ### Database
 
@@ -79,6 +87,13 @@ Schema in `supabase/migration.sql` (686 lines) with:
 - Row Level Security policies for all tables
 - RPC functions and triggers (critical: `create_project_with_membership` — creates project + admin membership atomically to avoid RLS chicken-and-egg)
 - Hotfixes in `supabase/hotfix_v2.sql` and `supabase/fix_duplicate_rpc.sql`
+
+Incremental migrations — run in Supabase SQL Editor, in order, after the base schema:
+- `migration_growth_hub_feedback.sql` — superadmin role + `is_superadmin()`, `activity_log`, global-library RPC `get_global_finished_experiments()`, `experiments.verdict`, panel logos
+- `migration_user_areas.sql` — converts work areas from a fixed enum to the admin-managed `user_areas` table
+- `migration_user_areas_multi.sql` — `profiles.area` `text` → `text[]` (a user can have multiple areas)
+- `migration_project_platform_logo.sql` — adds `projects.platform_logo_url`
+- `migration_growth_hub_v2_nicolas.sql` — NSM autosync columns (`nsm_source_type`, `nsm_source_url`, `nsm_source_config`, `nsm_last_synced_at`, `nsm_sync_status`, `nsm_webhook_token`) + `nsm_source_type` enum
 
 ## Test Credentials
 
@@ -104,7 +119,7 @@ https://oumhhngnwjijtmgpnhba.supabase.co
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **growth-experiment-manager** (427 symbols, 693 relationships, 24 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **growth-experiment-manager** (431 symbols, 706 relationships, 24 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

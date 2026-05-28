@@ -11,7 +11,8 @@ import {
   CheckCircle2,
   HelpCircle,
   Settings,
-  LogOut
+  LogOut,
+  ShieldCheck
 } from 'lucide-react';
 import { MethodologyToolkit } from './components/MethodologyToolkit';
 import {
@@ -55,6 +56,7 @@ import { useAuth } from './contexts/AuthContext';
 import { AdminView } from './AdminView';
 import { GlobalLibraryView } from './GlobalLibraryView';
 import { AreaPromptModal } from './components/AreaPromptModal';
+import { Lightbox, type LightboxItem } from './components/Lightbox';
 
 
 // Original MOCK_EXPERIMENTS replaced with Laboratorio Polanco data
@@ -288,6 +290,12 @@ const CaseStudyModal = ({ experiment, onClose }: { experiment: Experiment; onClo
   if (isWinner) highlightColor = 'rgba(74, 222, 128, 0.2)';
   if (isLoser) highlightColor = '#FEE2E2';
 
+  // Lightbox state for the visual evidence gallery
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const lightboxItems: LightboxItem[] = (experiment.visualProof || [])
+    .filter(p => isUrl(p))
+    .map(p => ({ src: p }));
+
   return (
     <div className="drawer-overlay" style={{ alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
       <div style={{ background: 'white', borderRadius: '16px', width: '800px', maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--shadow-lg)' }} onClick={e => e.stopPropagation()}>
@@ -323,15 +331,50 @@ const CaseStudyModal = ({ experiment, onClose }: { experiment: Experiment; onClo
               <div style={{ marginBottom: '32px' }}>
                 <h3 style={{ fontSize: '14px', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-subtle)', marginBottom: '12px' }}>The Evidence</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  {experiment.visualProof?.map((proof, i) => (
-                    <div key={i} style={{ aspectRatio: '16/9', background: '#f3f4f6', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-subtle)', overflow: 'hidden' }}>
-                      {isUrl(proof) ? (
-                        <img src={proof} alt="Evidencia visual" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                      ) : (
-                        <span style={{ fontSize: '12px', color: 'var(--text-subtle)' }}>{proof}</span>
-                      )}
-                    </div>
-                  ))}
+                  {experiment.visualProof?.map((proof, i) => {
+                    if (!isUrl(proof)) {
+                      return (
+                        <div key={i} style={{ aspectRatio: '16/9', maxHeight: '70vh', background: '#f3f4f6', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-subtle)', overflow: 'hidden' }}>
+                          <span style={{ fontSize: '12px', color: 'var(--text-subtle)' }}>{proof}</span>
+                        </div>
+                      );
+                    }
+                    const lightboxIdx = lightboxItems.findIndex(it => it.src === proof);
+                    return (
+                      <div
+                        key={i}
+                        onClick={() => setLightboxIndex(lightboxIdx >= 0 ? lightboxIdx : 0)}
+                        style={{
+                          aspectRatio: '16/9',
+                          maxWidth: '100%',
+                          maxHeight: '70vh',
+                          background: '#f3f4f6',
+                          borderRadius: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          border: '1px solid var(--border-subtle)',
+                          overflow: 'hidden',
+                          cursor: 'zoom-in',
+                          transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.02)';
+                          e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.12)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
+                      >
+                        <img
+                          src={proof}
+                          alt="Evidencia visual"
+                          style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', objectFit: 'contain' }}
+                        />
+                      </div>
+                    );
+                  })}
                   {(!experiment.visualProof || experiment.visualProof.length === 0) && (
                     <div style={{ aspectRatio: '16/9', background: '#f3f4f6', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed var(--border-subtle)', gridColumn: 'span 2' }}>
                       <span style={{ fontSize: '12px', color: 'var(--text-subtle)' }}>No visual evidence attached</span>
@@ -393,6 +436,14 @@ const CaseStudyModal = ({ experiment, onClose }: { experiment: Experiment; onClo
           </div>
         </div>
       </div>
+      {lightboxIndex !== null && lightboxItems.length > 0 && (
+        <Lightbox
+          items={lightboxItems}
+          index={lightboxIndex}
+          onIndexChange={setLightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
+      )}
     </div>
   );
 };
@@ -953,6 +1004,28 @@ const App: React.FC = () => {
           <span style={{ fontWeight: 500 }}>04. Learning</span>
           <InfoTooltip content="Cierra el Growth Loop. Documenta aquí si la hipótesis se validó o se rechazó. El aprendizaje es el activo más valioso; un experimento 'fallido' es un éxito si nos dice qué no hacer en el futuro." position="right" />
         </button>
+
+        {/* Admin — top-level (cross-project), solo para superadmin */}
+        {isSuperAdmin && (
+          <>
+            <div style={{ height: 1, background: '#E5E7EB', margin: '12px 4px' }} />
+            <button
+              onClick={() => setView('admin')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px',
+                borderRadius: '8px', width: '100%', textAlign: 'left', border: 'none',
+                cursor: 'pointer',
+                background: 'transparent',
+                color: '#4F46E5',
+                fontWeight: 600,
+              }}
+              title="Panel de Administración — gestión de usuarios, áreas y métricas globales"
+            >
+              <ShieldCheck size={18} />
+              <span style={{ fontWeight: 600 }}>Administración</span>
+            </button>
+          </>
+        )}
 
         <div style={{ marginTop: 'auto' }}>
           <button

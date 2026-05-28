@@ -11,6 +11,8 @@ import {
   Trash2
 } from 'lucide-react';
 import { FinalizeExperimentButton } from './components/FinalizeExperimentButton';
+import { ImageThumb } from './components/ImageThumb';
+import type { LightboxItem } from './components/Lightbox';
 import type { Experiment, Status, Objective, Strategy } from './types';
 
 interface ExperimentDrawerProps {
@@ -844,16 +846,34 @@ export const ExperimentDrawer: React.FC<ExperimentDrawerProps> = ({
               <div>
                 <div className="label">Prueba Visual</div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '12px', marginTop: '12px' }}>
-                  {experiment.visualProof && experiment.visualProof.map((proof, i) => (
-                    <div key={i} style={{ position: 'relative', aspectRatio: '16/9', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
-                      {proof.startsWith('data:') ? (
-                        <img src={proof} alt={'Proof'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      ) : (
-                        <div style={{ width: '100%', height: '100%', background: '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{proof}</div>
-                      )}
-                      <button onClick={() => handleRemoveImage(i)} style={{ position: 'absolute', top: '4px', right: '4px', width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', cursor: 'pointer', fontSize: '14px' }}>x</button>
-                    </div>
-                  ))}
+                  {experiment.visualProof && experiment.visualProof.map((proof, i) => {
+                    const gallery: LightboxItem[] = (experiment.visualProof || []).map(p => ({ src: p }));
+                    const isHttpOrData = proof.startsWith('http') || proof.startsWith('data:');
+                    return (
+                      <div key={i} style={{ position: 'relative', borderRadius: '8px' }}>
+                        {isHttpOrData ? (
+                          <ImageThumb
+                            src={proof}
+                            alt={`Prueba visual ${i + 1}`}
+                            size={150}
+                            rounded={8}
+                            fit="cover"
+                            gallery={gallery}
+                            galleryIndex={i}
+                            style={{ width: '100%', aspectRatio: '16/9', height: 'auto' }}
+                          />
+                        ) : (
+                          <div style={{ aspectRatio: '16/9', background: '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: '1px solid var(--border-subtle)', fontSize: 12, color: '#6b7280', padding: 8, textAlign: 'center' }}>
+                            {proof}
+                          </div>
+                        )}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleRemoveImage(i); }}
+                          style={{ position: 'absolute', top: '4px', right: '4px', width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', cursor: 'pointer', fontSize: '14px', zIndex: 1 }}
+                        >x</button>
+                      </div>
+                    );
+                  })}
                   <button
                     onClick={handleImageUpload}
                     style={{

@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { LandingPage } from './LandingPage'
+import { ForgotPassword } from './ForgotPassword'
+import { ResetPassword } from './ResetPassword'
 
 /**
  * AuthGate wraps the app and shows a login/signup screen when not authenticated.
@@ -16,6 +18,15 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     const [successMessage, setSuccessMessage] = useState<string | null>(null)
     const [submitting, setSubmitting] = useState(false)
     const [showLanding, setShowLanding] = useState(true)
+    const [showForgotPassword, setShowForgotPassword] = useState(false)
+
+    // Route handling — minimal, no react-router. Si la URL es /reset-password
+    // mostramos ese flujo SIEMPRE (incluso autenticado, porque el usuario podría
+    // venir desde un email con sesión "recovery" activa).
+    const isResetPasswordRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/reset-password')
+    if (isResetPasswordRoute) {
+        return <ResetPassword />
+    }
 
     // Loading state
     if (loading) {
@@ -58,6 +69,11 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     // Show landing page before login
     if (showLanding) {
         return <LandingPage onLogin={() => setShowLanding(false)} />
+    }
+
+    // Forgot password flow
+    if (showForgotPassword) {
+        return <ForgotPassword onBack={() => setShowForgotPassword(false)} />
     }
 
     // Login/Signup form
@@ -215,6 +231,27 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                         }
                     </button>
                 </form>
+
+                {/* Forgot password link — only on login mode */}
+                {mode === 'login' && (
+                    <div style={{ textAlign: 'center', marginTop: 16 }}>
+                        <button
+                            type="button"
+                            onClick={() => setShowForgotPassword(true)}
+                            style={{
+                                background: 'none',
+                                border: 'none',
+                                color: '#4F46E5',
+                                fontWeight: 600,
+                                fontSize: 13,
+                                cursor: 'pointer',
+                                padding: 0,
+                            }}
+                        >
+                            ¿Olvidaste tu contraseña?
+                        </button>
+                    </div>
+                )}
 
                 {/* Toggle mode */}
                 <div style={{ textAlign: 'center', marginTop: '24px' }}>

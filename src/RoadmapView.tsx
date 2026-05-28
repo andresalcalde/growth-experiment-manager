@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
-import { Target, Edit2, Plus, TrendingUp, X, Lightbulb, Trash2 } from 'lucide-react';
-import type { NorthStarMetric, Objective, Strategy, Experiment, MetricType } from './types';
+import { Target, Edit2, Plus, TrendingUp, X, Lightbulb, Trash2, RefreshCw, Copy, CheckCircle2 } from 'lucide-react';
+import type { NorthStarMetric, Objective, Strategy, Experiment, MetricType, NSMSourceType } from './types';
 import { formatMetricValue, getUnitLabel, calculateProgress as calcProgress } from './utils/metricFormatters';
+import { useNSMAutosync } from './hooks/useNSMAutosync';
+import { useProjectContext } from './contexts/ProjectContext';
+import { DesignAssistant, DesignAssistantButton } from './components/DesignAssistant';
+import { validateDesignDraft } from './services/aiAssistant';
 
 interface RoadmapViewProps {
   northStar: NorthStarMetric;
@@ -41,7 +45,42 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
   onDeleteStrategy
 }) => {
   const [modalState, setModalState] = useState<ModalState>({ type: 'none' });
-  // Safety check: Strategy-First Empty State
+
+  // North Star form state
+  const [nsMetricName, setNsMetricName] = useState('');
+  const [nsCurrentValue, setNsCurrentValue] = useState('');
+  const [nsTargetValue, setNsTargetValue] = useState('');
+  const [nsMetricType, setNsMetricType] = useState<MetricType>('currency');
+  const [nsModalTab, setNsModalTab] = useState<'values' | 'autosync'>('values');
+  const [nsSourceType, setNsSourceType] = useState<NSMSourceType>('manual');
+  const [nsSourceUrl, setNsSourceUrl] = useState('');
+  const [nsSourceCol, setNsSourceCol] = useState('B');
+  const [nsSourceRow, setNsSourceRow] = useState<string>('2');
+  const [nsSourceHeaderRow, setNsSourceHeaderRow] = useState<string>('1');
+  const [webhookCopied, setWebhookCopied] = useState(false);
+
+  // Objective form state
+  const [objectiveTitle, setObjectiveTitle] = useState('');
+  const [objectiveDescription, setObjectiveDescription] = useState('');
+
+  // Strategy form state
+  const [strategyTitle, setStrategyTitle] = useState('');
+  const [strategyDescription, setStrategyDescription] = useState('');
+
+  // AI Design Assistant
+  const { activeProject, activeProjectId } = useProjectContext();
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const draftForValidation = experiments.find(e => e.status === 'Idea');
+  const designWarningCount = validateDesignDraft({
+    hypothesis: draftForValidation?.hypothesis,
+    successCriteria: draftForValidation?.successCriteria,
+    targetMetric: draftForValidation?.targetMetric,
+  }).length;
+
+  // NSM autosync
+  const { syncing, lastResult, syncFromGoogleSheets, buildWebhookUrl } = useNSMAutosync();
+
+  // Safety check: Strategy-First Empty State (todas las hooks deben declararse arriba)
   if (!northStar) {
     return (
       <div style={{ padding: "60px 40px", textAlign: "center", maxWidth: "600px", margin: "0 auto" }}>
@@ -56,20 +95,6 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
       </div>
     );
   }
-
-  // North Star form state
-  const [nsMetricName, setNsMetricName] = useState('');
-  const [nsCurrentValue, setNsCurrentValue] = useState('');
-  const [nsTargetValue, setNsTargetValue] = useState('');
-  const [nsMetricType, setNsMetricType] = useState<MetricType>('currency');
-
-  // Objective form state
-  const [objectiveTitle, setObjectiveTitle] = useState('');
-  const [objectiveDescription, setObjectiveDescription] = useState('');
-
-  // Strategy form state
-  const [strategyTitle, setStrategyTitle] = useState('');
-  const [strategyDescription, setStrategyDescription] = useState('');
 
   const calculateProgress = () => {
     return calcProgress(northStar.currentValue, northStar.targetValue);
@@ -86,6 +111,12 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
     setNsCurrentValue(northStar.currentValue.toString());
     setNsTargetValue(northStar.targetValue.toString());
     setNsMetricType(northStar.type || 'currency');
+    setNsSourceType(northStar.sourceType || 'manual');
+    setNsSourceUrl(northStar.sourceUrl || '');
+    setNsSourceCol((northStar.sourceConfig?.column as string) || 'B');
+    setNsSourceRow(northStar.sourceConfig?.row !== undefined ? String(northStar.sourceConfig.row) : '2');
+    setNsSourceHeaderRow(northStar.sourceConfig?.headerRow !== undefined ? String(northStar.sourceConfig.headerRow) : '1');
+    setNsModalTab('values');
     setModalState({ type: 'northstar' });
   };
 
@@ -101,16 +132,70 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
     // Derive unit from metric type
     const unitMap: Record<MetricType, string> = { currency: '$', percentage: '%', count: '#', ratio: '×' };
 
+    const rowNum = parseInt(nsSourceRow, 10);
+    const headerNum = parseInt(nsSourceHeaderRow, 10);
+    const sourceConfig = nsSourceType === 'google_sheets' ? {
+      column: nsSourceCol.trim() || 'B',
+      row: Number.isFinite(rowNum) && rowNum > 0 ? rowNum : undefined,
+      headerRow: Number.isFinite(headerNum) && headerNum > 0 ? headerNum : 1,
+    } : {};
+
     onUpdateNorthStar({
       ...northStar,
       name: nsMetricName.trim(),
       currentValue: current,
       targetValue: target,
       type: nsMetricType,
-      unit: unitMap[nsMetricType] || '$'
+      unit: unitMap[nsMetricType] || '$',
+      sourceType: nsSourceType,
+      sourceUrl: nsSourceType === 'google_sheets' ? nsSourceUrl.trim() || null : null,
+      sourceConfig,
     });
 
     setModalState({ type: 'none' });
+  };
+
+  const handleSyncNow = async () => {
+    if (!activeProjectId) return;
+    if (!nsSourceUrl.trim()) {
+      alert('Configura la URL CSV antes de sincronizar.');
+      return;
+    }
+    const rowNum = parseInt(nsSourceRow, 10);
+    const headerNum = parseInt(nsSourceHeaderRow, 10);
+    const result = await syncFromGoogleSheets(activeProjectId, nsSourceUrl.trim(), {
+      column: nsSourceCol.trim() || 'B',
+      row: Number.isFinite(rowNum) && rowNum > 0 ? rowNum : undefined,
+      headerRow: Number.isFinite(headerNum) && headerNum > 0 ? headerNum : 1,
+    });
+    if (result.success && result.value !== undefined) {
+      setNsCurrentValue(String(result.value));
+      // Propaga al contexto para refrescar el header NSM sin esperar fetchProjects.
+      onUpdateNorthStar({
+        ...northStar,
+        currentValue: result.value,
+        sourceType: nsSourceType,
+        sourceUrl: nsSourceUrl.trim(),
+        lastSyncedAt: new Date().toISOString(),
+        syncStatus: `OK: ${result.value.toLocaleString()}`,
+      });
+    }
+  };
+
+  const handleCopyWebhook = async () => {
+    const url = buildWebhookUrl(northStar.webhookToken);
+    if (!url) {
+      alert('Aún no hay token de webhook para este proyecto. Guarda el North Star primero para generarlo en el server (o aplica la migración SQL).');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setWebhookCopied(true);
+      setTimeout(() => setWebhookCopied(false), 2000);
+    } catch {
+      // Fallback minimal
+      window.prompt('Copia esta URL:', url);
+    }
   };
 
   const handleOpenObjectiveModal = () => {
@@ -208,7 +293,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
             width: '500px',
             boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h2 style={{ fontSize: '24px', fontWeight: 700, margin: 0 }}>Editar North Star Metric</h2>
               <button
                 onClick={closeModal}
@@ -223,6 +308,30 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
               </button>
             </div>
 
+            {/* Tabs: Valores | Fuente automática */}
+            <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid #e5e7eb' }}>
+              {([['values', 'Valores'], ['autosync', 'Fuente automática']] as const).map(([id, label]) => (
+                <button
+                  key={id}
+                  onClick={() => setNsModalTab(id)}
+                  style={{
+                    padding: '10px 14px',
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: nsModalTab === id ? '#4F46E5' : '#6b7280',
+                    borderBottom: nsModalTab === id ? '2px solid #4F46E5' : '2px solid transparent',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {nsModalTab === 'values' && (
+            <>
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px' }}>
                 Nombre de la Métrica
@@ -314,6 +423,156 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                 />
               </div>
             </div>
+            </>
+            )}
+
+            {nsModalTab === 'autosync' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, fontSize: 14 }}>
+                  Tipo de fuente
+                </label>
+                <select
+                  value={nsSourceType}
+                  onChange={(e) => setNsSourceType(e.target.value as NSMSourceType)}
+                  style={{ width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 14, background: 'white', cursor: 'pointer' }}
+                >
+                  <option value="manual">Manual — el equipo edita el valor a mano</option>
+                  <option value="google_sheets">Google Sheets — polling de CSV público</option>
+                  <option value="webhook">Webhook — push desde un sistema externo</option>
+                </select>
+              </div>
+
+              {nsSourceType === 'google_sheets' && (
+                <>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, fontSize: 14 }}>
+                      URL CSV pública
+                    </label>
+                    <input
+                      type="url"
+                      value={nsSourceUrl}
+                      onChange={(e) => setNsSourceUrl(e.target.value)}
+                      placeholder="https://docs.google.com/spreadsheets/d/.../export?format=csv&gid=0"
+                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 13 }}
+                    />
+                    <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>
+                      Publica la hoja como CSV: <strong>Archivo → Compartir → Publicar en la web → CSV</strong>.
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 12 }}>Columna</label>
+                      <input
+                        type="text"
+                        value={nsSourceCol}
+                        onChange={(e) => setNsSourceCol(e.target.value.toUpperCase())}
+                        placeholder="B"
+                        maxLength={3}
+                        style={{ width: '100%', padding: '8px 10px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 13, textAlign: 'center', textTransform: 'uppercase' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 12 }}>Fila (opcional)</label>
+                      <input
+                        type="number"
+                        value={nsSourceRow}
+                        onChange={(e) => setNsSourceRow(e.target.value)}
+                        placeholder="2"
+                        min={1}
+                        style={{ width: '100%', padding: '8px 10px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 13, textAlign: 'center' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 12 }}>Header row</label>
+                      <input
+                        type="number"
+                        value={nsSourceHeaderRow}
+                        onChange={(e) => setNsSourceHeaderRow(e.target.value)}
+                        placeholder="1"
+                        min={1}
+                        style={{ width: '100%', padding: '8px 10px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 13, textAlign: 'center' }}
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleSyncNow}
+                    disabled={syncing || !nsSourceUrl.trim()}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      padding: '10px 16px', border: '1px solid #c7d2fe', borderRadius: 8,
+                      background: syncing ? '#eef2ff' : '#eef2ff', color: '#4F46E5',
+                      fontWeight: 600, fontSize: 13,
+                      cursor: syncing || !nsSourceUrl.trim() ? 'not-allowed' : 'pointer',
+                      opacity: syncing || !nsSourceUrl.trim() ? 0.6 : 1,
+                    }}
+                  >
+                    <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
+                    {syncing ? 'Sincronizando…' : 'Sincronizar ahora'}
+                  </button>
+
+                  {lastResult && (
+                    <div style={{
+                      padding: '10px 12px', borderRadius: 8, fontSize: 12,
+                      background: lastResult.success ? '#f0fdf4' : '#fef2f2',
+                      border: '1px solid ' + (lastResult.success ? '#bbf7d0' : '#fecaca'),
+                      color: lastResult.success ? '#166534' : '#991b1b',
+                    }}>
+                      {lastResult.success
+                        ? <>OK · valor leído: <strong>{lastResult.value?.toLocaleString()}</strong> {lastResult.rawCell && <span style={{ opacity: 0.7 }}>(celda: "{lastResult.rawCell}")</span>}</>
+                        : <>Error: {lastResult.error}</>}
+                    </div>
+                  )}
+
+                  <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '8px 12px', fontSize: 11, color: '#92400e' }}>
+                    Nota: el cron real (polling automático cada N min) requiere desplegar la Edge Function <code>nsm-webhook</code> en Supabase. Por ahora la sincronización es manual con este botón.
+                  </div>
+                </>
+              )}
+
+              {nsSourceType === 'webhook' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, fontSize: 14 }}>
+                      URL única del webhook
+                    </label>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input
+                        type="text"
+                        value={buildWebhookUrl(northStar.webhookToken) || '(guarda el proyecto primero para generar el token)'}
+                        readOnly
+                        style={{ flex: 1, padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 12, fontFamily: 'monospace', background: '#f9fafb' }}
+                      />
+                      <button
+                        onClick={handleCopyWebhook}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 6,
+                          padding: '0 14px', border: '1px solid #c7d2fe', borderRadius: 8,
+                          background: '#eef2ff', color: '#4F46E5', fontWeight: 600, fontSize: 13, cursor: 'pointer',
+                        }}
+                      >
+                        {webhookCopied ? <CheckCircle2 size={14} /> : <Copy size={14} />}
+                        {webhookCopied ? 'Copiado' : 'Copiar'}
+                      </button>
+                    </div>
+                  </div>
+                  <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 12px', fontSize: 12, color: '#92400e' }}>
+                    <strong>Cómo usarlo:</strong> haz POST con JSON <code>{`{ "value": 1234 }`}</code> a esta URL. La edge function <code>nsm-webhook</code> aún <strong>no está desplegada</strong> — esta URL queda lista para cuando lo esté.
+                  </div>
+                </div>
+              )}
+
+              {(northStar.lastSyncedAt || northStar.syncStatus) && (
+                <div style={{ fontSize: 12, color: '#6b7280', paddingTop: 8, borderTop: '1px dashed #e5e7eb' }}>
+                  <div>Última sincronización: {northStar.lastSyncedAt ? new Date(northStar.lastSyncedAt).toLocaleString() : '—'}</div>
+                  {northStar.syncStatus && <div>Estado: {northStar.syncStatus}</div>}
+                </div>
+              )}
+            </div>
+            )}
 
 
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
@@ -1277,6 +1536,32 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
           );
         })}
       </div>
+
+      {/* AI Design Assistant */}
+      <DesignAssistantButton onClick={() => setAssistantOpen(true)} warningCount={designWarningCount} />
+      <DesignAssistant
+        isOpen={assistantOpen}
+        onClose={() => setAssistantOpen(false)}
+        projectContext={{
+          projectName: activeProject?.metadata.name,
+          northStarName: northStar.name,
+          northStarTarget: northStar.targetValue,
+          northStarCurrent: northStar.currentValue,
+          objectives: objectives.map(o => ({ title: o.title, description: o.description })),
+          strategies: strategies.map(s => ({
+            title: s.title,
+            objectiveTitle: objectives.find(o => o.id === s.parentObjectiveId)?.title,
+            targetMetric: s.targetMetric,
+          })),
+        }}
+        currentDesign={draftForValidation ? {
+          hypothesis: draftForValidation.hypothesis,
+          successCriteria: draftForValidation.successCriteria,
+          targetMetric: draftForValidation.targetMetric,
+          problem: draftForValidation.problem,
+          observation: draftForValidation.observation,
+        } : undefined}
+      />
     </div>
   );
 };
