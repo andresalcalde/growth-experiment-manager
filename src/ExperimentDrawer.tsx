@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { FinalizeExperimentButton } from './components/FinalizeExperimentButton';
 import { ImageThumb } from './components/ImageThumb';
+import { AIReviewButton } from './components/AIReviewButton';
 import type { LightboxItem } from './components/Lightbox';
 import type { Experiment, Status, Objective, Strategy } from './types';
 
@@ -90,6 +91,9 @@ export const ExperimentDrawer: React.FC<ExperimentDrawerProps> = ({
     : null;
 
   const canConclude = experiment.status === 'Analysis';
+
+  // Contexto breve que se envía a la IA para revisar mejor cada campo.
+  const aiContext = `Título: ${experiment.title}. Hipótesis: ${experiment.hypothesis || '(sin hipótesis)'}.`;
 
   const saveSuccessCriteria = () => {
     onExperimentUpdate(experiment.id, { successCriteria: tempSuccessCriteria });
@@ -272,13 +276,21 @@ export const ExperimentDrawer: React.FC<ExperimentDrawerProps> = ({
               <div className="form-group">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <div className="label">Hipótesis</div>
-                  <button
-                    onClick={() => setEditingHypothesis(!editingHypothesis)}
-                    style={{ background: 'none', border: 'none', color: '#4F46E5', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600 }}
-                  >
-                    <Edit3 size={14} />
-                    {editingHypothesis ? 'Cancelar' : 'Editar'}
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <AIReviewButton
+                      field="hypothesis"
+                      value={editingHypothesis ? tempHypothesis : experiment.hypothesis}
+                      context={aiContext}
+                      onApply={(t) => { setTempHypothesis(t); setEditingHypothesis(true); onExperimentUpdate(experiment.id, { hypothesis: t }); }}
+                    />
+                    <button
+                      onClick={() => setEditingHypothesis(!editingHypothesis)}
+                      style={{ background: 'none', border: 'none', color: '#4F46E5', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600 }}
+                    >
+                      <Edit3 size={14} />
+                      {editingHypothesis ? 'Cancelar' : 'Editar'}
+                    </button>
+                  </div>
                 </div>
                 {editingHypothesis ? (
                   <div>
@@ -316,13 +328,21 @@ export const ExperimentDrawer: React.FC<ExperimentDrawerProps> = ({
               <div className="form-group">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <div className="label">Criterios de Éxito (Definición de Done)</div>
-                  <button
-                    onClick={() => setEditingSuccessCriteria(!editingSuccessCriteria)}
-                    style={{ background: 'none', border: 'none', color: '#4F46E5', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600 }}
-                  >
-                    <Edit3 size={14} />
-                    {editingSuccessCriteria ? 'Cancelar' : 'Editar'}
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <AIReviewButton
+                      field="successCriteria"
+                      value={editingSuccessCriteria ? tempSuccessCriteria : (experiment.successCriteria || '')}
+                      context={aiContext}
+                      onApply={(t) => { setTempSuccessCriteria(t); setEditingSuccessCriteria(true); onExperimentUpdate(experiment.id, { successCriteria: t }); }}
+                    />
+                    <button
+                      onClick={() => setEditingSuccessCriteria(!editingSuccessCriteria)}
+                      style={{ background: 'none', border: 'none', color: '#4F46E5', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600 }}
+                    >
+                      <Edit3 size={14} />
+                      {editingSuccessCriteria ? 'Cancelar' : 'Editar'}
+                    </button>
+                  </div>
                 </div>
                 {editingSuccessCriteria ? (
                   <div>
@@ -727,13 +747,21 @@ export const ExperimentDrawer: React.FC<ExperimentDrawerProps> = ({
               <div style={{ marginBottom: '32px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <div className="label">The Verdict (Key Insight)</div>
-                  <button
-                    onClick={() => setEditingVerdict(!editingVerdict)}
-                    style={{ background: 'none', border: 'none', color: '#4F46E5', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600 }}
-                  >
-                    <Edit3 size={14} />
-                    {editingVerdict ? 'Cancelar' : 'Editar'}
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <AIReviewButton
+                      field="verdict"
+                      value={editingVerdict ? tempVerdict : (experiment.verdict || '')}
+                      context={aiContext}
+                      onApply={(t) => { setTempVerdict(t); setEditingVerdict(true); onExperimentUpdate(experiment.id, { verdict: t }); }}
+                    />
+                    <button
+                      onClick={() => setEditingVerdict(!editingVerdict)}
+                      style={{ background: 'none', border: 'none', color: '#4F46E5', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600 }}
+                    >
+                      <Edit3 size={14} />
+                      {editingVerdict ? 'Cancelar' : 'Editar'}
+                    </button>
+                  </div>
                 </div>
                 <div style={{ fontSize: '11px', color: 'var(--text-subtle)', marginBottom: '8px' }}>
                   Este es el campo que se muestra en la vista Learning.
@@ -788,13 +816,21 @@ export const ExperimentDrawer: React.FC<ExperimentDrawerProps> = ({
               <div style={{ marginBottom: '32px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <div className="label">Key Learnings</div>
-                  <button
-                    onClick={() => setEditingLearnings(!editingLearnings)}
-                    style={{ background: 'none', border: 'none', color: '#4F46E5', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600 }}
-                  >
-                    <Edit3 size={14} />
-                    {editingLearnings ? 'Cancelar' : 'Editar'}
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <AIReviewButton
+                      field="keyLearnings"
+                      value={editingLearnings ? tempLearnings : (experiment.keyLearnings || '')}
+                      context={aiContext}
+                      onApply={(t) => { setTempLearnings(t); setEditingLearnings(true); onExperimentUpdate(experiment.id, { keyLearnings: t }); }}
+                    />
+                    <button
+                      onClick={() => setEditingLearnings(!editingLearnings)}
+                      style={{ background: 'none', border: 'none', color: '#4F46E5', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600 }}
+                    >
+                      <Edit3 size={14} />
+                      {editingLearnings ? 'Cancelar' : 'Editar'}
+                    </button>
+                  </div>
                 </div>
                 {editingLearnings ? (
                   <div>

@@ -194,3 +194,110 @@ export async function askDesignAssistant(req: AssistantRequest): Promise<Assista
     return { reply: `No se pudo contactar a OpenAI: ${msg}`, warnings };
   }
 }
+
+// ---------------------------------------------------------------------------
+// Revisión de redacción por campo (botón "✨ Revisar" en el ExperimentDrawer)
+// ---------------------------------------------------------------------------
+
+export type ReviewField = 'hypothesis' | 'successCriteria' | 'verdict' | 'keyLearnings';
+
+export interface ReviewResult {
+  /** Versión corregida/mejorada del texto. */
+  suggestion: string;
+  /** Lista breve de qué estaba mal (ortografía, claridad, formato, etc.). */
+  issues: string[];
+}
+
+const REVIEW_GUIDANCE: Record<ReviewField, string> = {
+  hypothesis:
+    'Es una HIPÓTESIS de experimento. Debe seguir el formato "SI [acción concreta] ENTONCES [resultado esperado y medible] PORQUE [insight o razón]". Si no lo sigue, reestructúrala a ese formato sin inventar datos.',
+  successCriteria:
+    'Son CRITERIOS DE ÉXITO (definición de done). Deben ser específicos y medibles (umbral numérico, métrica y/o plazo). Hazlos concretos.',
+  verdict:
+    'Es el VEREDICTO / insight de cierre de un experimento. Debe ser claro, conciso y orientado a la decisión.',
+  keyLearnings:
+    'Son los KEY LEARNINGS de un experimento. Deben capturar el aprendizaje accionable de forma clara.',
+};
+
+/**
+ * Revisa la redacción de un campo de experimento con OpenAI y devuelve una
+ * versión corregida + la lista de problemas detectados. No reescribe nada por
+ * su cuenta: la UI muestra la sugerencia para que el humano la apruebe.
+ *
+ * Lanza Error si no hay API key o si la llamada/parsing falla, para que la UI
+ * lo muestre. (El asistente de chat usa respuestas "canned"; aquí preferimos
+ * errores explícitos porque es una acción puntual disparada por el usuario.)
+ */
+export async function reviewText(req: {
+  field: ReviewField;
+  text: string;
+  context?: string;
+}): Promise<ReviewResult> {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    throw new Error(
+      'El asistente IA no está configurado. Agrega VITE_OPENAI_API_KEY en el .env local y reinicia el dev server.'
+    );
+  }
+
+  const sys = `Eres un editor experto en metodología Growth. Corriges y mejoras la redacción de campos de experimentos, en español.
+${REVIEW_GUIDANCE[req.field]}
+Reglas:
+- Conserva el significado e intención del autor. No inventes datos que no estén en el texto o el contexto.
+- Corrige ortografía, gramática, acentuación y claridad.
+- Responde SOLO con un objeto JSON válido EXACTAMENTE con esta forma:
+  {"suggestion": "<texto corregido y mejorado>", "issues": ["<problema 1>", "<problema 2>"]}
+- "issues": viñetas breves de qué estaba mal (máximo 4). Si el texto ya está bien, devuelve el mismo texto e issues: ["El texto ya está bien redactado."].`;
+
+  const user = `${req.context ? `Contexto del experimento: ${req.context}\n\n` : ''}Texto a revisar:\n"""${req.text}"""`;
+
+  let res: Response;
+  try {
+    res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: sys },
+          { role: 'user', content: user },
+        ],
+        temperature: 0.3,
+        max_tokens: 700,
+        response_format: { type: 'json_object' },
+      }),
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Error desconocido';
+    throw new Error(`No se pudo contactar a OpenAI: ${msg}`);
+  }
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Error de OpenAI (${res.status}): ${text.slice(0, 200) || 'sin detalles'}.`);
+  }
+
+  const data = await res.json();
+  const raw: string = data?.choices?.[0]?.message?.content ?? '{}';
+
+  let parsed: { suggestion?: unknown; issues?: unknown };
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error('No se pudo interpretar la respuesta de la IA.');
+  }
+
+  const suggestion = typeof parsed.suggestion === 'string' ? parsed.suggestion.trim() : '';
+  const issues = Array.isArray(parsed.issues)
+    ? parsed.issues.filter((x): x is string => typeof x === 'string')
+    : [];
+
+  if (!suggestion) {
+    throw new Error('La IA no devolvió una sugerencia válida.');
+  }
+
+  return { suggestion, issues };
+}
