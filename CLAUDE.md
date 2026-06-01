@@ -20,10 +20,13 @@ Copy `.env.example` to `.env` and fill in Supabase credentials:
 ```
 VITE_SUPABASE_URL=https://xxxxx.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJhbGci...
-VITE_OPENAI_API_KEY=sk-...   # opcional — habilita el Design Assistant (IA)
+VITE_OPENAI_API_KEY=sk-...   # SOLO dev local — habilita la IA llamando directo a OpenAI
 ```
 
-`VITE_OPENAI_API_KEY` activa el chatbot IA en la etapa Design (`src/components/DesignAssistant.tsx`). Si está vacía, el panel se muestra pero responde con un mensaje canned. **No commitear la API key real al repo.** Para producción mover la llamada a una Supabase Edge Function (TODO en `src/services/aiAssistant.ts`).
+**IA (Design Assistant + revisión de redacción en `ExperimentDrawer`):**
+- En **producción**, las llamadas a OpenAI pasan por la función serverless `api/ai-assistant.ts` (Vercel). La key vive server-side como `OPENAI_API_KEY` (configurada en Vercel, NO `VITE_`) y nunca llega al navegador. La función valida la sesión Supabase del usuario antes de llamar a OpenAI.
+- En **dev local**, si `VITE_OPENAI_API_KEY` está en el `.env`, el cliente llama directo a OpenAI (la key local no entra al build de prod). Si está vacía, la IA muestra un mensaje de "no configurado".
+- Lógica de enrutamiento en `src/services/aiAssistant.ts` (`callChatCompletion`). **No commitear la API key real al repo.**
 
 Database schema lives in `supabase/migration.sql` — run it in Supabase SQL Editor to bootstrap.
 
@@ -119,7 +122,7 @@ https://oumhhngnwjijtmgpnhba.supabase.co
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **growth-experiment-manager** (431 symbols, 706 relationships, 24 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **growth-experiment-manager** (515 symbols, 890 relationships, 36 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

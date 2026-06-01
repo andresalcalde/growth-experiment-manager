@@ -1,14 +1,16 @@
 /**
- * aiAssistant — cliente del Design Assistant (etapa Design).
+ * aiAssistant — cliente del Design Assistant (etapa Design) y revisión de
+ * redacción de campos de experimentos.
  *
- * Llama a OpenAI Chat Completions con un system prompt enfocado en
- * estructuración de hipótesis Growth (SI → ENTONCES → PORQUE) y revisión
- * de los campos del Design.
- *
- * La API key se lee de `import.meta.env.VITE_OPENAI_API_KEY`. Esto la
- * expone al cliente — para producción real conviene mover esta llamada
- * detrás de una Supabase Edge Function (TODO marcado abajo).
+ * Llamadas a OpenAI:
+ * - En PRODUCCIÓN se enrutan por la función serverless `/api/ai-assistant`
+ *   (la API key vive server-side en Vercel como `OPENAI_API_KEY` y nunca
+ *   llega al navegador). El cliente adjunta el token de sesión Supabase.
+ * - En DESARROLLO local, si hay `VITE_OPENAI_API_KEY` en el `.env`, se llama
+ *   directo a OpenAI por conveniencia (esa key solo existe localmente y no se
+ *   incluye en el build de producción).
  */
+import { supabase } from '../lib/supabase';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -101,6 +103,48 @@ const getApiKey = (): string | null => {
 };
 
 /**
+ * `true` si la IA está disponible: en dev necesita la key local; en prod
+ * asumimos que la función serverless `/api/ai-assistant` está desplegada.
+ */
+const aiAvailable = (): boolean => !import.meta.env.DEV || getApiKey() !== null;
+
+type ChatBody = {
+  model: string;
+  messages: ChatMessage[];
+  temperature?: number;
+  max_tokens?: number;
+  response_format?: { type: 'json_object' };
+};
+
+/**
+ * Ejecuta una Chat Completion. En dev local con key → directo a OpenAI;
+ * en prod → vía la función serverless con el token de sesión Supabase.
+ */
+async function callChatCompletion(body: ChatBody): Promise<Response> {
+  const localKey = getApiKey();
+  if (import.meta.env.DEV && localKey) {
+    return fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localKey}`,
+      },
+      body: JSON.stringify(body),
+    });
+  }
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token ?? '';
+  return fetch('/api/ai-assistant', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+/**
  * Detecta heurísticamente si el draft tiene problemas obvios (sin gastar tokens).
  * Las warnings se muestran como badges amarillos en la UI.
  */
@@ -134,15 +178,14 @@ export const validateDesignDraft = (draft: DesignDraft | undefined): string[] =>
  */
 export async function askDesignAssistant(req: AssistantRequest): Promise<AssistantResponse> {
   const warnings = validateDesignDraft(req.currentDesign);
-  const apiKey = getApiKey();
 
-  if (!apiKey) {
+  if (!aiAvailable()) {
     return {
       reply: [
-        'El asistente IA no está configurado.',
+        'El asistente IA no está configurado en este entorno local.',
         '',
-        'Para habilitarlo:',
-        '1. Pide a tu admin la API key de OpenAI.',
+        'Para habilitarlo en dev:',
+        '1. Pide la API key de OpenAI.',
         '2. Agrégala como `VITE_OPENAI_API_KEY=sk-...` en el `.env` local.',
         '3. Reinicia el dev server.',
         '',
@@ -161,28 +204,18 @@ export async function askDesignAssistant(req: AssistantRequest): Promise<Assista
     { role: 'user', content: req.userMessage },
   ];
 
-  // TODO (prod): mover esta llamada a una Supabase Edge Function que use
-  // la API key desde el server (no expuesta al cliente). El cliente solo
-  // llamaría a `supabase.functions.invoke('design-assistant', { body })`.
   try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages,
-        temperature: 0.4,
-        max_tokens: 600,
-      }),
+    const res = await callChatCompletion({
+      model: 'gpt-4o-mini',
+      messages,
+      temperature: 0.4,
+      max_tokens: 600,
     });
 
     if (!res.ok) {
       const text = await res.text().catch(() => '');
       return {
-        reply: `Error de OpenAI (${res.status}): ${text.slice(0, 200) || 'sin detalles'}.`,
+        reply: `Error del asistente (${res.status}): ${text.slice(0, 200) || 'sin detalles'}.`,
         warnings,
       };
     }
@@ -191,7 +224,7 @@ export async function askDesignAssistant(req: AssistantRequest): Promise<Assista
     return { reply, warnings };
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Error desconocido';
-    return { reply: `No se pudo contactar a OpenAI: ${msg}`, warnings };
+    return { reply: `No se pudo contactar al asistente: ${msg}`, warnings };
   }
 }
 
@@ -233,10 +266,9 @@ export async function reviewText(req: {
   text: string;
   context?: string;
 }): Promise<ReviewResult> {
-  const apiKey = getApiKey();
-  if (!apiKey) {
+  if (!aiAvailable()) {
     throw new Error(
-      'El asistente IA no está configurado. Agrega VITE_OPENAI_API_KEY en el .env local y reinicia el dev server.'
+      'El asistente IA no está configurado en este entorno local. Agrega VITE_OPENAI_API_KEY en el .env local y reinicia el dev server.'
     );
   }
 
@@ -253,31 +285,24 @@ Reglas:
 
   let res: Response;
   try {
-    res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: sys },
-          { role: 'user', content: user },
-        ],
-        temperature: 0.3,
-        max_tokens: 700,
-        response_format: { type: 'json_object' },
-      }),
+    res = await callChatCompletion({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: sys },
+        { role: 'user', content: user },
+      ],
+      temperature: 0.3,
+      max_tokens: 700,
+      response_format: { type: 'json_object' },
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Error desconocido';
-    throw new Error(`No se pudo contactar a OpenAI: ${msg}`);
+    throw new Error(`No se pudo contactar al asistente: ${msg}`);
   }
 
   if (!res.ok) {
     const text = await res.text().catch(() => '');
-    throw new Error(`Error de OpenAI (${res.status}): ${text.slice(0, 200) || 'sin detalles'}.`);
+    throw new Error(`Error del asistente (${res.status}): ${text.slice(0, 200) || 'sin detalles'}.`);
   }
 
   const data = await res.json();
