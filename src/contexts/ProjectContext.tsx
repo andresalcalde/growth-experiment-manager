@@ -136,6 +136,12 @@ function dbRowToProject(row: any): Omit<Project, 'objectives' | 'strategies' | '
             targetValue: Number(row.nsm_target) || 0,
             unit: row.nsm_unit || '$',
             type: row.nsm_type || 'currency',
+            sourceType: row.nsm_source_type || 'manual',
+            sourceUrl: row.nsm_source_url || null,
+            sourceConfig: row.nsm_source_config || {},
+            lastSyncedAt: row.nsm_last_synced_at || null,
+            syncStatus: row.nsm_sync_status || null,
+            webhookToken: row.nsm_webhook_token || null,
         },
         objectives: [],
         strategies: [],
@@ -450,15 +456,22 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
             p.metadata.id === activeProjectId ? { ...p, northStar: ns } : p
         ))
 
+        const payload: Record<string, unknown> = {
+            nsm_name: ns.name,
+            nsm_value: ns.currentValue,
+            nsm_target: ns.targetValue,
+            nsm_unit: ns.unit,
+            nsm_type: ns.type,
+        }
+        if (ns.sourceType !== undefined) payload.nsm_source_type = ns.sourceType
+        if (ns.sourceUrl !== undefined) payload.nsm_source_url = ns.sourceUrl
+        if (ns.sourceConfig !== undefined) payload.nsm_source_config = ns.sourceConfig
+        if (ns.lastSyncedAt !== undefined) payload.nsm_last_synced_at = ns.lastSyncedAt
+        if (ns.syncStatus !== undefined) payload.nsm_sync_status = ns.syncStatus
+
         const { error } = await supabase
             .from('projects')
-            .update({
-                nsm_name: ns.name,
-                nsm_value: ns.currentValue,
-                nsm_target: ns.targetValue,
-                nsm_unit: ns.unit,
-                nsm_type: ns.type,
-            })
+            .update(payload)
             .eq('id', activeProjectId)
 
         if (error) {

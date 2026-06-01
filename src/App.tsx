@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Plus,
   LayoutDashboard,
@@ -11,8 +11,15 @@ import {
   CheckCircle2,
   HelpCircle,
   Settings,
-  LogOut
+  LogOut,
+  ShieldCheck,
+  UploadCloud,
+  FileText,
+  Download,
+  Trash2,
+  Loader2
 } from 'lucide-react';
+import { uploadExperimentEvidence, deleteExperimentEvidence } from './lib/uploadEvidence';
 import { MethodologyToolkit } from './components/MethodologyToolkit';
 import {
   DndContext,
@@ -55,6 +62,7 @@ import { useAuth } from './contexts/AuthContext';
 import { AdminView } from './AdminView';
 import { GlobalLibraryView } from './GlobalLibraryView';
 import { AreaPromptModal } from './components/AreaPromptModal';
+import { Lightbox, type LightboxItem } from './components/Lightbox';
 
 
 // Original MOCK_EXPERIMENTS replaced with Laboratorio Polanco data
@@ -85,6 +93,17 @@ const IceBadge = ({ impact, confidence, ease, score }: { impact: number, confide
 
 
 const isUrl = (s: string) => s.startsWith('http://') || s.startsWith('https://') || s.startsWith('data:');
+const isImageUrl = (s: string) => s.startsWith('data:image/') || /\.(png|jpe?g|gif|webp|svg|avif|bmp)(\?|#|$)/i.test(s);
+const isPdfUrl = (s: string) => s.startsWith('data:application/pdf') || /\.pdf(\?|#|$)/i.test(s);
+const isPreviewable = (s: string) => isImageUrl(s) || isPdfUrl(s);
+const fileNameFromUrl = (s: string) => {
+  try {
+    const last = decodeURIComponent(s.split('?')[0].split('/').pop() || '');
+    return last.replace(/^\d+-/, '') || 'archivo';
+  } catch {
+    return 'archivo';
+  }
+};
 
 const OwnerAvatar = ({ avatar, name, size = 20 }: { avatar: string; name: string; size?: number }) => {
   if (avatar && isUrl(avatar)) {
@@ -280,13 +299,66 @@ const LibraryCard = ({ experiment, onClick }: { experiment: Experiment; onClick:
 };
 
 
-const CaseStudyModal = ({ experiment, onClose }: { experiment: Experiment; onClose: () => void }) => {
+const CaseStudyModal = ({ experiment, onClose, onUpdate }: { experiment: Experiment; onClose: () => void; onUpdate: (updates: Partial<Experiment>) => void }) => {
   const isWinner = experiment.status === 'Finished - Winner';
   const isLoser = experiment.status === 'Finished - Loser';
 
   let highlightColor = '#F3F4F6'; // gray
   if (isWinner) highlightColor = 'rgba(74, 222, 128, 0.2)';
   if (isLoser) highlightColor = '#FEE2E2';
+
+  // Lightbox: solo items previsualizables (imágenes y PDF)
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const lightboxItems: LightboxItem[] = (experiment.visualProof || [])
+    .filter(p => isUrl(p) && isPreviewable(p))
+    .map(p => ({ src: p, caption: fileNameFromUrl(p) }));
+
+  // Subida de evidencia a Supabase Storage (cualquier tipo de archivo)
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const uploadFiles = async (files: FileList | File[]) => {
+    const list = Array.from(files);
+    if (list.length === 0) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const urls: string[] = [];
+      for (const file of list) {
+        if (file.size > 25 * 1024 * 1024) {
+          setUploadError(`"${file.name}" supera 25MB y no se subió.`);
+          continue;
+        }
+        urls.push(await uploadExperimentEvidence(experiment.id, file));
+      }
+      if (urls.length > 0) {
+        onUpdate({ visualProof: [...(experiment.visualProof || []), ...urls] });
+      }
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Error al subir el archivo.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handlePick = () => fileInputRef.current?.click();
+
+  const handleRemove = async (idx: number) => {
+    const cur = experiment.visualProof || [];
+    const target = cur[idx];
+    onUpdate({ visualProof: cur.filter((_, i) => i !== idx) });
+    if (target && isUrl(target)) {
+      // El registro ya se quitó; un fallo al borrar en Storage no debe romper la UI.
+      try { await deleteExperimentEvidence(target); } catch { /* ignore */ }
+    }
+  };
+
+  const openLightbox = (proof: string) => {
+    const i = lightboxItems.findIndex(it => it.src === proof);
+    setLightboxIndex(i >= 0 ? i : 0);
+  };
 
   return (
     <div className="drawer-overlay" style={{ alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
@@ -321,23 +393,120 @@ const CaseStudyModal = ({ experiment, onClose }: { experiment: Experiment; onClo
               </div>
 
               <div style={{ marginBottom: '32px' }}>
-                <h3 style={{ fontSize: '14px', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-subtle)', marginBottom: '12px' }}>The Evidence</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  {experiment.visualProof?.map((proof, i) => (
-                    <div key={i} style={{ aspectRatio: '16/9', background: '#f3f4f6', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-subtle)', overflow: 'hidden' }}>
-                      {isUrl(proof) ? (
-                        <img src={proof} alt="Evidencia visual" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                      ) : (
-                        <span style={{ fontSize: '12px', color: 'var(--text-subtle)' }}>{proof}</span>
-                      )}
-                    </div>
-                  ))}
-                  {(!experiment.visualProof || experiment.visualProof.length === 0) && (
-                    <div style={{ aspectRatio: '16/9', background: '#f3f4f6', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed var(--border-subtle)', gridColumn: 'span 2' }}>
-                      <span style={{ fontSize: '12px', color: 'var(--text-subtle)' }}>No visual evidence attached</span>
-                    </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <h3 style={{ fontSize: '14px', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-subtle)', margin: 0 }}>The Evidence</h3>
+                  {(experiment.visualProof && experiment.visualProof.length > 0) && (
+                    <button
+                      onClick={handlePick}
+                      disabled={uploading}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', background: 'none', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '6px 10px', cursor: uploading ? 'default' : 'pointer' }}
+                    >
+                      {uploading ? <Loader2 size={14} className="spin" /> : <UploadCloud size={14} />}
+                      {uploading ? 'Subiendo…' : 'Subir'}
+                    </button>
                   )}
                 </div>
+
+                {/* Input de archivo oculto, compartido por dropzone y botón */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  style={{ display: 'none' }}
+                  onChange={(e) => { if (e.target.files) uploadFiles(e.target.files); e.target.value = ''; }}
+                />
+
+                {(experiment.visualProof && experiment.visualProof.length > 0) ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    {experiment.visualProof.map((proof, i) => {
+                      const removeBtn = (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleRemove(i); }}
+                          aria-label="Eliminar evidencia"
+                          title="Eliminar"
+                          style={{ position: 'absolute', top: '6px', right: '6px', width: '26px', height: '26px', borderRadius: '50%', background: 'rgba(0,0,0,0.55)', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      );
+
+                      // Evidencia legacy en texto plano (no es URL)
+                      if (!isUrl(proof)) {
+                        return (
+                          <div key={i} style={{ position: 'relative', aspectRatio: '16/9', background: '#f3f4f6', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-subtle)', overflow: 'hidden' }}>
+                            {removeBtn}
+                            <span style={{ fontSize: '12px', color: 'var(--text-subtle)', padding: '0 12px', textAlign: 'center' }}>{proof}</span>
+                          </div>
+                        );
+                      }
+
+                      // Imagen → miniatura con zoom al Lightbox
+                      if (isImageUrl(proof)) {
+                        return (
+                          <div
+                            key={i}
+                            onClick={() => openLightbox(proof)}
+                            style={{ position: 'relative', aspectRatio: '16/9', maxHeight: '70vh', background: '#f3f4f6', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-subtle)', overflow: 'hidden', cursor: 'zoom-in', transition: 'transform 0.15s ease, box-shadow 0.15s ease' }}
+                            onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.02)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.12)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = 'none'; }}
+                          >
+                            {removeBtn}
+                            <img src={proof} alt="Evidencia visual" style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', objectFit: 'contain' }} />
+                          </div>
+                        );
+                      }
+
+                      // PDF → tarjeta que abre el Lightbox (iframe)
+                      if (isPdfUrl(proof)) {
+                        return (
+                          <div
+                            key={i}
+                            onClick={() => openLightbox(proof)}
+                            style={{ position: 'relative', aspectRatio: '16/9', background: '#f3f4f6', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', border: '1px solid var(--border-subtle)', cursor: 'zoom-in', padding: '12px' }}
+                          >
+                            {removeBtn}
+                            <FileText size={28} color="var(--text-subtle)" />
+                            <span style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>{fileNameFromUrl(proof)}</span>
+                          </div>
+                        );
+                      }
+
+                      // Otro archivo → chip descargable (abre en nueva pestaña)
+                      return (
+                        <a
+                          key={i}
+                          href={proof}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ position: 'relative', aspectRatio: '16/9', background: '#f3f4f6', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', border: '1px solid var(--border-subtle)', textDecoration: 'none', padding: '12px' }}
+                        >
+                          {removeBtn}
+                          <Download size={26} color="var(--text-subtle)" />
+                          <span style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>{fileNameFromUrl(proof)}</span>
+                        </a>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  /* Estado vacío → zona de carga */
+                  <div
+                    onClick={handlePick}
+                    onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={(e) => { e.preventDefault(); setDragOver(false); if (e.dataTransfer.files) uploadFiles(e.dataTransfer.files); }}
+                    style={{ aspectRatio: '16/6', minHeight: '140px', background: dragOver ? 'rgba(79,70,229,0.06)' : '#f9fafb', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', border: `1px dashed ${dragOver ? 'var(--accent, #4F46E5)' : 'var(--border-subtle)'}`, cursor: uploading ? 'default' : 'pointer', transition: 'background 0.15s ease, border-color 0.15s ease' }}
+                  >
+                    {uploading ? <Loader2 size={28} className="spin" color="var(--text-subtle)" /> : <UploadCloud size={28} color="var(--text-subtle)" />}
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>
+                      {uploading ? 'Subiendo…' : 'Arrastra o haz clic para subir evidencia'}
+                    </span>
+                    <span style={{ fontSize: '12px', color: 'var(--text-subtle)' }}>Imágenes, PDF u otros archivos (máx. 25MB c/u)</span>
+                  </div>
+                )}
+
+                {uploadError && (
+                  <p style={{ marginTop: '8px', fontSize: '12px', color: 'var(--status-loser, #DC2626)' }}>{uploadError}</p>
+                )}
               </div>
 
               <div style={{ marginBottom: '32px' }}>
@@ -393,6 +562,14 @@ const CaseStudyModal = ({ experiment, onClose }: { experiment: Experiment; onClo
           </div>
         </div>
       </div>
+      {lightboxIndex !== null && lightboxItems.length > 0 && (
+        <Lightbox
+          items={lightboxItems}
+          index={lightboxIndex}
+          onIndexChange={setLightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
+      )}
     </div>
   );
 };
@@ -561,6 +738,9 @@ const App: React.FC = () => {
     updateExperiment(id, updates);
     if (selectedExperiment && selectedExperiment.id === id) {
       setSelectedExperiment(prev => prev ? { ...prev, ...updates } : null);
+    }
+    if (selectedCaseStudy && selectedCaseStudy.id === id) {
+      setSelectedCaseStudy(prev => prev ? { ...prev, ...updates } : null);
     }
   };
 
@@ -953,6 +1133,28 @@ const App: React.FC = () => {
           <span style={{ fontWeight: 500 }}>04. Learning</span>
           <InfoTooltip content="Cierra el Growth Loop. Documenta aquí si la hipótesis se validó o se rechazó. El aprendizaje es el activo más valioso; un experimento 'fallido' es un éxito si nos dice qué no hacer en el futuro." position="right" />
         </button>
+
+        {/* Admin — top-level (cross-project), solo para superadmin */}
+        {isSuperAdmin && (
+          <>
+            <div style={{ height: 1, background: '#E5E7EB', margin: '12px 4px' }} />
+            <button
+              onClick={() => setView('admin')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px',
+                borderRadius: '8px', width: '100%', textAlign: 'left', border: 'none',
+                cursor: 'pointer',
+                background: 'transparent',
+                color: '#4F46E5',
+                fontWeight: 600,
+              }}
+              title="Panel de Administración — gestión de usuarios, áreas y métricas globales"
+            >
+              <ShieldCheck size={18} />
+              <span style={{ fontWeight: 600 }}>Administración</span>
+            </button>
+          </>
+        )}
 
         <div style={{ marginTop: 'auto' }}>
           <button
@@ -1359,7 +1561,11 @@ const App: React.FC = () => {
       )}
 
       {selectedCaseStudy && (
-        <CaseStudyModal experiment={selectedCaseStudy} onClose={() => setSelectedCaseStudy(null)} />
+        <CaseStudyModal
+          experiment={selectedCaseStudy}
+          onClose={() => setSelectedCaseStudy(null)}
+          onUpdate={(updates) => handleExperimentUpdate(selectedCaseStudy.id, updates)}
+        />
       )}
 
       <ExperimentModal
