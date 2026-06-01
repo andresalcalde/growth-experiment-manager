@@ -261,6 +261,18 @@ const REVIEW_GUIDANCE: Record<ReviewField, string> = {
  * lo muestre. (El asistente de chat usa respuestas "canned"; aquí preferimos
  * errores explícitos porque es una acción puntual disparada por el usuario.)
  */
+/**
+ * Detección heurística de idioma (es/en) para fijar el idioma de la sugerencia.
+ * No es un detector perfecto, pero basta para no traducir el texto del usuario.
+ */
+function detectLanguage(text: string): 'es' | 'en' {
+  const t = text.toLowerCase();
+  if (/[áéíóúñ¿¡]/.test(t)) return 'es';
+  const es = (t.match(/\b(el|la|los|las|de|del|que|por|para|con|una?|si|entonces|porque|cambiar|aumentar|usuarios?|registros?|prueba|gratis)\b/g) || []).length;
+  const en = (t.match(/\b(the|will|to|from|increase|by|change|because|if|then|users?|signups?|sign|free|trial|and|of|a)\b/g) || []).length;
+  return en > es ? 'en' : 'es';
+}
+
 export async function reviewText(req: {
   field: ReviewField;
   text: string;
@@ -272,15 +284,20 @@ export async function reviewText(req: {
     );
   }
 
+  const lang = detectLanguage(req.text);
+  const langLabel = lang === 'en' ? 'INGLÉS' : 'ESPAÑOL';
+
   const sys = `Eres un editor experto en metodología Growth. Corriges y mejoras la redacción de campos de experimentos.
+
+REGLA DE IDIOMA (la más importante): el texto a revisar está en ${langLabel}. La "suggestion" DEBE estar escrita 100% en ${langLabel}. Está TERMINANTEMENTE PROHIBIDO traducir a otro idioma. Cambiar el idioma NO es una corrección válida y NO debe aparecer en "issues". ${lang === 'en' ? 'Como el texto está en inglés, escribe la suggestion en inglés (usa IF / THEN / BECAUSE si aplica el formato de hipótesis).' : 'Como el texto está en español, escribe la suggestion en español (usa SI / ENTONCES / PORQUE si aplica el formato de hipótesis).'}
+
 ${REVIEW_GUIDANCE[req.field]}
-Reglas:
-- IMPORTANTE: la "suggestion" debe ir en el MISMO idioma del texto original. Si el texto está en inglés, corrígelo en inglés; si está en español, en español. NUNCA traduzcas a otro idioma.
+Otras reglas:
 - Conserva el significado e intención del autor. No inventes datos que no estén en el texto o el contexto.
 - Corrige ortografía, gramática, acentuación y claridad.
 - Responde SOLO con un objeto JSON válido EXACTAMENTE con esta forma:
-  {"suggestion": "<texto corregido y mejorado, en el idioma original>", "issues": ["<problema 1>", "<problema 2>"]}
-- "issues": viñetas breves (en español) de qué estaba mal (máximo 4). Si el texto ya está bien, devuelve el mismo texto e issues: ["El texto ya está bien redactado."].`;
+  {"suggestion": "<texto corregido en ${langLabel}>", "issues": ["<problema 1>", "<problema 2>"]}
+- "issues": viñetas breves SIEMPRE en español, sobre el contenido/estructura (NO sobre el idioma), máximo 4. Si el texto ya está bien, devuelve el mismo texto e issues: ["El texto ya está bien redactado."].`;
 
   const user = `${req.context ? `Contexto del experimento: ${req.context}\n\n` : ''}Texto a revisar:\n"""${req.text}"""`;
 
