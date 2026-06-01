@@ -243,7 +243,7 @@ export interface ReviewResult {
 
 const REVIEW_GUIDANCE: Record<ReviewField, string> = {
   hypothesis:
-    'Es una HIPÓTESIS de experimento. Debe seguir el formato "SI [acción concreta] ENTONCES [resultado esperado y medible] PORQUE [insight o razón]". Si no lo sigue, reestructúrala a ese formato sin inventar datos.',
+    'Es una HIPÓTESIS de experimento. Debe seguir el formato SI [acción concreta] ENTONCES [resultado esperado y medible] PORQUE [insight o razón], usando esas palabras clave si el texto está en español, o su equivalente en el idioma del texto (en inglés: IF [action] THEN [measurable result] BECAUSE [insight]). El PORQUE/BECAUSE debe aportar un insight accionable (por qué TU usuario reaccionaría así), no repetir el resultado. Si no sigue el formato, reestructúrala sin inventar datos y SIN cambiar el idioma.',
   successCriteria:
     'Son CRITERIOS DE ÉXITO (definición de done). Deben ser específicos y medibles (umbral numérico, métrica y/o plazo). Hazlos concretos.',
   verdict:
@@ -272,14 +272,15 @@ export async function reviewText(req: {
     );
   }
 
-  const sys = `Eres un editor experto en metodología Growth. Corriges y mejoras la redacción de campos de experimentos, en español.
+  const sys = `Eres un editor experto en metodología Growth. Corriges y mejoras la redacción de campos de experimentos.
 ${REVIEW_GUIDANCE[req.field]}
 Reglas:
+- IMPORTANTE: la "suggestion" debe ir en el MISMO idioma del texto original. Si el texto está en inglés, corrígelo en inglés; si está en español, en español. NUNCA traduzcas a otro idioma.
 - Conserva el significado e intención del autor. No inventes datos que no estén en el texto o el contexto.
 - Corrige ortografía, gramática, acentuación y claridad.
 - Responde SOLO con un objeto JSON válido EXACTAMENTE con esta forma:
-  {"suggestion": "<texto corregido y mejorado>", "issues": ["<problema 1>", "<problema 2>"]}
-- "issues": viñetas breves de qué estaba mal (máximo 4). Si el texto ya está bien, devuelve el mismo texto e issues: ["El texto ya está bien redactado."].`;
+  {"suggestion": "<texto corregido y mejorado, en el idioma original>", "issues": ["<problema 1>", "<problema 2>"]}
+- "issues": viñetas breves (en español) de qué estaba mal (máximo 4). Si el texto ya está bien, devuelve el mismo texto e issues: ["El texto ya está bien redactado."].`;
 
   const user = `${req.context ? `Contexto del experimento: ${req.context}\n\n` : ''}Texto a revisar:\n"""${req.text}"""`;
 
