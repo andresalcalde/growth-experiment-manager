@@ -10,9 +10,13 @@ function formatValue(value: number, type: string): string {
 }
 
 export function NorthStarBar({ northStar }: { northStar: NorthStarMetric }) {
+  // Progreso real (sin tope). Puede superar 100% cuando se sobrecumple la meta.
   const progress = northStar.targetValue > 0
-    ? Math.min((northStar.currentValue / northStar.targetValue) * 100, 100)
+    ? (northStar.currentValue / northStar.targetValue) * 100
     : 0;
+  const isOver = progress > 100;
+  // El tramo base (0–100%) llena la barra; el sobrecumplimiento se muestra aparte.
+  const baseWidth = Math.min(progress, 100);
 
   return (
     <div className="north-star-bar">
@@ -29,10 +33,20 @@ export function NorthStarBar({ northStar }: { northStar: NorthStarMetric }) {
       <div className="north-star-bar__track">
         <div
           className="north-star-bar__fill"
-          style={{ width: `${progress}%` }}
+          style={{
+            width: `${baseWidth}%`,
+            // Sobrecumplimiento: tinte dorado para diferenciarlo del tramo base.
+            ...(isOver ? { background: 'linear-gradient(90deg, var(--status-winner, #16a34a), #f59e0b)' } : {}),
+          }}
         />
       </div>
-      <span className="north-star-bar__pct">{Math.round(progress)}%</span>
+      <span
+        className="north-star-bar__pct"
+        style={isOver ? { color: '#b45309', fontWeight: 700 } : undefined}
+        title={isOver ? `Sobrecumplimiento: +${Math.round(progress - 100)}% sobre la meta` : undefined}
+      >
+        {Math.round(progress)}%
+      </span>
     </div>
   );
 }

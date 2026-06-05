@@ -17,7 +17,9 @@ import {
   FileText,
   Download,
   Trash2,
-  Loader2
+  Loader2,
+  Pencil,
+  UserCircle
 } from 'lucide-react';
 import { uploadExperimentEvidence, deleteExperimentEvidence } from './lib/uploadEvidence';
 import { MethodologyToolkit } from './components/MethodologyToolkit';
@@ -48,6 +50,7 @@ import type { Status, Experiment, NorthStarMetric, FunnelStage, Project, TeamMem
 import { CreateProjectModal } from './CreateProjectModal';
 import { SettingsView } from './SettingsView';
 import { PortfolioView } from './PortfolioView';
+import { UserProfileModal } from './components/UserProfileModal';
 import { ExperimentDrawer } from './ExperimentDrawer';
 import { RoadmapView } from './RoadmapView';
 import { ExperimentModal } from './ExperimentModal';
@@ -63,6 +66,7 @@ import { AdminView } from './AdminView';
 import { GlobalLibraryView } from './GlobalLibraryView';
 import { AreaPromptModal } from './components/AreaPromptModal';
 import { Lightbox, type LightboxItem } from './components/Lightbox';
+import { notifyExperimentWinner } from './lib/notify';
 
 
 // Original MOCK_EXPERIMENTS replaced with Laboratorio Polanco data
@@ -299,7 +303,7 @@ const LibraryCard = ({ experiment, onClick }: { experiment: Experiment; onClick:
 };
 
 
-const CaseStudyModal = ({ experiment, onClose, onUpdate }: { experiment: Experiment; onClose: () => void; onUpdate: (updates: Partial<Experiment>) => void }) => {
+const CaseStudyModal = ({ experiment, onClose, onUpdate, onEdit, onDelete }: { experiment: Experiment; onClose: () => void; onUpdate: (updates: Partial<Experiment>) => void; onEdit: () => void; onDelete: () => void }) => {
   const isWinner = experiment.status === 'Finished - Winner';
   const isLoser = experiment.status === 'Finished - Loser';
 
@@ -377,7 +381,23 @@ const CaseStudyModal = ({ experiment, onClose, onUpdate }: { experiment: Experim
               </div>
               <h1 style={{ fontSize: '28px', lineHeight: '1.2' }}>{experiment.title}</h1>
             </div>
-            <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}><X size={24} color="var(--text-subtle)" /></button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                onClick={onEdit}
+                title="Editar detalle del experimento"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)', background: 'none', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '7px 12px', cursor: 'pointer' }}
+              >
+                <Pencil size={14} /> Editar
+              </button>
+              <button
+                onClick={onDelete}
+                title="Eliminar experimento"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: '#DC2626', background: 'none', border: '1px solid #fecaca', borderRadius: '8px', padding: '7px 12px', cursor: 'pointer' }}
+              >
+                <Trash2 size={14} /> Eliminar
+              </button>
+              <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}><X size={24} color="var(--text-subtle)" /></button>
+            </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '48px' }}>
@@ -623,6 +643,7 @@ const App: React.FC = () => {
   // UI State (Modals)
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const [selectedExperiment, setSelectedExperiment] = useState<Experiment | null>(null);
   const [selectedCaseStudy, setSelectedCaseStudy] = useState<Experiment | null>(null);
@@ -727,6 +748,11 @@ const App: React.FC = () => {
         verdict: learning,
         endDate: new Date().toISOString().split('T')[0]
       });
+      // Notificación por correo si el experimento resultó Winner (fire-and-forget).
+      if (pendingStatus === 'Finished - Winner') {
+        const exp = experiments.find(e => e.id === pendingExperimentId);
+        if (exp) void notifyExperimentWinner(exp.owner.name, exp.title);
+      }
       setIsLearningModalOpen(false);
       setPendingExperimentId(null);
       setPendingStatus(null);
@@ -837,6 +863,7 @@ const App: React.FC = () => {
       iceScore: formData.impact * formData.confidence * formData.ease,
       funnelStage: formData.funnelStage,
       northStarMetric: northStar.name,
+      campaignObjective: formData.campaignObjective,
       linkedStrategyId: formData.linkedStrategyId,
       startDate: new Date().toISOString().split('T')[0]
     });
@@ -950,12 +977,17 @@ const App: React.FC = () => {
           onCreateProject={() => setIsCreateProjectOpen(true)}
           onSignOut={signOut}
           onOpenAdmin={isSuperAdmin ? () => setView('admin') : undefined}
+          onOpenProfile={() => setIsProfileOpen(true)}
           onDeleteProject={handleDeleteProject}
         />
         <CreateProjectModal
           isOpen={isCreateProjectOpen}
           onClose={() => setIsCreateProjectOpen(false)}
           onSave={handleCreateProject}
+        />
+        <UserProfileModal
+          isOpen={isProfileOpen}
+          onClose={() => setIsProfileOpen(false)}
         />
         <AreaPromptModal />
       </>
@@ -1263,6 +1295,15 @@ const App: React.FC = () => {
                       <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>{profile?.email}</div>
                     </div>
                     <button
+                      onClick={() => { setShowUserMenu(false); setIsProfileOpen(true); }}
+                      style={{ width: '100%', padding: '10px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '13px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = '#F5F3FF')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                    >
+                      <UserCircle size={14} />
+                      Mi perfil
+                    </button>
+                    <button
                       onClick={() => { setShowUserMenu(false); setIsSettingsOpen(true); }}
                       style={{ width: '100%', padding: '10px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '13px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}
                       onMouseEnter={e => (e.currentTarget.style.background = '#F5F3FF')}
@@ -1565,6 +1606,18 @@ const App: React.FC = () => {
           experiment={selectedCaseStudy}
           onClose={() => setSelectedCaseStudy(null)}
           onUpdate={(updates) => handleExperimentUpdate(selectedCaseStudy.id, updates)}
+          onEdit={() => {
+            // Abre el drawer editable completo (hipótesis, métricas, aprendizajes, etc.).
+            const exp = selectedCaseStudy;
+            setSelectedCaseStudy(null);
+            setSelectedExperiment(exp);
+          }}
+          onDelete={() => {
+            if (window.confirm(`¿Eliminar el experimento "${selectedCaseStudy.title}"? Esta acción no se puede deshacer.`)) {
+              handleDeleteExperiment(selectedCaseStudy.id);
+              setSelectedCaseStudy(null);
+            }
+          }}
         />
       )}
 
@@ -1583,6 +1636,11 @@ const App: React.FC = () => {
         isOpen={isLearningModalOpen}
         onClose={() => setIsLearningModalOpen(false)}
         onSave={handleLearningSave}
+      />
+
+      <UserProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
       />
 
       <MethodologyToolkit

@@ -1228,11 +1228,16 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
           overflow: 'hidden'
         }}>
           <div style={{
-            width: `${calculateProgress()}%`,
+            // Ancho topado al 100%; el excedente se muestra con tinte dorado.
+            width: `${Math.min(calculateProgress(), 100)}%`,
             height: '100%',
-            background: 'linear-gradient(90deg, #60a5fa 0%, #a78bfa 50%, #f472b6 100%)',
+            background: calculateProgress() > 100
+              ? 'linear-gradient(90deg, #34d399 0%, #fbbf24 100%)'
+              : 'linear-gradient(90deg, #60a5fa 0%, #a78bfa 50%, #f472b6 100%)',
             transition: 'width 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
-            boxShadow: '0 0 10px rgba(168, 85, 247, 0.4)'
+            boxShadow: calculateProgress() > 100
+              ? '0 0 10px rgba(251, 191, 36, 0.5)'
+              : '0 0 10px rgba(168, 85, 247, 0.4)'
           }} />
         </div>
       </div>

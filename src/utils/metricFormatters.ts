@@ -73,9 +73,12 @@ export function getMetricTypeDisplay(type: MetricType): string {
 }
 
 /**
- * Calculate progress percentage
+ * Calculate progress percentage.
+ * NO se topa al 100%: cuando se supera la meta, refleja el sobrecumplimiento
+ * real (ej. 120%). Los consumidores que pinten una barra deben capear el
+ * ancho con Math.min(progress, 100) y diferenciar visualmente el excedente.
  */
 export function calculateProgress(current: number, target: number): number {
   if (target === 0) return 0;
-  return Math.min(100, Math.round((current / target) * 100));
+  return Math.round((current / target) * 100);
 }

@@ -7,7 +7,8 @@ import type { Session, User } from '@supabase/supabase-js'
 // Types
 // ============================================================================
 
-export type GlobalRole = 'superadmin' | 'user'
+// superadmin > admin (líder de equipo) > user
+export type GlobalRole = 'superadmin' | 'admin' | 'user'
 
 // Las áreas ya no son un enum fijo: se gestionan desde la tabla `user_areas`.
 // `UserArea` queda como alias de string para compatibilidad con imports previos.
@@ -40,6 +41,8 @@ interface AuthContextValue {
     signUp: (email: string, password: string, fullName?: string) => Promise<{ error: any }>
     signOut: () => Promise<void>
     updatePanelLogo: (logoUrl: string | null) => Promise<void>
+    updateProfile: (updates: { full_name?: string; avatar_url?: string | null }) => Promise<void>
+    updatePassword: (newPassword: string) => Promise<void>
     updateArea: (areas: UserArea[]) => Promise<void>
     updateUserGlobalRole: (userId: string, role: GlobalRole) => Promise<void>
     addArea: (name: string) => Promise<void>
@@ -256,6 +259,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile((prev) => (prev ? { ...prev, panel_logo_url: logoUrl } : prev))
     }
 
+    const updateProfile = async (updates: { full_name?: string; avatar_url?: string | null }) => {
+        if (!session?.user) throw new Error('Not authenticated')
+        const patch: Record<string, unknown> = {}
+        if (updates.full_name !== undefined) patch.full_name = updates.full_name
+        if (updates.avatar_url !== undefined) patch.avatar_url = updates.avatar_url
+        if (Object.keys(patch).length === 0) return
+        const { error } = await supabase
+            .from('profiles')
+            .update(patch)
+            .eq('id', session.user.id)
+        if (error) throw error
+        setProfile((prev) => (prev ? { ...prev, ...patch } as Profile : prev))
+    }
+
+    const updatePassword = async (newPassword: string) => {
+        if (!session?.user) throw new Error('Not authenticated')
+        const { error } = await supabase.auth.updateUser({ password: newPassword })
+        if (error) throw error
+    }
+
     const updateArea = async (areas: UserArea[]) => {
         if (!session?.user) throw new Error('Not authenticated')
         const { error } = await supabase
@@ -311,6 +334,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signUp,
         signOut,
         updatePanelLogo,
+        updateProfile,
+        updatePassword,
         updateArea,
         updateUserGlobalRole,
         addArea,

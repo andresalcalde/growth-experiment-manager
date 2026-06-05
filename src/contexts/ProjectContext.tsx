@@ -188,6 +188,7 @@ function dbRowToExperiment(row: any): Experiment {
         iceScore: row.ice_score || 125,
         funnelStage: row.funnel_stage || 'Acquisition',
         northStarMetric: row.north_star_metric || '',
+        campaignObjective: row.campaign_objective || undefined,
         linkedStrategyId: row.linked_strategy_id || undefined,
         startDate: row.start_date || undefined,
         endDate: row.end_date || undefined,
@@ -631,6 +632,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
                 ice_score: exp.iceScore,
                 funnel_stage: exp.funnelStage,
                 north_star_metric: exp.northStarMetric,
+                campaign_objective: exp.campaignObjective || null,
                 linked_strategy_id: exp.linkedStrategyId || null,
                 start_date: exp.startDate || null,
                 end_date: exp.endDate || null,
@@ -689,6 +691,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         if (updates.iceScore !== undefined) dbUpdates.ice_score = updates.iceScore
         if (updates.funnelStage !== undefined) dbUpdates.funnel_stage = updates.funnelStage
         if (updates.northStarMetric !== undefined) dbUpdates.north_star_metric = updates.northStarMetric
+        if (updates.campaignObjective !== undefined) dbUpdates.campaign_objective = updates.campaignObjective || null
         if (updates.linkedStrategyId !== undefined) dbUpdates.linked_strategy_id = updates.linkedStrategyId || null
         if (updates.startDate !== undefined) dbUpdates.start_date = updates.startDate
         if (updates.endDate !== undefined) dbUpdates.end_date = updates.endDate

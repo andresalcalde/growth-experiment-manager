@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { ArrowLeft, Shield, Users, Activity, Download, Search, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Shield, Users, Activity, Download, Search, Plus, Trash2, Archive, ArchiveRestore, UserCog, X } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { useAuth } from './contexts/AuthContext';
 import type { Profile, GlobalRole, UserAreaRecord } from './contexts/AuthContext';
@@ -182,17 +182,15 @@ export const AdminView: React.FC<AdminViewProps> = ({ projects, onBack }) => {
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
-  const toggleSuperadmin = async (u: Profile) => {
-    const next: GlobalRole = u.global_role === 'superadmin' ? 'user' : 'superadmin';
-    if (next === 'user' && superadminCount <= 1) {
+  const setUserRole = async (u: Profile, next: GlobalRole) => {
+    if (u.global_role === next) return;
+    // Proteger al último superadmin (además del trigger en la DB).
+    if (u.global_role === 'superadmin' && next !== 'superadmin' && superadminCount <= 1) {
       alert('No se puede degradar al último superadmin.');
       return;
     }
-    if (!window.confirm(
-      next === 'superadmin'
-        ? `¿Promover a ${u.full_name || u.email} a superadmin?`
-        : `¿Quitar superadmin a ${u.full_name || u.email}?`
-    )) return;
+    const labels: Record<GlobalRole, string> = { superadmin: 'Superadmin', admin: 'Admin (líder)', user: 'Usuario' };
+    if (!window.confirm(`¿Cambiar el rol de ${u.full_name || u.email} a "${labels[next]}"?`)) return;
     try {
       setBusyUserId(u.id);
       await updateUserGlobalRole(u.id, next);
@@ -299,11 +297,9 @@ export const AdminView: React.FC<AdminViewProps> = ({ projects, onBack }) => {
         ) : tab === 'manage' ? (
           <ManageTab
             users={users}
-            projects={projects}
-            members={members}
             busyUserId={busyUserId}
             currentUserId={profile?.id}
-            onToggleSuperadmin={toggleSuperadmin}
+            onSetRole={setUserRole}
           />
         ) : (
           <UsageTab
@@ -330,12 +326,10 @@ export const AdminView: React.FC<AdminViewProps> = ({ projects, onBack }) => {
 
 const ManageTab: React.FC<{
   users: Profile[];
-  projects: Project[];
-  members: MembershipRow[];
   busyUserId: string | null;
   currentUserId?: string;
-  onToggleSuperadmin: (u: Profile) => void;
-}> = ({ users, projects, members, busyUserId, currentUserId, onToggleSuperadmin }) => {
+  onSetRole: (u: Profile, role: GlobalRole) => void;
+}> = ({ users, busyUserId, currentUserId, onSetRole }) => {
   const [userSearch, setUserSearch] = useState('');
   const q = userSearch.trim().toLowerCase();
   const filteredUsers = q
@@ -366,7 +360,7 @@ const ManageTab: React.FC<{
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-              {['Nombre', 'Email', 'Área', 'Rol global', 'Acción'].map(h => (
+              {['Nombre', 'Email', 'Área', 'Rol global'].map(h => (
                 <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6b7280' }}>{h}</th>
               ))}
             </tr>
@@ -381,33 +375,26 @@ const ManageTab: React.FC<{
                 <td style={{ padding: '12px 16px', fontSize: '13px', color: '#6b7280' }}>{u.email}</td>
                 <td style={{ padding: '12px 16px', fontSize: '13px' }}>{u.area && u.area.length ? u.area.join(', ') : '—'}</td>
                 <td style={{ padding: '12px 16px' }}>
-                  <span style={{
-                    fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px',
-                    background: u.global_role === 'superadmin' ? '#ede9fe' : '#f3f4f6',
-                    color: u.global_role === 'superadmin' ? '#7C3AED' : '#6b7280',
-                  }}>
-                    {u.global_role === 'superadmin' ? 'SUPERADMIN' : 'USUARIO'}
-                  </span>
-                </td>
-                <td style={{ padding: '12px 16px' }}>
-                  <button
-                    onClick={() => onToggleSuperadmin(u)}
+                  <select
+                    value={u.global_role}
+                    onChange={e => onSetRole(u, e.target.value as GlobalRole)}
                     disabled={busyUserId === u.id}
                     style={{
-                      padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 600,
+                      padding: '6px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 600,
                       cursor: busyUserId === u.id ? 'wait' : 'pointer',
-                      border: '1px solid ' + (u.global_role === 'superadmin' ? '#fca5a5' : '#c7d2fe'),
-                      background: u.global_role === 'superadmin' ? '#fef2f2' : '#eef2ff',
-                      color: u.global_role === 'superadmin' ? '#dc2626' : '#4F46E5',
+                      border: '1px solid #e5e7eb', background: 'white',
+                      color: u.global_role === 'superadmin' ? '#7C3AED' : u.global_role === 'admin' ? '#2563eb' : '#6b7280',
                     }}
                   >
-                    {u.global_role === 'superadmin' ? 'Quitar superadmin' : 'Promover a superadmin'}
-                  </button>
+                    <option value="user">Usuario</option>
+                    <option value="admin">Admin (líder)</option>
+                    <option value="superadmin">Superadmin</option>
+                  </select>
                 </td>
               </tr>
             ))}
             {filteredUsers.length === 0 && (
-              <tr><td colSpan={5} style={{ padding: '24px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>
+              <tr><td colSpan={4} style={{ padding: '24px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>
                 Ningún usuario coincide con la búsqueda.
               </td></tr>
             )}
@@ -416,38 +403,477 @@ const ManageTab: React.FC<{
       </div>
     </section>
 
-    {/* Projects */}
-    <section>
-      <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px' }}>
-        Proyectos ({projects.length})
-      </h2>
-      <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden', background: 'white' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-              {['Proyecto', 'Experimentos', 'Miembros'].map(h => (
-                <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6b7280' }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {projects.map(p => (
-              <tr key={p.metadata.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                <td style={{ padding: '12px 16px', fontSize: '14px', fontWeight: 600 }}>{p.metadata.name}</td>
-                <td style={{ padding: '12px 16px', fontSize: '13px', color: '#6b7280' }}>{p.experiments.length}</td>
-                <td style={{ padding: '12px 16px', fontSize: '13px', color: '#6b7280' }}>
-                  {members.filter(m => m.project_id === p.metadata.id).length}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
+    {/* Projects — TODOS los proyectos (admin), vía RPC SECURITY DEFINER */}
+    <AdminProjectsSection users={users} />
+
+    {/* Equipos (punto 6): agrupan usuarios y proyectos bajo un líder */}
+    <TeamsSection users={users} />
 
     {/* Áreas */}
     <AreasSection users={users} />
   </div>
+  );
+};
+
+// ── Admin projects section (TODOS los proyectos, punto 4) ────────────────────
+
+interface AdminProjectRow {
+  id: string;
+  name: string;
+  archived: boolean;
+  created_at: string;
+  member_count: number;
+  experiment_count: number;
+}
+
+interface AdminMemberRow {
+  user_id: string;
+  full_name: string | null;
+  email: string | null;
+  role: string;
+}
+
+const AdminProjectsSection: React.FC<{ users: Profile[] }> = ({ users }) => {
+  const [rows, setRows] = useState<AdminProjectRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
+  const [managing, setManaging] = useState<AdminProjectRow | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    const { data, error } = await supabase.rpc('admin_list_projects');
+    if (error) {
+      console.error('Error admin_list_projects:', error);
+      setError(error.message);
+    } else {
+      setRows((data as AdminProjectRow[]) || []);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const toggleArchive = async (p: AdminProjectRow) => {
+    if (!window.confirm(p.archived ? `¿Desarchivar "${p.name}"?` : `¿Archivar "${p.name}"?`)) return;
+    try {
+      setBusyId(p.id);
+      const { error } = await supabase.rpc('admin_set_project_archived', { p_project_id: p.id, p_archived: !p.archived });
+      if (error) throw new Error(error.message);
+      await load();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'No se pudo archivar.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const visible = rows.filter(r => showArchived || !r.archived);
+
+  return (
+    <section>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '12px' }}>
+        <h2 style={{ fontSize: '16px', fontWeight: 700, margin: 0 }}>
+          Todos los proyectos ({visible.length})
+        </h2>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#6b7280', cursor: 'pointer' }}>
+          <input type="checkbox" checked={showArchived} onChange={e => setShowArchived(e.target.checked)} />
+          Mostrar archivados
+        </label>
+      </div>
+      <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 12px' }}>
+        Como superadmin ves y gestionas todos los proyectos, sin depender de que te los compartan.
+      </p>
+
+      {loading ? (
+        <div style={{ padding: '24px', color: '#9ca3af', fontSize: '13px' }}>Cargando proyectos…</div>
+      ) : error ? (
+        <div style={{ padding: '16px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', fontSize: '13px', color: '#991b1b' }}>
+          {error} <button onClick={load} style={{ marginLeft: '8px', color: '#4F46E5', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Reintentar</button>
+        </div>
+      ) : (
+        <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden', background: 'white' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                {['Proyecto', 'Experimentos', 'Miembros', 'Acciones'].map(h => (
+                  <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6b7280' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map(p => (
+                <tr key={p.id} style={{ borderBottom: '1px solid #f3f4f6', opacity: p.archived ? 0.55 : 1 }}>
+                  <td style={{ padding: '12px 16px', fontSize: '14px', fontWeight: 600 }}>
+                    {p.name}
+                    {p.archived && <span style={{ marginLeft: '8px', fontSize: '11px', fontWeight: 700, padding: '2px 6px', borderRadius: '6px', background: '#f3f4f6', color: '#9ca3af' }}>ARCHIVADO</span>}
+                  </td>
+                  <td style={{ padding: '12px 16px', fontSize: '13px', color: '#6b7280' }}>{p.experiment_count}</td>
+                  <td style={{ padding: '12px 16px', fontSize: '13px', color: '#6b7280' }}>{p.member_count}</td>
+                  <td style={{ padding: '12px 16px' }}>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={() => setManaging(p)}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, border: '1px solid #c7d2fe', background: '#eef2ff', color: '#4F46E5', cursor: 'pointer' }}
+                      >
+                        <UserCog size={13} /> Miembros
+                      </button>
+                      <button
+                        onClick={() => toggleArchive(p)}
+                        disabled={busyId === p.id}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, border: '1px solid #e5e7eb', background: 'white', color: '#6b7280', cursor: busyId === p.id ? 'wait' : 'pointer' }}
+                      >
+                        {p.archived ? <><ArchiveRestore size={13} /> Desarchivar</> : <><Archive size={13} /> Archivar</>}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {visible.length === 0 && (
+                <tr><td colSpan={4} style={{ padding: '24px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>No hay proyectos.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {managing && (
+        <ProjectMembersModal
+          project={managing}
+          allUsers={users}
+          onClose={() => setManaging(null)}
+          onChanged={load}
+        />
+      )}
+    </section>
+  );
+};
+
+const ProjectMembersModal: React.FC<{
+  project: AdminProjectRow;
+  allUsers: Profile[];
+  onClose: () => void;
+  onChanged: () => void;
+}> = ({ project, allUsers, onClose, onChanged }) => {
+  const [members, setMembers] = useState<AdminMemberRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [addUserId, setAddUserId] = useState('');
+  const [addRole, setAddRole] = useState('editor');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    const { data, error } = await supabase.rpc('admin_list_project_members', { p_project_id: project.id });
+    if (error) setError(error.message);
+    else setMembers((data as AdminMemberRow[]) || []);
+    setLoading(false);
+  }, [project.id]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const memberIds = new Set(members.map(m => m.user_id));
+  const candidates = allUsers.filter(u => !memberIds.has(u.id));
+
+  const upsert = async (userId: string, role: string) => {
+    try {
+      setBusy(true);
+      const { error } = await supabase.rpc('admin_upsert_project_member', { p_project_id: project.id, p_user_id: userId, p_role: role });
+      if (error) throw new Error(error.message);
+      await load();
+      onChanged();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'No se pudo actualizar el miembro.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async (m: AdminMemberRow) => {
+    if (!window.confirm(`¿Quitar a ${m.full_name || m.email} del proyecto?`)) return;
+    try {
+      setBusy(true);
+      const { error } = await supabase.rpc('admin_remove_project_member', { p_project_id: project.id, p_user_id: m.user_id });
+      if (error) throw new Error(error.message);
+      await load();
+      onChanged();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'No se pudo quitar el miembro.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleAdd = async () => {
+    if (!addUserId) return;
+    await upsert(addUserId, addRole);
+    setAddUserId('');
+    setAddRole('editor');
+  };
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}
+      onClick={onClose}
+    >
+      <div style={{ background: 'white', borderRadius: '16px', width: '560px', maxWidth: '95vw', maxHeight: '85vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '24px 28px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <div>
+              <h3 style={{ fontSize: '17px', fontWeight: 700, margin: 0 }}>Miembros · {project.name}</h3>
+              <p style={{ fontSize: '12px', color: '#6b7280', margin: '4px 0 0' }}>Agrega, quita o cambia el rol de los colaboradores.</p>
+            </div>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}><X size={20} color="#9ca3af" /></button>
+          </div>
+
+          {/* Agregar miembro */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <select value={addUserId} onChange={e => setAddUserId(e.target.value)} style={{ ...selectStyle, flex: 1, minWidth: '180px' }}>
+              <option value="">Agregar usuario…</option>
+              {candidates.map(u => <option key={u.id} value={u.id}>{u.full_name || u.email}</option>)}
+            </select>
+            <select value={addRole} onChange={e => setAddRole(e.target.value)} style={selectStyle}>
+              <option value="admin">Admin</option>
+              <option value="editor">Editor</option>
+            </select>
+            <button
+              onClick={handleAdd}
+              disabled={busy || !addUserId}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px', border: 'none', borderRadius: '8px', background: '#111114', color: 'white', fontSize: '13px', fontWeight: 600, cursor: busy || !addUserId ? 'not-allowed' : 'pointer', opacity: busy || !addUserId ? 0.6 : 1 }}
+            >
+              <Plus size={14} /> Agregar
+            </button>
+          </div>
+
+          {error && <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', fontSize: '13px', color: '#991b1b', marginBottom: '16px' }}>{error}</div>}
+
+          {loading ? (
+            <div style={{ padding: '24px', color: '#9ca3af', fontSize: '13px' }}>Cargando miembros…</div>
+          ) : members.length === 0 ? (
+            <div style={{ padding: '24px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>Este proyecto no tiene miembros.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {members.map(m => (
+                <div key={m.user_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: 600 }}>{m.full_name || '—'}</div>
+                    <div style={{ fontSize: '12px', color: '#9ca3af' }}>{m.email}</div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <select value={m.role} onChange={e => upsert(m.user_id, e.target.value)} disabled={busy} style={selectStyle}>
+                      <option value="admin">Admin</option>
+                      <option value="editor">Editor</option>
+                    </select>
+                    <button onClick={() => remove(m)} disabled={busy} title="Quitar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', border: 'none', borderRadius: '6px', background: '#fef2f2', color: '#dc2626', cursor: busy ? 'wait' : 'pointer' }}>
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Teams section (punto 6: equipos + líderes) ───────────────────────────────
+
+interface TeamMemberLite { user_id: string; full_name: string | null; email: string | null; }
+interface TeamProjectLite { project_id: string; name: string; }
+interface TeamRow {
+  id: string;
+  name: string;
+  lead_user_id: string | null;
+  lead_name: string | null;
+  members: TeamMemberLite[] | null;
+  projects: TeamProjectLite[] | null;
+}
+
+const TeamsSection: React.FC<{ users: Profile[] }> = ({ users }) => {
+  const [teams, setTeams] = useState<TeamRow[]>([]);
+  const [allProjects, setAllProjects] = useState<{ id: string; name: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newLead, setNewLead] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    const [tRes, pRes] = await Promise.all([
+      supabase.rpc('admin_list_teams'),
+      supabase.rpc('admin_list_projects'),
+    ]);
+    if (tRes.error) { setError(tRes.error.message); setLoading(false); return; }
+    setTeams((tRes.data as TeamRow[]) || []);
+    if (!pRes.error) setAllProjects(((pRes.data as { id: string; name: string }[]) || []).map(p => ({ id: p.id, name: p.name })));
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const call = async (fn: string, args: Record<string, unknown>) => {
+    try {
+      setBusy(true);
+      const { error } = await supabase.rpc(fn, args);
+      if (error) throw new Error(error.message);
+      await load();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Operación fallida.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const createTeam = async () => {
+    if (!newName.trim()) return;
+    await call('admin_create_team', { p_name: newName.trim(), p_lead: newLead || null });
+    setNewName('');
+    setNewLead('');
+  };
+
+  return (
+    <section>
+      <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>Equipos ({teams.length})</h2>
+      <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 12px' }}>
+        Agrupan usuarios y proyectos bajo un líder (rol <strong>Admin</strong>), que ve la actividad de sus proyectos sin acceder a los de otros equipos.
+      </p>
+
+      {/* Crear equipo */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <input
+          value={newName}
+          onChange={e => setNewName(e.target.value)}
+          placeholder="Nombre del equipo…"
+          style={{ flex: 1, minWidth: '180px', padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '13px', outline: 'none' }}
+        />
+        <select value={newLead} onChange={e => setNewLead(e.target.value)} style={selectStyle}>
+          <option value="">Líder (opcional)…</option>
+          {users.map(u => <option key={u.id} value={u.id}>{u.full_name || u.email}</option>)}
+        </select>
+        <button
+          onClick={createTeam}
+          disabled={busy || !newName.trim()}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px', border: '1px solid #c7d2fe', borderRadius: '8px', background: '#eef2ff', color: '#4F46E5', fontSize: '13px', fontWeight: 600, cursor: busy || !newName.trim() ? 'not-allowed' : 'pointer', opacity: busy || !newName.trim() ? 0.6 : 1 }}
+        >
+          <Plus size={14} /> Crear equipo
+        </button>
+      </div>
+
+      {loading ? (
+        <div style={{ padding: '24px', color: '#9ca3af', fontSize: '13px' }}>Cargando equipos…</div>
+      ) : error ? (
+        <div style={{ padding: '16px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', fontSize: '13px', color: '#991b1b' }}>
+          {error} <button onClick={load} style={{ marginLeft: '8px', color: '#4F46E5', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Reintentar</button>
+        </div>
+      ) : teams.length === 0 ? (
+        <div style={{ fontSize: '13px', color: '#9ca3af' }}>Aún no hay equipos.</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {teams.map(t => (
+            <TeamCard key={t.id} team={t} users={users} allProjects={allProjects} busy={busy} onCall={call} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+};
+
+const TeamCard: React.FC<{
+  team: TeamRow;
+  users: Profile[];
+  allProjects: { id: string; name: string }[];
+  busy: boolean;
+  onCall: (fn: string, args: Record<string, unknown>) => Promise<void>;
+}> = ({ team, users, allProjects, busy, onCall }) => {
+  const members = team.members || [];
+  const projects = team.projects || [];
+  const memberIds = new Set(members.map(m => m.user_id));
+  const projectIds = new Set(projects.map(p => p.project_id));
+  const candidateUsers = users.filter(u => !memberIds.has(u.id));
+  const candidateProjects = allProjects.filter(p => !projectIds.has(p.id));
+
+  return (
+    <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', background: 'white', padding: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px', gap: '12px', flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ fontSize: '15px', fontWeight: 700 }}>{team.name}</div>
+          <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
+            Líder:&nbsp;
+            <select
+              value={team.lead_user_id || ''}
+              onChange={e => onCall('admin_set_team_lead', { p_team_id: team.id, p_lead: e.target.value || null })}
+              disabled={busy}
+              style={{ ...selectStyle, padding: '4px 8px' }}
+            >
+              <option value="">— sin líder —</option>
+              {users.map(u => <option key={u.id} value={u.id}>{u.full_name || u.email}</option>)}
+            </select>
+          </div>
+        </div>
+        <button
+          onClick={() => { if (window.confirm(`¿Eliminar el equipo "${team.name}"?`)) onCall('admin_delete_team', { p_team_id: team.id }); }}
+          disabled={busy}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 10px', border: '1px solid #fecaca', borderRadius: '6px', background: '#fef2f2', color: '#dc2626', fontSize: '12px', fontWeight: 600, cursor: busy ? 'wait' : 'pointer' }}
+        >
+          <Trash2 size={13} /> Eliminar
+        </button>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        {/* Miembros */}
+        <div>
+          <div style={{ fontSize: '12px', fontWeight: 700, color: '#6b7280', marginBottom: '6px' }}>Miembros ({members.length})</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+            {members.map(m => (
+              <span key={m.user_id} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', padding: '4px 8px', background: '#f3f4f6', borderRadius: '99px' }}>
+                {m.full_name || m.email}
+                <button onClick={() => onCall('admin_remove_team_member', { p_team_id: team.id, p_user_id: m.user_id })} disabled={busy} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: 0, display: 'flex' }}><X size={12} /></button>
+              </span>
+            ))}
+            {members.length === 0 && <span style={{ fontSize: '12px', color: '#9ca3af' }}>Sin miembros.</span>}
+          </div>
+          <select
+            value=""
+            onChange={e => { if (e.target.value) onCall('admin_add_team_member', { p_team_id: team.id, p_user_id: e.target.value }); }}
+            disabled={busy || candidateUsers.length === 0}
+            style={{ ...selectStyle, width: '100%' }}
+          >
+            <option value="">+ Agregar miembro…</option>
+            {candidateUsers.map(u => <option key={u.id} value={u.id}>{u.full_name || u.email}</option>)}
+          </select>
+        </div>
+
+        {/* Proyectos */}
+        <div>
+          <div style={{ fontSize: '12px', fontWeight: 700, color: '#6b7280', marginBottom: '6px' }}>Proyectos ({projects.length})</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+            {projects.map(p => (
+              <span key={p.project_id} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', padding: '4px 8px', background: '#eef2ff', color: '#4F46E5', borderRadius: '99px' }}>
+                {p.name}
+                <button onClick={() => onCall('admin_remove_team_project', { p_team_id: team.id, p_project_id: p.project_id })} disabled={busy} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#818cf8', padding: 0, display: 'flex' }}><X size={12} /></button>
+              </span>
+            ))}
+            {projects.length === 0 && <span style={{ fontSize: '12px', color: '#9ca3af' }}>Sin proyectos.</span>}
+          </div>
+          <select
+            value=""
+            onChange={e => { if (e.target.value) onCall('admin_add_team_project', { p_team_id: team.id, p_project_id: e.target.value }); }}
+            disabled={busy || candidateProjects.length === 0}
+            style={{ ...selectStyle, width: '100%' }}
+          >
+            <option value="">+ Agregar proyecto…</option>
+            {candidateProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </div>
+      </div>
+    </div>
   );
 };
 
