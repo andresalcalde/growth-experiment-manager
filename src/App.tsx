@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Plus,
   LayoutDashboard,
@@ -317,6 +317,30 @@ const CaseStudyModal = ({ experiment, onClose, onUpdate, onEdit, onDelete }: { e
     .filter(p => isUrl(p) && isPreviewable(p))
     .map(p => ({ src: p, caption: fileNameFromUrl(p) }));
 
+  // Edición inline de The Verdict y Key Learnings desde el propio detalle, sin
+  // alterar la clasificación final (Winner/Loser/Inconclusive). Cubre el feedback
+  // de "completar datos y aprendizajes después del cierre".
+  const [editingVerdict, setEditingVerdict] = useState(false);
+  const [tempVerdict, setTempVerdict] = useState(experiment.verdict || '');
+  const [editingLearnings, setEditingLearnings] = useState(false);
+  const [tempLearnings, setTempLearnings] = useState(experiment.keyLearnings || '');
+
+  const saveVerdict = () => { onUpdate({ verdict: tempVerdict }); setEditingVerdict(false); };
+  const saveLearnings = () => { onUpdate({ keyLearnings: tempLearnings }); setEditingLearnings(false); };
+
+  const inlineEditBtnStyle: React.CSSProperties = {
+    display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600,
+    color: '#4F46E5', background: 'none', border: 'none', cursor: 'pointer',
+  };
+  const inlineTextareaStyle: React.CSSProperties = {
+    width: '100%', minHeight: '110px', padding: '12px', border: '1px solid var(--border-subtle)',
+    borderRadius: '8px', fontSize: '15px', fontFamily: 'inherit', resize: 'vertical', marginBottom: '8px',
+  };
+  const inlineSaveBtnStyle: React.CSSProperties = {
+    background: '#4F46E5', color: 'white', border: 'none', padding: '8px 16px',
+    borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '13px',
+  };
+
   // Subida de evidencia a Supabase Storage (cualquier tipo de archivo)
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -530,21 +554,61 @@ const CaseStudyModal = ({ experiment, onClose, onUpdate, onEdit, onDelete }: { e
               </div>
 
               <div style={{ marginBottom: '32px' }}>
-                <h3 style={{ fontSize: '14px', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-subtle)', marginBottom: '12px' }}>The Verdict</h3>
-                <div style={{ background: highlightColor, padding: '24px', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.05)' }}>
-                  <p style={{ fontSize: '18px', fontWeight: 500, lineHeight: '1.5' }}>
-                    {experiment.verdict || experiment.keyLearnings || "Sin veredicto registrado."}
-                  </p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <h3 style={{ fontSize: '14px', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-subtle)', margin: 0 }}>The Verdict</h3>
+                  <button
+                    onClick={() => { setTempVerdict(experiment.verdict || ''); setEditingVerdict(!editingVerdict); }}
+                    style={inlineEditBtnStyle}
+                  >
+                    <Pencil size={14} /> {editingVerdict ? 'Cancelar' : 'Editar'}
+                  </button>
                 </div>
+                {editingVerdict ? (
+                  <div>
+                    <textarea
+                      value={tempVerdict}
+                      onChange={(e) => setTempVerdict(e.target.value)}
+                      placeholder="Resume el veredicto del experimento…"
+                      style={inlineTextareaStyle}
+                    />
+                    <button onClick={saveVerdict} style={inlineSaveBtnStyle}>Guardar</button>
+                  </div>
+                ) : (
+                  <div style={{ background: highlightColor, padding: '24px', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.05)' }}>
+                    <p style={{ fontSize: '18px', fontWeight: 500, lineHeight: '1.5' }}>
+                      {experiment.verdict || experiment.keyLearnings || "Sin veredicto registrado."}
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div>
-                <h3 style={{ fontSize: '14px', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-subtle)', marginBottom: '12px' }}>Key Learnings</h3>
-                <div style={{ background: 'var(--bg-sidebar)', padding: '24px', borderRadius: '12px', border: '1px solid var(--border-subtle)' }}>
-                  <p style={{ fontSize: '15px', lineHeight: '1.6', color: 'var(--text-main)' }}>
-                    {experiment.keyLearnings || "Sin Key Learnings detallados. Edítalos en el detalle del experimento."}
-                  </p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <h3 style={{ fontSize: '14px', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-subtle)', margin: 0 }}>Key Learnings</h3>
+                  <button
+                    onClick={() => { setTempLearnings(experiment.keyLearnings || ''); setEditingLearnings(!editingLearnings); }}
+                    style={inlineEditBtnStyle}
+                  >
+                    <Pencil size={14} /> {editingLearnings ? 'Cancelar' : 'Editar'}
+                  </button>
                 </div>
+                {editingLearnings ? (
+                  <div>
+                    <textarea
+                      value={tempLearnings}
+                      onChange={(e) => setTempLearnings(e.target.value)}
+                      placeholder="Documenta los key learnings y aprendizajes del experimento…"
+                      style={inlineTextareaStyle}
+                    />
+                    <button onClick={saveLearnings} style={inlineSaveBtnStyle}>Guardar</button>
+                  </div>
+                ) : (
+                  <div style={{ background: 'var(--bg-sidebar)', padding: '24px', borderRadius: '12px', border: '1px solid var(--border-subtle)' }}>
+                    <p style={{ fontSize: '15px', lineHeight: '1.6', color: 'var(--text-main)' }}>
+                      {experiment.keyLearnings || "Aún no hay Key Learnings. Haz clic en “Editar” para agregarlos."}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -600,7 +664,7 @@ const App: React.FC = () => {
   if (import.meta.env.DEV) console.log("App rendering");
   const [view, setView] = useState<'portfolio' | 'board' | 'table' | 'library' | 'roadmap' | 'admin'>('portfolio');
 
-  const { signOut, profile, updatePanelLogo, updateArea, isSuperAdmin } = useAuth();
+  const { signOut, profile, updatePanelLogo, updateArea, isSuperAdmin, canAccessGlobalLibrary } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   // Multi-Project State Management via Context
@@ -654,6 +718,12 @@ const App: React.FC = () => {
   const [libraryFilterStage, setLibraryFilterStage] = useState<string>('All');
   const [libraryMode, setLibraryMode] = useState<'project' | 'global'>('project');
   const [iceSortDirection, setIceSortDirection] = useState<'desc' | 'asc'>('desc'); // Default: highest first
+  // Filtro de experimentos por iniciativa (al clicar el tag de una initiative en el Roadmap)
+  const [strategyFilter, setStrategyFilter] = useState<string | null>(null);
+  // El filtro por iniciativa solo aplica en la vista Explore; al salir de ella se limpia.
+  useEffect(() => {
+    if (view !== 'table') setStrategyFilter(null);
+  }, [view]);
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
@@ -673,10 +743,13 @@ const App: React.FC = () => {
   // COMMITMENT FILTER IMPLEMENTATION
 
   // 02. Explore (Table): Show Idea, Prioritized, Live Testing, Analysis
-  const exploreExperiments = experiments.filter(e =>
-    (e.status === 'Idea' || e.status === 'Prioritized' || e.status === 'Live Testing' || e.status === 'Analysis') &&
-    e.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Si hay un filtro por iniciativa activo, mostramos TODOS los experimentos
+  // vinculados a esa initiative (cualquier estado, incluidos los finalizados).
+  const exploreExperiments = experiments.filter(e => {
+    if (!e.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (strategyFilter) return e.linkedStrategyId === strategyFilter;
+    return e.status === 'Idea' || e.status === 'Prioritized' || e.status === 'Live Testing' || e.status === 'Analysis';
+  });
 
   // 03. Be Agile (Board): Show ONLY committed experiments (Prioritized, Building, Live Testing, Analysis - NO Idea)
   const boardExperiments = experiments.filter(e =>
@@ -1369,6 +1442,19 @@ const App: React.FC = () => {
         ) : view === 'table' ? (
           <>
           {northStar && northStar.name && <NorthStarBar northStar={northStar} />}
+          {strategyFilter && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', margin: '16px 32px 0', padding: '10px 16px', background: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: '8px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '13px', color: '#4338ca', fontWeight: 600 }}>
+                Mostrando experimentos de la iniciativa: {strategies.find(s => s.id === strategyFilter)?.title || '—'}
+              </span>
+              <button
+                onClick={() => setStrategyFilter(null)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: '#4F46E5', background: 'white', border: '1px solid #c7d2fe', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer' }}
+              >
+                <X size={14} /> Quitar filtro
+              </button>
+            </div>
+          )}
           <div className="data-table-container">
             <table className="data-table">
               <thead>
@@ -1495,9 +1581,10 @@ const App: React.FC = () => {
           </>
         ) : view === 'library' ? (
           <div style={{ overflowY: 'auto', height: '100%' }}>
-            {/* Library mode toggle: este proyecto vs biblioteca global */}
+            {/* Library mode toggle: este proyecto vs biblioteca global.
+                La pestaña "Biblioteca Global" solo se muestra a quien tiene acceso. */}
             <div style={{ display: 'flex', gap: '8px', padding: '24px 32px 0' }}>
-              {(['project', 'global'] as const).map(mode => (
+              {(['project', 'global'] as const).filter(mode => mode === 'project' || canAccessGlobalLibrary).map(mode => (
                 <button
                   key={mode}
                   onClick={() => setLibraryMode(mode)}
@@ -1512,7 +1599,7 @@ const App: React.FC = () => {
                 </button>
               ))}
             </div>
-            {libraryMode === 'global' ? (
+            {libraryMode === 'global' && canAccessGlobalLibrary ? (
               <GlobalLibraryView />
             ) : (
             <div style={{ padding: '0 32px 32px 32px' }}>
@@ -1581,6 +1668,7 @@ const App: React.FC = () => {
             onDeleteObjective={handleDeleteObjective}
             onDeleteStrategy={deleteStrategy}
             onSelectExperiment={setSelectedExperiment}
+            onViewStrategyExperiments={(strategyId) => { setStrategyFilter(strategyId); setView('table'); }}
           />
         ) : (
           <div>Invalid view</div>

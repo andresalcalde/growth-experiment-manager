@@ -198,6 +198,7 @@ function dbRowToExperiment(row: any): Experiment {
         keyLearnings: row.key_learnings || undefined,
         verdict: row.verdict || undefined,
         visualProof: row.visual_proof || undefined,
+        isPublic: row.is_public ?? false,
     }
 }
 
@@ -642,6 +643,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
                 key_learnings: exp.keyLearnings || null,
                 verdict: exp.verdict || null,
                 visual_proof: exp.visualProof || null,
+                is_public: exp.isPublic ?? false,
             })
             .select()
             .single()
@@ -701,6 +703,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         if (updates.keyLearnings !== undefined) dbUpdates.key_learnings = updates.keyLearnings
         if (updates.verdict !== undefined) dbUpdates.verdict = updates.verdict
         if (updates.visualProof !== undefined) dbUpdates.visual_proof = updates.visualProof
+        if (updates.isPublic !== undefined) dbUpdates.is_public = updates.isPublic
 
         if (Object.keys(dbUpdates).length === 0) return
 
@@ -859,6 +862,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
                     key_learnings: exp.keyLearnings || null,
                     verdict: exp.verdict || null,
                     visual_proof: exp.visualProof || null,
+                    is_public: exp.isPublic ?? false,
                 }))
 
                 const { error: expError } = await supabase

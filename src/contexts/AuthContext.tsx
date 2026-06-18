@@ -28,6 +28,7 @@ export interface Profile {
     panel_logo_url: string | null
     area: UserArea[] | null
     last_seen_at: string | null
+    can_access_global_library: boolean
 }
 
 interface AuthContextValue {
@@ -36,6 +37,7 @@ interface AuthContextValue {
     profile: Profile | null
     loading: boolean
     isSuperAdmin: boolean
+    canAccessGlobalLibrary: boolean
     areas: UserAreaRecord[]
     signIn: (email: string, password: string) => Promise<{ error: any }>
     signUp: (email: string, password: string, fullName?: string) => Promise<{ error: any }>
@@ -45,6 +47,7 @@ interface AuthContextValue {
     updatePassword: (newPassword: string) => Promise<void>
     updateArea: (areas: UserArea[]) => Promise<void>
     updateUserGlobalRole: (userId: string, role: GlobalRole) => Promise<void>
+    updateUserGlobalLibraryAccess: (userId: string, value: boolean) => Promise<void>
     addArea: (name: string) => Promise<void>
     deleteArea: (id: string) => Promise<void>
 }
@@ -323,12 +326,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }
 
+    // Concede o revoca el acceso de un usuario a la Biblioteca Global (RLS exige
+    // superadmin para escribir esta columna — ver migración 05).
+    const updateUserGlobalLibraryAccess = async (userId: string, value: boolean) => {
+        const { error } = await supabase
+            .from('profiles')
+            .update({ can_access_global_library: value })
+            .eq('id', userId)
+        if (error) throw error
+        // Si el usuario se cambia a sí mismo, refrescamos el perfil en memoria.
+        setProfile((prev) => (prev && prev.id === userId ? { ...prev, can_access_global_library: value } : prev))
+    }
+
     const value: AuthContextValue = {
         session,
         user: session?.user || null,
         profile,
         loading,
         isSuperAdmin: profile?.global_role === 'superadmin',
+        // Superadmin y admin (líder) siempre pueden ver la Biblioteca Global;
+        // el resto, solo si tienen el flag explícito.
+        canAccessGlobalLibrary:
+            profile?.global_role === 'superadmin' ||
+            profile?.global_role === 'admin' ||
+            !!profile?.can_access_global_library,
         areas,
         signIn,
         signUp,
@@ -338,6 +359,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         updatePassword,
         updateArea,
         updateUserGlobalRole,
+        updateUserGlobalLibraryAccess,
         addArea,
         deleteArea,
     }

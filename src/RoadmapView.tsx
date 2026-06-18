@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Target, Edit2, Plus, TrendingUp, X, Lightbulb, Trash2, RefreshCw, Copy, CheckCircle2 } from 'lucide-react';
+import { Target, Edit2, Plus, TrendingUp, X, Lightbulb, Trash2, RefreshCw, Copy, CheckCircle2, ExternalLink } from 'lucide-react';
 import type { NorthStarMetric, Objective, Strategy, Experiment, MetricType, NSMSourceType } from './types';
 import { formatMetricValue, getUnitLabel, calculateProgress as calcProgress } from './utils/metricFormatters';
 import { useNSMAutosync } from './hooks/useNSMAutosync';
@@ -20,6 +20,7 @@ interface RoadmapViewProps {
   onDeleteObjective: (objectiveId: string) => void;
   onDeleteStrategy: (strategyId: string) => void;
   onSelectExperiment: (exp: Experiment) => void;
+  onViewStrategyExperiments: (strategyId: string) => void;
 }
 
 type ModalState =
@@ -42,7 +43,8 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
   onEditStrategy,
   // onSelectExperiment is intentionally not destructured (unused within this component)
   onDeleteObjective,
-  onDeleteStrategy
+  onDeleteStrategy,
+  onViewStrategyExperiments
 }) => {
   const [modalState, setModalState] = useState<ModalState>({ type: 'none' });
 
@@ -1462,17 +1464,43 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                                 </span>
                               )}
                             </div>
-                            <div style={{
-                              fontSize: '12px',
-                              background: linkedCount > 0 ? '#dcfce7' : '#f3f4f6',
-                              color: linkedCount > 0 ? '#166534' : '#6b7280',
-                              padding: '4px 8px',
-                              borderRadius: '4px',
-                              display: 'inline-block',
-                              fontWeight: 600
-                            }}>
-                              {linkedCount} {linkedCount === 1 ? 'Experimento' : 'Experimentos'}
-                            </div>
+                            {linkedCount > 0 ? (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); onViewStrategyExperiments(strategy.id); }}
+                                title={`Ver los ${linkedCount} experimento${linkedCount === 1 ? '' : 's'} de esta iniciativa`}
+                                style={{
+                                  fontSize: '12px',
+                                  background: '#dcfce7',
+                                  color: '#166534',
+                                  padding: '4px 8px',
+                                  borderRadius: '4px',
+                                  border: '1px solid transparent',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  transition: 'border-color 0.2s, background 0.2s'
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#16a34a'; e.currentTarget.style.background = '#bbf7d0'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.background = '#dcfce7'; }}
+                              >
+                                {linkedCount} {linkedCount === 1 ? 'Experimento' : 'Experimentos'}
+                                <ExternalLink size={12} />
+                              </button>
+                            ) : (
+                              <div style={{
+                                fontSize: '12px',
+                                background: '#f3f4f6',
+                                color: '#6b7280',
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                display: 'inline-block',
+                                fontWeight: 600
+                              }}>
+                                0 Experimentos
+                              </div>
+                            )}
                           </div>
                           <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                             <button

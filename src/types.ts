@@ -80,6 +80,7 @@ export interface Experiment {
   successCriteria?: string;
   targetMetric?: string;
   campaignObjective?: string; // Objetivo de campaña: Ventas, Leads, Tráfico, etc.
+  isPublic?: boolean; // Visible en la Biblioteca Global (público) vs solo dentro del proyecto (privado). Default: privado.
 }
 
 // Objetivos de campaña disponibles para clasificar experimentos.

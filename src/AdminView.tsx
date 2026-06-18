@@ -46,7 +46,7 @@ const STATE_COLOR: Record<UserState, string> = {
 };
 
 export const AdminView: React.FC<AdminViewProps> = ({ projects, onBack }) => {
-  const { profile, updateUserGlobalRole, areas } = useAuth();
+  const { profile, updateUserGlobalRole, updateUserGlobalLibraryAccess, areas } = useAuth();
   const [tab, setTab] = useState<'manage' | 'usage'>('manage');
   const [users, setUsers] = useState<Profile[]>([]);
   const [members, setMembers] = useState<MembershipRow[]>([]);
@@ -202,6 +202,20 @@ export const AdminView: React.FC<AdminViewProps> = ({ projects, onBack }) => {
     }
   };
 
+  // Concede/revoca acceso a la Biblioteca Global (admins y superadmin lo tienen
+  // siempre; este flag controla a los usuarios normales / clientes externos).
+  const setUserGlobalLibrary = async (u: Profile, value: boolean) => {
+    try {
+      setBusyUserId(u.id);
+      await updateUserGlobalLibraryAccess(u.id, value);
+      await fetchAll();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error al actualizar el acceso');
+    } finally {
+      setBusyUserId(null);
+    }
+  };
+
   const exportCsv = () => {
     const headers = ['Nombre', 'Email', 'Area', 'Ultimo uso', 'Experimentos activos', 'Estado', 'Rol global', 'Proyectos'];
     const rows = filteredUserRows.map(r => [
@@ -300,6 +314,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ projects, onBack }) => {
             busyUserId={busyUserId}
             currentUserId={profile?.id}
             onSetRole={setUserRole}
+            onToggleGlobalLibrary={setUserGlobalLibrary}
           />
         ) : (
           <UsageTab
@@ -329,7 +344,8 @@ const ManageTab: React.FC<{
   busyUserId: string | null;
   currentUserId?: string;
   onSetRole: (u: Profile, role: GlobalRole) => void;
-}> = ({ users, busyUserId, currentUserId, onSetRole }) => {
+  onToggleGlobalLibrary: (u: Profile, value: boolean) => void;
+}> = ({ users, busyUserId, currentUserId, onSetRole, onToggleGlobalLibrary }) => {
   const [userSearch, setUserSearch] = useState('');
   const q = userSearch.trim().toLowerCase();
   const filteredUsers = q
@@ -360,7 +376,7 @@ const ManageTab: React.FC<{
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-              {['Nombre', 'Email', 'Área', 'Rol global'].map(h => (
+              {['Nombre', 'Email', 'Área', 'Rol global', 'Biblioteca Global'].map(h => (
                 <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6b7280' }}>{h}</th>
               ))}
             </tr>
@@ -391,10 +407,28 @@ const ManageTab: React.FC<{
                     <option value="superadmin">Superadmin</option>
                   </select>
                 </td>
+                <td style={{ padding: '12px 16px' }}>
+                  {u.global_role === 'superadmin' || u.global_role === 'admin' ? (
+                    <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 600 }} title="Los admins y superadmin siempre tienen acceso">
+                      Siempre
+                    </span>
+                  ) : (
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: busyUserId === u.id ? 'wait' : 'pointer', fontSize: '12px', color: '#6b7280' }}>
+                      <input
+                        type="checkbox"
+                        checked={!!u.can_access_global_library}
+                        disabled={busyUserId === u.id}
+                        onChange={e => onToggleGlobalLibrary(u, e.target.checked)}
+                        style={{ cursor: busyUserId === u.id ? 'wait' : 'pointer', width: '15px', height: '15px' }}
+                      />
+                      {u.can_access_global_library ? 'Con acceso' : 'Sin acceso'}
+                    </label>
+                  )}
+                </td>
               </tr>
             ))}
             {filteredUsers.length === 0 && (
-              <tr><td colSpan={4} style={{ padding: '24px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>
+              <tr><td colSpan={5} style={{ padding: '24px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>
                 Ningún usuario coincide con la búsqueda.
               </td></tr>
             )}
