@@ -7,7 +7,8 @@ import type { Session, User } from '@supabase/supabase-js'
 // Types
 // ============================================================================
 
-export type GlobalRole = 'superadmin' | 'user'
+// superadmin > admin (líder de equipo) > user
+export type GlobalRole = 'superadmin' | 'admin' | 'user'
 
 // Las áreas ya no son un enum fijo: se gestionan desde la tabla `user_areas`.
 // `UserArea` queda como alias de string para compatibilidad con imports previos.
@@ -27,6 +28,7 @@ export interface Profile {
     panel_logo_url: string | null
     area: UserArea[] | null
     last_seen_at: string | null
+    can_access_global_library: boolean
 }
 
 interface AuthContextValue {
@@ -35,13 +37,17 @@ interface AuthContextValue {
     profile: Profile | null
     loading: boolean
     isSuperAdmin: boolean
+    canAccessGlobalLibrary: boolean
     areas: UserAreaRecord[]
     signIn: (email: string, password: string) => Promise<{ error: any }>
     signUp: (email: string, password: string, fullName?: string) => Promise<{ error: any }>
     signOut: () => Promise<void>
     updatePanelLogo: (logoUrl: string | null) => Promise<void>
+    updateProfile: (updates: { full_name?: string; avatar_url?: string | null }) => Promise<void>
+    updatePassword: (newPassword: string) => Promise<void>
     updateArea: (areas: UserArea[]) => Promise<void>
     updateUserGlobalRole: (userId: string, role: GlobalRole) => Promise<void>
+    updateUserGlobalLibraryAccess: (userId: string, value: boolean) => Promise<void>
     addArea: (name: string) => Promise<void>
     deleteArea: (id: string) => Promise<void>
 }
@@ -256,6 +262,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile((prev) => (prev ? { ...prev, panel_logo_url: logoUrl } : prev))
     }
 
+    const updateProfile = async (updates: { full_name?: string; avatar_url?: string | null }) => {
+        if (!session?.user) throw new Error('Not authenticated')
+        const patch: Record<string, unknown> = {}
+        if (updates.full_name !== undefined) patch.full_name = updates.full_name
+        if (updates.avatar_url !== undefined) patch.avatar_url = updates.avatar_url
+        if (Object.keys(patch).length === 0) return
+        const { error } = await supabase
+            .from('profiles')
+            .update(patch)
+            .eq('id', session.user.id)
+        if (error) throw error
+        setProfile((prev) => (prev ? { ...prev, ...patch } as Profile : prev))
+    }
+
+    const updatePassword = async (newPassword: string) => {
+        if (!session?.user) throw new Error('Not authenticated')
+        const { error } = await supabase.auth.updateUser({ password: newPassword })
+        if (error) throw error
+    }
+
     const updateArea = async (areas: UserArea[]) => {
         if (!session?.user) throw new Error('Not authenticated')
         const { error } = await supabase
@@ -300,19 +326,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }
 
+    // Concede o revoca el acceso de un usuario a la Biblioteca Global (RLS exige
+    // superadmin para escribir esta columna — ver migración 05).
+    const updateUserGlobalLibraryAccess = async (userId: string, value: boolean) => {
+        const { error } = await supabase
+            .from('profiles')
+            .update({ can_access_global_library: value })
+            .eq('id', userId)
+        if (error) throw error
+        // Si el usuario se cambia a sí mismo, refrescamos el perfil en memoria.
+        setProfile((prev) => (prev && prev.id === userId ? { ...prev, can_access_global_library: value } : prev))
+    }
+
     const value: AuthContextValue = {
         session,
         user: session?.user || null,
         profile,
         loading,
         isSuperAdmin: profile?.global_role === 'superadmin',
+        // Superadmin y admin (líder) siempre pueden ver la Biblioteca Global;
+        // el resto, solo si tienen el flag explícito.
+        canAccessGlobalLibrary:
+            profile?.global_role === 'superadmin' ||
+            profile?.global_role === 'admin' ||
+            !!profile?.can_access_global_library,
         areas,
         signIn,
         signUp,
         signOut,
         updatePanelLogo,
+        updateProfile,
+        updatePassword,
         updateArea,
         updateUserGlobalRole,
+        updateUserGlobalLibraryAccess,
         addArea,
         deleteArea,
     }

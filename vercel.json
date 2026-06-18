@@ -4,5 +4,11 @@
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron-inactivity",
+      "schedule": "0 9 * * 1"
+    }
   ]
 }

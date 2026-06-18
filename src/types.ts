@@ -79,7 +79,20 @@ export interface Experiment {
   labels?: string[];
   successCriteria?: string;
   targetMetric?: string;
+  campaignObjective?: string; // Objetivo de campaña: Ventas, Leads, Tráfico, etc.
+  isPublic?: boolean; // Visible en la Biblioteca Global (público) vs solo dentro del proyecto (privado). Default: privado.
 }
+
+// Objetivos de campaña disponibles para clasificar experimentos.
+export const CAMPAIGN_OBJECTIVES = [
+  'Ventas',
+  'Leads',
+  'Tráfico',
+  'Awareness',
+  'Conversión',
+  'Engagement',
+  'Otro',
+] as const;
 
 export const _runtime_types_marker = true;
 

@@ -8,7 +8,9 @@ import {
   Upload,
   TrendingUp,
   Edit3,
-  Trash2
+  Trash2,
+  Globe,
+  Lock
 } from 'lucide-react';
 import { FinalizeExperimentButton } from './components/FinalizeExperimentButton';
 import { ImageThumb } from './components/ImageThumb';
@@ -188,6 +190,28 @@ export const ExperimentDrawer: React.FC<ExperimentDrawerProps> = ({
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
+              <button
+                onClick={() => onExperimentUpdate(experiment.id, { isPublic: !experiment.isPublic })}
+                className="badge"
+                title={experiment.isPublic
+                  ? 'Visible en la Biblioteca Global. Clic para hacerlo privado (solo este proyecto).'
+                  : 'Privado: solo visible dentro del proyecto. Clic para publicarlo en la Biblioteca Global.'}
+                style={{
+                  backgroundColor: experiment.isPublic ? 'rgba(74, 222, 128, 0.18)' : '#f3f4f6',
+                  color: experiment.isPublic ? '#166534' : '#6b7280',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  outline: 'none'
+                }}
+              >
+                {experiment.isPublic ? <Globe size={12} /> : <Lock size={12} />}
+                {experiment.isPublic ? 'Pública' : 'Privada'}
+              </button>
               <span style={{ color: 'var(--text-subtle)', fontSize: '13px' }}>EXP-{experiment.id}</span>
               <div style={{
                 background: 'linear-gradient(135deg, #4F46E5 0%, #6366F1 100%)',

@@ -188,6 +188,7 @@ function dbRowToExperiment(row: any): Experiment {
         iceScore: row.ice_score || 125,
         funnelStage: row.funnel_stage || 'Acquisition',
         northStarMetric: row.north_star_metric || '',
+        campaignObjective: row.campaign_objective || undefined,
         linkedStrategyId: row.linked_strategy_id || undefined,
         startDate: row.start_date || undefined,
         endDate: row.end_date || undefined,
@@ -197,6 +198,7 @@ function dbRowToExperiment(row: any): Experiment {
         keyLearnings: row.key_learnings || undefined,
         verdict: row.verdict || undefined,
         visualProof: row.visual_proof || undefined,
+        isPublic: row.is_public ?? false,
     }
 }
 
@@ -631,6 +633,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
                 ice_score: exp.iceScore,
                 funnel_stage: exp.funnelStage,
                 north_star_metric: exp.northStarMetric,
+                campaign_objective: exp.campaignObjective || null,
                 linked_strategy_id: exp.linkedStrategyId || null,
                 start_date: exp.startDate || null,
                 end_date: exp.endDate || null,
@@ -640,6 +643,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
                 key_learnings: exp.keyLearnings || null,
                 verdict: exp.verdict || null,
                 visual_proof: exp.visualProof || null,
+                is_public: exp.isPublic ?? false,
             })
             .select()
             .single()
@@ -689,6 +693,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         if (updates.iceScore !== undefined) dbUpdates.ice_score = updates.iceScore
         if (updates.funnelStage !== undefined) dbUpdates.funnel_stage = updates.funnelStage
         if (updates.northStarMetric !== undefined) dbUpdates.north_star_metric = updates.northStarMetric
+        if (updates.campaignObjective !== undefined) dbUpdates.campaign_objective = updates.campaignObjective || null
         if (updates.linkedStrategyId !== undefined) dbUpdates.linked_strategy_id = updates.linkedStrategyId || null
         if (updates.startDate !== undefined) dbUpdates.start_date = updates.startDate
         if (updates.endDate !== undefined) dbUpdates.end_date = updates.endDate
@@ -698,6 +703,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         if (updates.keyLearnings !== undefined) dbUpdates.key_learnings = updates.keyLearnings
         if (updates.verdict !== undefined) dbUpdates.verdict = updates.verdict
         if (updates.visualProof !== undefined) dbUpdates.visual_proof = updates.visualProof
+        if (updates.isPublic !== undefined) dbUpdates.is_public = updates.isPublic
 
         if (Object.keys(dbUpdates).length === 0) return
 
@@ -856,6 +862,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
                     key_learnings: exp.keyLearnings || null,
                     verdict: exp.verdict || null,
                     visual_proof: exp.visualProof || null,
+                    is_public: exp.isPublic ?? false,
                 }))
 
                 const { error: expError } = await supabase

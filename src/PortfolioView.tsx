@@ -6,7 +6,9 @@ import {
     Plus,
     Search,
     Shield,
-    Trash2
+    Trash2,
+    UserCircle,
+    LogOut
 } from 'lucide-react';
 import type { Project } from './types';
 import { SectionGuide } from './components/SectionGuide';
@@ -221,6 +223,7 @@ interface PortfolioViewProps {
     onCreateProject: () => void;
     onSignOut?: () => void;
     onOpenAdmin?: () => void;
+    onOpenProfile?: () => void;
     onDeleteProject?: (projectId: string) => void;
 }
 
@@ -230,6 +233,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
     onCreateProject,
     onSignOut,
     onOpenAdmin,
+    onOpenProfile,
     onDeleteProject,
 }) => {
     const { profile } = useAuth();
@@ -289,27 +293,48 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                   <div style={{ position: 'relative' }}>
                     <div
                         onClick={() => setShowUserMenu(!showUserMenu)}
+                        title={profile?.full_name || profile?.email || ''}
                         style={{
                             width: '36px', height: '36px', borderRadius: '50%',
-                            background: '#111114',
+                            background: '#111114', overflow: 'hidden',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             color: 'white', fontSize: '14px', fontWeight: 600, cursor: 'pointer',
                         }}
                     >
-                        A
+                        {profile?.avatar_url && (profile.avatar_url.startsWith('http') || profile.avatar_url.startsWith('data:'))
+                            ? <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            : (profile?.full_name || profile?.email || '?').charAt(0).toUpperCase()}
                     </div>
-                    {showUserMenu && onSignOut && (
+                    {showUserMenu && (
                         <>
                             <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setShowUserMenu(false)} />
-                            <div style={{ position: 'absolute', top: '44px', right: 0, background: 'white', borderRadius: '8px', border: '1px solid #E5E7EB', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 100, minWidth: '160px', overflow: 'hidden' }}>
-                                <button
-                                    onClick={() => { setShowUserMenu(false); onSignOut(); }}
-                                    style={{ width: '100%', padding: '10px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '13px', color: '#DC2626', display: 'flex', alignItems: 'center', gap: '8px' }}
-                                    onMouseEnter={e => (e.currentTarget.style.background = '#FEF2F2')}
-                                    onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-                                >
-                                    Cerrar Sesión
-                                </button>
+                            <div style={{ position: 'absolute', top: '44px', right: 0, background: 'white', borderRadius: '8px', border: '1px solid #E5E7EB', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 100, minWidth: '180px', overflow: 'hidden' }}>
+                                <div style={{ padding: '12px 16px', borderBottom: '1px solid #E5E7EB' }}>
+                                    <div style={{ fontWeight: 600, fontSize: '14px' }}>{profile?.full_name || 'Usuario'}</div>
+                                    <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{profile?.email}</div>
+                                </div>
+                                {onOpenProfile && (
+                                    <button
+                                        onClick={() => { setShowUserMenu(false); onOpenProfile(); }}
+                                        style={{ width: '100%', padding: '10px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '13px', color: '#111114', display: 'flex', alignItems: 'center', gap: '8px' }}
+                                        onMouseEnter={e => (e.currentTarget.style.background = '#F5F3FF')}
+                                        onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                                    >
+                                        <UserCircle size={14} />
+                                        Mi perfil
+                                    </button>
+                                )}
+                                {onSignOut && (
+                                    <button
+                                        onClick={() => { setShowUserMenu(false); onSignOut(); }}
+                                        style={{ width: '100%', padding: '10px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '13px', color: '#DC2626', display: 'flex', alignItems: 'center', gap: '8px' }}
+                                        onMouseEnter={e => (e.currentTarget.style.background = '#FEF2F2')}
+                                        onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                                    >
+                                        <LogOut size={14} />
+                                        Cerrar Sesión
+                                    </button>
+                                )}
                             </div>
                         </>
                     )}

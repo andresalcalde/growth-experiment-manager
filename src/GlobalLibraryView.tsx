@@ -18,6 +18,7 @@ interface GlobalExperimentRow {
   problem: string | null;
   funnel_stage: string;
   north_star_metric: string;
+  campaign_objective: string | null;
   impact: number;
   confidence: number;
   ease: number;
@@ -44,6 +45,7 @@ export const GlobalLibraryView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [areaFilter, setAreaFilter] = useState('All');
   const [brandFilter, setBrandFilter] = useState('All');
+  const [objectiveFilter, setObjectiveFilter] = useState('All');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<GlobalExperimentRow | null>(null);
 
@@ -69,14 +71,21 @@ export const GlobalLibraryView: React.FC = () => {
     return Array.from(set).sort();
   }, [rows]);
 
+  // Objetivos de campaña presentes en los datos (para poblar el filtro).
+  const objectives = useMemo(() => {
+    const set = new Set(rows.map(r => r.campaign_objective).filter((o): o is string => !!o));
+    return Array.from(set).sort();
+  }, [rows]);
+
   const filtered = useMemo(() => {
     return rows.filter(r => {
       if (areaFilter !== 'All' && !(r.owner_area || []).includes(areaFilter)) return false;
       if (brandFilter !== 'All' && r.project_name !== brandFilter) return false;
+      if (objectiveFilter !== 'All' && r.campaign_objective !== objectiveFilter) return false;
       if (search && !r.title.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
-  }, [rows, areaFilter, brandFilter, search]);
+  }, [rows, areaFilter, brandFilter, objectiveFilter, search]);
 
   return (
     <div style={{ padding: '0 32px 32px', overflowY: 'auto', height: '100%' }}>
@@ -98,6 +107,10 @@ export const GlobalLibraryView: React.FC = () => {
         <select value={brandFilter} onChange={e => setBrandFilter(e.target.value)} style={selectStyle}>
           <option value="All">Todas las marcas</option>
           {brands.map(b => <option key={b} value={b}>{b}</option>)}
+        </select>
+        <select value={objectiveFilter} onChange={e => setObjectiveFilter(e.target.value)} style={selectStyle}>
+          <option value="All">Todos los objetivos</option>
+          {objectives.map(o => <option key={o} value={o}>{o}</option>)}
         </select>
         <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{filtered.length} experimentos</span>
       </div>
@@ -196,9 +209,10 @@ const DetailModal: React.FC<{ row: GlobalExperimentRow; onClose: () => void }> =
           </div>
 
           <Section title="Etapa del experimento">
-            <div style={{ display: 'flex', gap: '24px', fontSize: '14px' }}>
+            <div style={{ display: 'flex', gap: '24px', fontSize: '14px', flexWrap: 'wrap' }}>
               <div><strong>Estado:</strong> {row.status}</div>
               <div><strong>Funnel:</strong> {row.funnel_stage}</div>
+              {row.campaign_objective && <div><strong>Objetivo:</strong> {row.campaign_objective}</div>}
               <div><strong>ICE:</strong> {row.ice_score}</div>
             </div>
           </Section>

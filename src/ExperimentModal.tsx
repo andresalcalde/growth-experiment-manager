@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Lightbulb, Upload, Plus } from 'lucide-react';
 import type { Strategy, Status, FunnelStage, TeamMember } from './types';
+import { CAMPAIGN_OBJECTIVES } from './types';
 
 export interface ExperimentFormData {
   title: string;
@@ -15,6 +16,7 @@ export interface ExperimentFormData {
   ease: number;
   iceScore?: number;
   funnelStage: FunnelStage;
+  campaignObjective: string;
   linkedStrategyId?: string;
   ownerId?: string; // Team member ID
 }
@@ -66,6 +68,7 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({ isOpen, onClos
     confidence: 5,
     ease: 5,
     funnelStage: 'Acquisition',
+    campaignObjective: '',
     linkedStrategyId: '',
     ownerId: teamMembers[0]?.id || ''
   });
@@ -84,6 +87,7 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({ isOpen, onClos
         confidence: 5,
         ease: 5,
         funnelStage: 'Acquisition',
+        campaignObjective: '',
         linkedStrategyId: '',
         ownerId: teamMembers[0]?.id || ''
       });
@@ -93,12 +97,19 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({ isOpen, onClos
   if (!isOpen) return null;
 
   const handleSave = () => {
-    // Basic validation
-    if (!formData.title) formData.title = "Hipótesis sin título";
+    // Objetivo de campaña es obligatorio (feedback Growth Lab #2).
+    if (!formData.campaignObjective) {
+      alert('Selecciona el objetivo de campaña antes de crear el experimento.');
+      return;
+    }
 
     // ICE Score Logic: Impact * Confidence * Ease
     const calculatedIce = formData.impact * formData.confidence * formData.ease;
-    onSave({ ...formData, iceScore: calculatedIce });
+    onSave({
+      ...formData,
+      title: formData.title || 'Hipótesis sin título',
+      iceScore: calculatedIce,
+    });
   };
 
   return (
@@ -226,6 +237,23 @@ export const ExperimentModal: React.FC<ExperimentModalProps> = ({ isOpen, onClos
                 >
                   {['Acquisition', 'Activation', 'Retention', 'Referral', 'Revenue'].map(stage => (
                     <option key={stage} value={stage}>{stage}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Objetivo de campaña (obligatorio) */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px', display: 'block' }}>
+                  Objetivo de campaña <span style={{ color: '#DC2626' }}>*</span>
+                </label>
+                <select
+                  value={formData.campaignObjective}
+                  onChange={e => setFormData({ ...formData, campaignObjective: e.target.value })}
+                  style={{ width: '100%', padding: '8px', borderRadius: '8px', border: `1px solid ${formData.campaignObjective ? 'var(--border-subtle)' : '#fca5a5'}` }}
+                >
+                  <option value="">Seleccionar objetivo...</option>
+                  {CAMPAIGN_OBJECTIVES.map(obj => (
+                    <option key={obj} value={obj}>{obj}</option>
                   ))}
                 </select>
               </div>
