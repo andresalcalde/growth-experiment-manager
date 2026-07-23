@@ -92,7 +92,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                 if (error) {
                     setError(error.message)
                 } else {
-                    setSuccessMessage('¡Cuenta creada! Revisa tu email para confirmar y luego inicia sesión.')
+                    setSuccessMessage('¡Cuenta creada! Ya puedes iniciar sesión con tu email y contraseña.')
                     setMode('login')
                 }
             }
