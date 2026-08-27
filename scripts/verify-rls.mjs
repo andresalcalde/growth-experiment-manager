@@ -10,6 +10,14 @@ const env = Object.fromEntries(
     .map(l => { const i = l.indexOf('='); return [l.slice(0, i).trim(), l.slice(i + 1).trim()]; })
 );
 const URL_ = env.VITE_SUPABASE_URL, ANON = env.VITE_SUPABASE_ANON_KEY;
+if (!URL_ || !ANON) {
+  console.error('Faltan VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY en .env');
+  process.exit(1);
+}
+
+// Total de checks que una corrida completa DEBE reportar: anon 2, member 3, lead 3, superadmin 3.
+// Si un login o un throw aborta un bloque a mitad, los que falten se cuentan como FAIL al final.
+const EXPECTED_CHECKS = 11;
 let pass = 0, fail = 0;
 const ok = (name, cond, extra = '') => {
   if (cond) { pass++; console.log(`  PASS ${name}`); }
@@ -60,7 +68,11 @@ await block('member (user normal)', async () => {
   const teams = await rest(t, 'teams?select=id,name');
   ok('member lee teams sin 500', teams.status === 200, `got ${teams.status} ${JSON.stringify(teams.body)}`);
   const act = await rpc(t, 'lead_team_activity', { p_team_id: '00000000-0000-0000-0000-000000000000' });
-  ok('member NO puede llamar lead_team_activity', act.status >= 400, `got ${act.status}`);
+  // En PostgREST un RAISE EXCEPTION del guard llega como HTTP 400 con code P0001, no como 401/403:
+  // por eso se valida el mensaje y no el status code. Un 404 (RPC inexistente) NO cuenta como guard.
+  ok('member NO puede llamar lead_team_activity',
+    act.status >= 400 && String(act.body?.message ?? '').includes('forbidden'),
+    `got ${act.status} ${JSON.stringify(act.body)}`);
   const exp = await rest(t, 'experiments?select=created_by&limit=1');
   ok('experiments.created_by existe', exp.status === 200, `got ${exp.status} ${JSON.stringify(exp.body)}`);
 });
@@ -75,6 +87,11 @@ await block('lead (global admin, lidera equipo de prueba)', async () => {
     ok('lead_team_projects responde 200', projs.status === 200, `got ${projs.status}`);
     const act = await rpc(t, 'lead_team_activity', { p_team_id: teamId });
     ok('lead_team_activity responde 200', act.status === 200, `got ${act.status}`);
+  } else {
+    // Sin teamId no se pueden ejercitar las 2 RPCs: se cuentan como FAIL explicito
+    // para que el total de checks siga siendo constante.
+    ok('lead_team_projects ejecutado', false, 'sin teamId');
+    ok('lead_team_activity ejecutado', false, 'sin teamId');
   }
 });
 
@@ -83,7 +100,7 @@ await block('superadmin', async () => {
   const all = await rpc(t, 'admin_list_projects');
   const direct = await rest(t, 'projects?select=id');
   ok('superadmin ve por RLS tantos proyectos como admin_list_projects',
-    all.status === 200 && direct.status === 200 && Array.isArray(direct.body) && direct.body.length >= (all.body?.length ?? 0),
+    all.status === 200 && direct.status === 200 && Array.isArray(all.body) && Array.isArray(direct.body) && direct.body.length >= all.body.length,
     `rpc=${all.body?.length} rls=${direct.body?.length}`);
   const exp = await rest(t, 'experiments?select=id&limit=1');
   ok('superadmin lee experiments por RLS', exp.status === 200 && Array.isArray(exp.body), `got ${exp.status}`);
@@ -91,5 +108,14 @@ await block('superadmin', async () => {
   ok('activity_log.details existe', log.status === 200, `got ${log.status}`);
 });
 
-console.log(`\nResultado: ${pass} PASS / ${fail} FAIL`);
-process.exit(fail === 0 ? 0 : 1);
+// Un bloque abortado deja checks sin ejecutar: se imputan a FAIL para que el total
+// sea siempre EXPECTED_CHECKS y el verde no pueda venir de cobertura incompleta.
+const executed = pass + fail;
+if (executed < EXPECTED_CHECKS) {
+  const missing = EXPECTED_CHECKS - executed;
+  fail += missing;
+  console.log(`\nchecks no ejecutados: ${missing}`);
+}
+
+console.log(`\nResultado: ${pass} PASS / ${fail} FAIL (de ${EXPECTED_CHECKS} esperados)`);
+process.exit(pass === EXPECTED_CHECKS ? 0 : 1);
