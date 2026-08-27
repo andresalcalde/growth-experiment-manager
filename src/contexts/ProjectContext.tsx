@@ -257,13 +257,18 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
                 .order('created_at', { ascending: false })
 
             if (projError) throw projError
-            if (!projectRows || projectRows.length === 0) {
+
+            // Los proyectos archivados no aparecen en el portfolio; se gestionan
+            // (y desarchivan) desde el panel Admin.
+            const visibleRows = (projectRows || []).filter((r: any) => !r.archived)
+
+            if (visibleRows.length === 0) {
                 setProjects([])
                 setProjectsLoading(false)
                 return
             }
 
-            const projectIds = projectRows.map((p: any) => p.id)
+            const projectIds = visibleRows.map((p: any) => p.id)
 
             // Step 2: Fetch all child data in parallel
             const [objRes, stratRes, expRes] = await Promise.all([
@@ -277,7 +282,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
             const stratByProject = groupBy(stratRes.data || [], 'project_id')
             const expByProject = groupBy(expRes.data || [], 'project_id')
 
-            const fullProjects: Project[] = projectRows.map(row => {
+            const fullProjects: Project[] = visibleRows.map(row => {
                 const base = dbRowToProject(row)
                 return {
                     ...base,
