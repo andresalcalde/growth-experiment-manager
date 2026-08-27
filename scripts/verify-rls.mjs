@@ -118,4 +118,4 @@ if (executed < EXPECTED_CHECKS) {
 }
 
 console.log(`\nResultado: ${pass} PASS / ${fail} FAIL (de ${EXPECTED_CHECKS} esperados)`);
-process.exit(pass === EXPECTED_CHECKS ? 0 : 1);
+process.exit(pass === EXPECTED_CHECKS && fail === 0 ? 0 : 1);
