@@ -19,7 +19,8 @@ import {
   Trash2,
   Loader2,
   Pencil,
-  UserCircle
+  UserCircle,
+  Users
 } from 'lucide-react';
 import { uploadExperimentEvidence, deleteExperimentEvidence } from './lib/uploadEvidence';
 import { MethodologyToolkit } from './components/MethodologyToolkit';
@@ -1260,10 +1261,33 @@ const App: React.FC = () => {
           <InfoTooltip content="Cierra el Growth Loop. Documenta aquí si la hipótesis se validó o se rechazó. El aprendizaje es el activo más valioso; un experimento 'fallido' es un éxito si nos dice qué no hacer en el futuro." position="right" />
         </button>
 
-        {/* Admin — top-level (cross-project), solo para superadmin */}
-        {isSuperAdmin && (
+        {/* Mi equipo — top-level (cross-project), para líderes (admin) y superadmin */}
+        {isAdminOrAbove && (
           <>
             <div style={{ height: 1, background: '#E5E7EB', margin: '12px 4px' }} />
+            <button
+              onClick={() => setView('team')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px',
+                borderRadius: '8px', width: '100%', textAlign: 'left', border: 'none',
+                cursor: 'pointer',
+                background: 'transparent',
+                color: '#4F46E5',
+                fontWeight: 600,
+              }}
+              title="Mi equipo — actividad y proyectos de los equipos que lideras"
+            >
+              <Users size={18} />
+              <span style={{ fontWeight: 600 }}>Mi equipo</span>
+            </button>
+          </>
+        )}
+
+        {/* Admin — top-level (cross-project), solo para superadmin.
+            El separador ya lo pone el bloque de "Mi equipo": todo superadmin es
+            admin-or-above, así que ese bloque siempre se renderiza antes. */}
+        {isSuperAdmin && (
+          <>
             <button
               onClick={() => setView('admin')}
               style={{

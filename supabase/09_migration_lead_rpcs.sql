@@ -124,3 +124,7 @@ END;
 $$;
 REVOKE EXECUTE ON FUNCTION public.lead_team_activity(uuid, timestamptz, timestamptz) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.lead_team_activity(uuid, timestamptz, timestamptz) TO authenticated;
+
+-- Recarga el cache de esquema de PostgREST para que las RPCs nuevas existan de
+-- inmediato (08 también lo hace, pero corre ANTES que este archivo).
+NOTIFY pgrst, 'reload schema';

@@ -770,6 +770,12 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     }, [activeProjectId, fetchProjects, projects, user])
 
     const deleteExperiment = useCallback(async (id: string) => {
+        // Se captura ANTES del borrado optimista: tras el setProjects el
+        // experimento ya no existe en memoria y el log quedaría sin título.
+        const prevExp = projects
+            .find(p => p.metadata.id === activeProjectId)
+            ?.experiments.find(e => e.id === id)
+
         setProjects(prev => prev.map(p =>
             p.metadata.id === activeProjectId
                 ? { ...p, experiments: p.experiments.filter(e => e.id !== id) }
@@ -784,9 +790,10 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
             logActivity({
                 userId: user.id, projectId: activeProjectId,
                 action: 'experiment_deleted', entityType: 'experiment', entityId: id,
+                details: { title: prevExp?.title ?? null },
             })
         }
-    }, [activeProjectId, fetchProjects, user])
+    }, [activeProjectId, fetchProjects, projects, user])
 
     // setExperiments – for drag-and-drop reordering and batch updates
     const setExperimentsLocal = useCallback((updater: Experiment[] | ((prev: Experiment[]) => Experiment[])) => {

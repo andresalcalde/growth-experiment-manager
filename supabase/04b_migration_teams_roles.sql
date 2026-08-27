@@ -10,6 +10,10 @@
 -- ⚠️ TESTING OBLIGATORIO: toca roles y RLS. Verifica con un superadmin, un
 --    'admin' (líder) y un 'user' normal antes de producción.
 --
+-- ⚠️ NO re-correr este archivo después de 06_migration_fix_teams_recursion.sql:
+--    las políticas de la sección 3 son las RECURSIVAS originales y reintroducirían
+--    el error 42P17. El fix vive en 06.
+--
 -- Idempotente. Correr en el SQL Editor de Supabase.
 -- ============================================================================
 

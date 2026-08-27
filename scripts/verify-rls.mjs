@@ -73,8 +73,8 @@ await block('member (user normal)', async () => {
   ok('member NO puede llamar lead_team_activity',
     act.status >= 400 && String(act.body?.message ?? '').includes('forbidden'),
     `got ${act.status} ${JSON.stringify(act.body)}`);
-  const exp = await rest(t, 'experiments?select=created_by&limit=1');
-  ok('experiments.created_by existe', exp.status === 200, `got ${exp.status} ${JSON.stringify(exp.body)}`);
+  const exp = await rest(t, 'experiments?select=created_by,resolved_by,resolved_at&limit=1');
+  ok('experiments.created_by/resolved_by/resolved_at existen', exp.status === 200, `got ${exp.status} ${JSON.stringify(exp.body)}`);
 });
 
 await block('lead (global admin, lidera equipo de prueba)', async () => {

@@ -131,8 +131,10 @@ export const AdminView: React.FC<AdminViewProps> = ({ projects, onBack }) => {
   // "Proyectos inactivos (+7 días)" siguen siendo relativos a hoy.
   const filteredActivity = useMemo(() => {
     if (!fromDate && !toDate) return activity;
-    const from = fromDate ? new Date(fromDate).getTime() : -Infinity;
-    const to = toDate ? new Date(toDate).getTime() + DAY : Infinity;
+    // 'T00:00:00' fuerza medianoche LOCAL: `new Date('YYYY-MM-DD')` se parsea como
+    // UTC y corría el rango ~4h en Chile.
+    const from = fromDate ? new Date(fromDate + 'T00:00:00').getTime() : -Infinity;
+    const to = toDate ? new Date(toDate + 'T00:00:00').getTime() + DAY : Infinity;
     return activity.filter(a => {
       const t = new Date(a.created_at).getTime();
       return t >= from && t < to;
@@ -193,8 +195,9 @@ export const AdminView: React.FC<AdminViewProps> = ({ projects, onBack }) => {
   const profileById = useMemo(() => new Map(users.map(u => [u.id, u])), [users]);
 
   const traceRows = useMemo(() => {
-    const from = fromDate ? new Date(fromDate).getTime() : -Infinity;
-    const to = toDate ? new Date(toDate).getTime() + DAY : Infinity;
+    // Medianoche LOCAL (ver nota en filteredActivity).
+    const from = fromDate ? new Date(fromDate + 'T00:00:00').getTime() : -Infinity;
+    const to = toDate ? new Date(toDate + 'T00:00:00').getTime() + DAY : Infinity;
     return projects.flatMap(p => p.experiments.map(e => ({
       id: `${p.metadata.id}:${e.id}`,
       projectName: p.metadata.name,
@@ -1259,7 +1262,7 @@ const UsageTab: React.FC<{
           background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px',
           padding: '10px 14px', fontSize: '12px', color: '#92400e', marginBottom: '12px',
         }}>
-          El creador se reconstruyó del historial; en experimentos antiguos puede faltar. «Resuelto por» se registra desde el despliegue de esta versión en adelante.
+          El creador se reconstruyó del historial; en experimentos antiguos puede faltar. «Resuelto por» se registra desde el despliegue de esta versión en adelante. Los proyectos archivados no se incluyen en estas métricas ni en la trazabilidad.
         </div>
 
         <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden', background: 'white' }}>

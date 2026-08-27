@@ -137,8 +137,10 @@ export const TeamView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     setError(null);
     const args: Record<string, unknown> = { p_team_id: teamId };
     const actArgs: Record<string, unknown> = { ...args };
-    if (fromDate) actArgs.p_from = new Date(fromDate).toISOString();
-    if (toDate) actArgs.p_to = new Date(new Date(toDate).getTime() + 86400000).toISOString();
+    // 'T00:00:00' fuerza medianoche LOCAL: `new Date('YYYY-MM-DD')` se parsea como
+    // UTC y corría el rango ~4h en Chile.
+    if (fromDate) actArgs.p_from = new Date(fromDate + 'T00:00:00').toISOString();
+    if (toDate) actArgs.p_to = new Date(new Date(toDate + 'T00:00:00').getTime() + 86400000).toISOString();
     const [pRes, aRes] = await Promise.all([
       supabase.rpc('lead_team_projects', args),
       supabase.rpc('lead_team_activity', actArgs),
