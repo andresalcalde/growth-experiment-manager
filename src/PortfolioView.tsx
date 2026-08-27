@@ -8,6 +8,7 @@ import {
     Shield,
     Trash2,
     UserCircle,
+    Users,
     LogOut
 } from 'lucide-react';
 import type { Project } from './types';
@@ -223,6 +224,7 @@ interface PortfolioViewProps {
     onCreateProject: () => void;
     onSignOut?: () => void;
     onOpenAdmin?: () => void;
+    onOpenTeam?: () => void;
     onOpenProfile?: () => void;
     onDeleteProject?: (projectId: string) => void;
 }
@@ -233,6 +235,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
     onCreateProject,
     onSignOut,
     onOpenAdmin,
+    onOpenTeam,
     onOpenProfile,
     onDeleteProject,
 }) => {
@@ -277,6 +280,19 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                     )}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  {onOpenTeam && (
+                    <button
+                      onClick={onOpenTeam}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px',
+                        border: '1px solid #E5E7EB', borderRadius: '8px', background: 'white',
+                        color: '#374151', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+                      }}
+                    >
+                      <Users size={16} />
+                      Mi equipo
+                    </button>
+                  )}
                   {onOpenAdmin && (
                     <button
                       onClick={onOpenAdmin}

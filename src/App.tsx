@@ -63,6 +63,7 @@ import { InfoTooltip } from './components/InfoTooltip';
 import { useProjectContext } from './contexts/ProjectContext';
 import { useAuth } from './contexts/AuthContext';
 import { AdminView } from './AdminView';
+import { TeamView } from './TeamView';
 import { GlobalLibraryView } from './GlobalLibraryView';
 import { AreaPromptModal } from './components/AreaPromptModal';
 import { Lightbox, type LightboxItem } from './components/Lightbox';
@@ -662,9 +663,9 @@ const CaseStudyModal = ({ experiment, onClose, onUpdate, onEdit, onDelete }: { e
 
 const App: React.FC = () => {
   if (import.meta.env.DEV) console.log("App rendering");
-  const [view, setView] = useState<'portfolio' | 'board' | 'table' | 'library' | 'roadmap' | 'admin'>('portfolio');
+  const [view, setView] = useState<'portfolio' | 'board' | 'table' | 'library' | 'roadmap' | 'admin' | 'team'>('portfolio');
 
-  const { signOut, profile, updatePanelLogo, updateArea, isSuperAdmin, canAccessGlobalLibrary } = useAuth();
+  const { signOut, profile, updatePanelLogo, updateArea, isSuperAdmin, isAdminOrAbove, canAccessGlobalLibrary } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   // Multi-Project State Management via Context
@@ -1042,6 +1043,15 @@ const App: React.FC = () => {
   // ============================================================================
 
   // Portfolio View - Show when no project is selected or view is 'portfolio'
+  if (view === 'team' && isAdminOrAbove) {
+    return (
+      <>
+        <TeamView onBack={() => setView('portfolio')} />
+        <AreaPromptModal />
+      </>
+    );
+  }
+
   if (view === 'admin' && isSuperAdmin) {
     return (
       <>
@@ -1060,6 +1070,7 @@ const App: React.FC = () => {
           onCreateProject={() => setIsCreateProjectOpen(true)}
           onSignOut={signOut}
           onOpenAdmin={isSuperAdmin ? () => setView('admin') : undefined}
+          onOpenTeam={isAdminOrAbove ? () => setView('team') : undefined}
           onOpenProfile={() => setIsProfileOpen(true)}
           onDeleteProject={handleDeleteProject}
         />
