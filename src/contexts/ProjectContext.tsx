@@ -199,6 +199,10 @@ function dbRowToExperiment(row: any): Experiment {
         verdict: row.verdict || undefined,
         visualProof: row.visual_proof || undefined,
         isPublic: row.is_public ?? false,
+        createdBy: row.created_by || undefined,
+        createdAt: row.created_at || undefined,
+        resolvedBy: row.resolved_by || undefined,
+        resolvedAt: row.resolved_at || undefined,
     }
 }
 
@@ -663,10 +667,17 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         if (user) logActivity({
             userId: user.id, projectId: activeProjectId,
             action: 'experiment_created', entityType: 'experiment', entityId: newExp.id,
+            details: { title: newExp.title },
         })
     }, [activeProjectId, user])
 
     const updateExperiment = useCallback(async (id: string, updates: Partial<Experiment>) => {
+        // Estado previo: se captura ANTES del update optimista para poder
+        // registrar la transición (from → to) y saber quién resolvió.
+        const prevExp = projects
+            .find(p => p.metadata.id === activeProjectId)
+            ?.experiments.find(e => e.id === id)
+
         // Optimistic update
         setProjects(prev => prev.map(p =>
             p.metadata.id === activeProjectId
@@ -705,6 +716,20 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         if (updates.visualProof !== undefined) dbUpdates.visual_proof = updates.visualProof
         if (updates.isPublic !== undefined) dbUpdates.is_public = updates.isPublic
 
+        // Trazabilidad: quién resolvió. Se setea al entrar a Finished-* y se
+        // limpia si el experimento vuelve a una etapa activa.
+        if (updates.status !== undefined && prevExp && user) {
+            const wasFinished = prevExp.status.startsWith('Finished')
+            const isFinished = updates.status.startsWith('Finished')
+            if (isFinished && !wasFinished) {
+                dbUpdates.resolved_by = user.id
+                dbUpdates.resolved_at = new Date().toISOString()
+            } else if (!isFinished && wasFinished) {
+                dbUpdates.resolved_by = null
+                dbUpdates.resolved_at = null
+            }
+        }
+
         if (Object.keys(dbUpdates).length === 0) return
 
         const { error } = await supabase.from('experiments').update(dbUpdates).eq('id', id)
@@ -716,9 +741,10 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
             logActivity({
                 userId: user.id, projectId: activeProjectId,
                 action: 'experiment_moved', entityType: 'experiment', entityId: id,
+                details: { from: prevExp?.status ?? null, to: updates.status, title: prevExp?.title ?? null },
             })
         }
-    }, [activeProjectId, fetchProjects, user])
+    }, [activeProjectId, fetchProjects, projects, user])
 
     const deleteExperiment = useCallback(async (id: string) => {
         setProjects(prev => prev.map(p =>
