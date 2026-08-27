@@ -726,6 +726,9 @@ const App: React.FC = () => {
   }, [view]);
 
   const [activeId, setActiveId] = useState<string | null>(null);
+  // Etapa de origen del experimento que se está arrastrando, capturada en dragStart
+  // (handleDragOver ya la habrá sobreescrito para cuando llegue el drop).
+  const dragFromStatusRef = useRef<Status | null>(null);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
 
   const [isMethodologyOpen, setIsMethodologyOpen] = useState(false);
@@ -849,7 +852,11 @@ const App: React.FC = () => {
   };
 
   const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
+    const draggedId = event.active.id as string;
+    // handleDragOver muta el status en el contexto durante el arrastre, así que
+    // el origen real hay que capturarlo acá. Solo hay un drag activo a la vez.
+    dragFromStatusRef.current = experiments.find(e => e.id === draggedId)?.status ?? null;
+    setActiveId(draggedId);
   };
 
 
@@ -906,10 +913,13 @@ const App: React.FC = () => {
     // Persist the status change that happened during drag over
     if (activeId) {
       const exp = experiments.find(e => e.id === activeId);
-      if (exp) {
-        updateExperiment(exp.id, { status: exp.status });
+      // Si el status no cambió es un reorden dentro de la misma columna: no hay
+      // nada que persistir (el orden no vive en BD) ni que loguear.
+      if (exp && dragFromStatusRef.current !== exp.status) {
+        updateExperiment(exp.id, { status: exp.status }, { fromStatus: dragFromStatusRef.current ?? undefined });
       }
     }
+    dragFromStatusRef.current = null;
     setActiveId(null);
   };
 

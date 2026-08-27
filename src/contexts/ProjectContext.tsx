@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { supabase } from '../lib/supabase'
 import { logActivity } from '../lib/activityLog'
 import { useAuth } from './AuthContext'
-import type { Project, NorthStarMetric, Objective, Strategy, Experiment, TeamMember } from '../types'
+import type { Project, NorthStarMetric, Objective, Strategy, Experiment, TeamMember, Status } from '../types'
 
 // ============================================================================
 // Types
@@ -47,7 +47,10 @@ interface ProjectContextValue {
 
     // Mutations – Experiments
     addExperiment: (exp: Omit<Experiment, 'id'> & { id?: string }) => void
-    updateExperiment: (id: string, updates: Partial<Experiment>) => void
+    // `opts.fromStatus` permite al llamador declarar la etapa de origen real cuando el
+    // estado del contexto ya fue mutado antes de persistir (caso del drag & drop del
+    // board, donde handleDragOver cambia el status durante el arrastre).
+    updateExperiment: (id: string, updates: Partial<Experiment>, opts?: { fromStatus?: Status }) => void
     deleteExperiment: (id: string) => void
     setExperiments: (updater: Experiment[] | ((prev: Experiment[]) => Experiment[])) => void
 
@@ -671,12 +674,17 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         })
     }, [activeProjectId, user])
 
-    const updateExperiment = useCallback(async (id: string, updates: Partial<Experiment>) => {
+    const updateExperiment = useCallback(async (id: string, updates: Partial<Experiment>, opts?: { fromStatus?: Status }) => {
         // Estado previo: se captura ANTES del update optimista para poder
         // registrar la transición (from → to) y saber quién resolvió.
         const prevExp = projects
             .find(p => p.metadata.id === activeProjectId)
             ?.experiments.find(e => e.id === id)
+
+        // El board muta el status en el contexto durante el arrastre (handleDragOver),
+        // así que ahí `prevExp.status` ya es el destino. `opts.fromStatus` deja que el
+        // llamador declare el origen real; el resto de rutas cae a prevExp?.status.
+        const fromStatus = opts?.fromStatus ?? prevExp?.status
 
         // Optimistic update
         setProjects(prev => prev.map(p =>
@@ -717,9 +725,10 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         if (updates.isPublic !== undefined) dbUpdates.is_public = updates.isPublic
 
         // Trazabilidad: quién resolvió. Se setea al entrar a Finished-* y se
-        // limpia si el experimento vuelve a una etapa activa.
-        if (updates.status !== undefined && prevExp && user) {
-            const wasFinished = prevExp.status.startsWith('Finished')
+        // limpia si el experimento vuelve a una etapa activa. Solo aplica en un
+        // cambio real de etapa (un reorden dentro de la misma columna no cuenta).
+        if (updates.status !== undefined && updates.status !== fromStatus && user) {
+            const wasFinished = fromStatus?.startsWith('Finished') ?? false
             const isFinished = updates.status.startsWith('Finished')
             if (isFinished && !wasFinished) {
                 dbUpdates.resolved_by = user.id
@@ -736,12 +745,13 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         if (error) {
             console.error('Error updating experiment:', error)
             fetchProjects()
-        } else if (updates.status !== undefined && user) {
-            // Solo registramos cambios de etapa, no cada edición inline (evita ruido).
+        } else if (updates.status !== undefined && updates.status !== fromStatus && user) {
+            // Solo registramos cambios reales de etapa: ni ediciones inline ni
+            // reordenamientos dentro de la misma columna (evita ruido en el log).
             logActivity({
                 userId: user.id, projectId: activeProjectId,
                 action: 'experiment_moved', entityType: 'experiment', entityId: id,
-                details: { from: prevExp?.status ?? null, to: updates.status, title: prevExp?.title ?? null },
+                details: { from: fromStatus ?? null, to: updates.status, title: prevExp?.title ?? null },
             })
         }
     }, [activeProjectId, fetchProjects, projects, user])
