@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ArrowLeft, Shield, Users, Activity, Download, Search, Plus, Trash2, Archive, ArchiveRestore, UserCog, X } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { useAuth } from './contexts/AuthContext';
+import { useProjectContext } from './contexts/ProjectContext';
 import type { Profile, GlobalRole, UserAreaRecord } from './contexts/AuthContext';
 import type { Project } from './types';
 
@@ -567,6 +568,9 @@ const AdminProjectsSection: React.FC<{ users: Profile[] }> = ({ users }) => {
   const [showArchived, setShowArchived] = useState(false);
   const [managing, setManaging] = useState<AdminProjectRow | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  // Archivar/desarchivar cambia qué proyectos ve el portfolio: hay que refrescar
+  // el contexto, no solo la tabla local del panel Admin.
+  const { refetchAll } = useProjectContext();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -590,6 +594,7 @@ const AdminProjectsSection: React.FC<{ users: Profile[] }> = ({ users }) => {
       const { error } = await supabase.rpc('admin_set_project_archived', { p_project_id: p.id, p_archived: !p.archived });
       if (error) throw new Error(error.message);
       await load();
+      await refetchAll();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'No se pudo archivar.');
     } finally {

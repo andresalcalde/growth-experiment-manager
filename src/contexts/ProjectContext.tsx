@@ -264,6 +264,10 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 
             if (visibleRows.length === 0) {
                 setProjects([])
+                // No queda ningún proyecto visible: limpia la selección para no
+                // dejar apuntando un id archivado/inexistente.
+                setActiveProjectIdState(null)
+                try { localStorage.removeItem('lastActiveProjectId') } catch { }
                 setProjectsLoading(false)
                 return
             }
@@ -294,14 +298,18 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 
             setProjects(fullProjects)
 
-            // Auto-select first project if none currently selected
+            // Auto-select el primero si no hay selección, o reconcilia si el
+            // proyecto seleccionado ya no es visible (p.ej. lo archivaron).
             setActiveProjectIdState(prev => {
-                if (!prev && fullProjects.length > 0) {
-                    const firstId = fullProjects[0].metadata.id
-                    try { localStorage.setItem('lastActiveProjectId', firstId) } catch { }
-                    return firstId
-                }
-                return prev
+                const stillVisible = prev !== null && fullProjects.some(p => p.metadata.id === prev)
+                if (stillVisible) return prev
+
+                const nextId = fullProjects[0]?.metadata.id ?? null
+                try {
+                    if (nextId) localStorage.setItem('lastActiveProjectId', nextId)
+                    else localStorage.removeItem('lastActiveProjectId')
+                } catch { }
+                return nextId
             })
 
         } catch (err) {
