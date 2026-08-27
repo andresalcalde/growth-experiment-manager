@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ArrowLeft, Users, Activity, FlaskConical } from 'lucide-react';
 import { supabase } from './lib/supabase';
 
@@ -106,6 +106,13 @@ export const TeamView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [loadingData, setLoadingData] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Guard de request obsoleto: cambiar de equipo o de rango de fechas dos veces
+  // seguidas deja dos pares de RPCs en vuelo. Sin esto, la respuesta más lenta
+  // (la del equipo/rango anterior) pisa el estado de la más reciente. Cada
+  // invocación se queda con su número de secuencia y descarta sus propios
+  // resultados si ya arrancó otra después.
+  const loadSeqRef = useRef(0);
+
   const loadTeams = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -125,6 +132,7 @@ export const TeamView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   useEffect(() => { loadTeams(); }, [loadTeams]);
 
   const loadTeamData = useCallback(async (teamId: string) => {
+    const seq = ++loadSeqRef.current;
     setLoadingData(true);
     setError(null);
     const args: Record<string, unknown> = { p_team_id: teamId };
@@ -138,10 +146,14 @@ export const TeamView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     if (pRes.error || aRes.error) {
       const failed = (pRes.error || aRes.error)!;
       console.error('Error cargando datos del equipo:', failed);
+      // Carga obsoleta: no mostramos el error de una petición que ya nadie
+      // espera, ni apagamos el spinner de la carga vigente.
+      if (seq !== loadSeqRef.current) return;
       setError(failed.message);
       setLoadingData(false);
       return;
     }
+    if (seq !== loadSeqRef.current) return;
     setProjects((pRes.data as TeamProjectRow[]) || []);
     setActivity((aRes.data as TeamActivityRow[]) || []);
     setLoadingData(false);
