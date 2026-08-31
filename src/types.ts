@@ -81,6 +81,10 @@ export interface Experiment {
   targetMetric?: string;
   campaignObjective?: string; // Objetivo de campaña: Ventas, Leads, Tráfico, etc.
   isPublic?: boolean; // Visible en la Biblioteca Global (público) vs solo dentro del proyecto (privado). Default: privado.
+  createdBy?: string;   // profiles.id de quien creó (BD: created_by, default auth.uid())
+  createdAt?: string;
+  resolvedBy?: string;  // profiles.id de quien lo movió a Finished-*
+  resolvedAt?: string;
 }
 
 // Objetivos de campaña disponibles para clasificar experimentos.

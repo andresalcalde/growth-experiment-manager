@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ArrowLeft, Shield, Users, Activity, Download, Search, Plus, Trash2, Archive, ArchiveRestore, UserCog, X } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { useAuth } from './contexts/AuthContext';
+import { useProjectContext } from './contexts/ProjectContext';
 import type { Profile, GlobalRole, UserAreaRecord } from './contexts/AuthContext';
 import type { Project } from './types';
 
@@ -23,9 +24,26 @@ interface ActivityRow {
   created_at: string;
 }
 
+interface TraceRow {
+  id: string;
+  projectName: string;
+  title: string;
+  status: string;
+  verdict: string;
+  ownerName: string;
+  creatorName: string;
+  createdAt: string | null;
+  resolverName: string;
+  resolvedAt: string | null;
+}
+
 type UserState = 'Activo' | 'En riesgo' | 'Inactivo';
 
 const DAY = 86400000;
+
+// La tabla de trazabilidad puede tener miles de filas; se muestran las primeras
+// y el CSV exporta siempre el conjunto completo.
+const TRACE_ROW_LIMIT = 200;
 
 function daysSince(ts: string | null): number {
   if (!ts) return Infinity;
@@ -56,6 +74,8 @@ export const AdminView: React.FC<AdminViewProps> = ({ projects, onBack }) => {
   const [areaFilter, setAreaFilter] = useState<string>('All');
   const [stateFilter, setStateFilter] = useState<string>('All');
   const [search, setSearch] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
 
   const fetchAll = useCallback(async () => {
@@ -106,7 +126,24 @@ export const AdminView: React.FC<AdminViewProps> = ({ projects, onBack }) => {
     });
   }, [users, areas]);
 
-  // Proyectos inactivos +7d: sin actividad registrada en 7 días
+  // Actividad acotada al rango de fechas elegido (inclusivo hasta fin del día "hasta").
+  // Alimenta el ranking de proyectos y la trazabilidad; el estado de usuarios y
+  // "Proyectos inactivos (+7 días)" siguen siendo relativos a hoy.
+  const filteredActivity = useMemo(() => {
+    if (!fromDate && !toDate) return activity;
+    // 'T00:00:00' fuerza medianoche LOCAL: `new Date('YYYY-MM-DD')` se parsea como
+    // UTC y corría el rango ~4h en Chile.
+    const from = fromDate ? new Date(fromDate + 'T00:00:00').getTime() : -Infinity;
+    const to = toDate ? new Date(toDate + 'T00:00:00').getTime() + DAY : Infinity;
+    return activity.filter(a => {
+      const t = new Date(a.created_at).getTime();
+      return t >= from && t < to;
+    });
+  }, [activity, fromDate, toDate]);
+
+  // Proyectos inactivos +7d: sin actividad registrada en 7 días.
+  // Usa `activity` sin filtrar a propósito: es una métrica relativa a hoy, no al rango elegido
+  // (el rango solo acota el ranking de proyectos y la trazabilidad).
   const projectLastActivity = useMemo(() => {
     const map: Record<string, number> = {};
     for (const a of activity) {
@@ -125,12 +162,19 @@ export const AdminView: React.FC<AdminViewProps> = ({ projects, onBack }) => {
   // Ranking de proyectos más activos
   const projectRanking = useMemo(() => {
     const now = Date.now();
+    // Con rango activo la tendencia compara las dos mitades del rango;
+    // sin rango se mantienen las ventanas 7d / 14d.
+    const rangeActive = Boolean(fromDate || toDate);
+    const times = filteredActivity.map(a => new Date(a.created_at).getTime());
+    const mid = rangeActive && times.length
+      ? (Math.min(...times) + Math.max(...times)) / 2
+      : now - 7 * DAY;
     return projects.map(p => {
-      const acts = activity.filter(a => a.project_id === p.metadata.id);
-      const last7 = acts.filter(a => (now - new Date(a.created_at).getTime()) / DAY <= 7).length;
+      const acts = filteredActivity.filter(a => a.project_id === p.metadata.id);
+      const last7 = acts.filter(a => new Date(a.created_at).getTime() >= mid).length;
       const prev7 = acts.filter(a => {
-        const d = (now - new Date(a.created_at).getTime()) / DAY;
-        return d > 7 && d <= 14;
+        const t = new Date(a.created_at).getTime();
+        return rangeActive ? t < mid : t < mid && t >= now - 14 * DAY;
       }).length;
       const involvedUsers = members.filter(m => m.project_id === p.metadata.id).length;
       let trend: 'up' | 'down' | 'flat' = 'flat';
@@ -145,7 +189,33 @@ export const AdminView: React.FC<AdminViewProps> = ({ projects, onBack }) => {
         trend,
       };
     }).sort((a, b) => b.activityCount - a.activityCount);
-  }, [projects, activity, members]);
+  }, [projects, filteredActivity, members, fromDate, toDate]);
+
+  // Trazabilidad: una fila por experimento con creador y quien lo resolvió.
+  const profileById = useMemo(() => new Map(users.map(u => [u.id, u])), [users]);
+
+  const traceRows = useMemo(() => {
+    // Medianoche LOCAL (ver nota en filteredActivity).
+    const from = fromDate ? new Date(fromDate + 'T00:00:00').getTime() : -Infinity;
+    const to = toDate ? new Date(toDate + 'T00:00:00').getTime() + DAY : Infinity;
+    return projects.flatMap(p => p.experiments.map(e => ({
+      id: `${p.metadata.id}:${e.id}`,
+      projectName: p.metadata.name,
+      title: e.title,
+      status: e.status as string,
+      verdict: e.verdict || '',
+      ownerName: e.owner?.name || '',
+      creatorName: e.createdBy ? (profileById.get(e.createdBy)?.full_name || profileById.get(e.createdBy)?.email || '—') : '—',
+      createdAt: e.createdAt || null,
+      resolverName: e.resolvedBy ? (profileById.get(e.resolvedBy)?.full_name || profileById.get(e.resolvedBy)?.email || '—') : '—',
+      resolvedAt: e.resolvedAt || null,
+    }))).filter(r => {
+      if (!fromDate && !toDate) return true;
+      const c = r.createdAt ? new Date(r.createdAt).getTime() : null;
+      const rv = r.resolvedAt ? new Date(r.resolvedAt).getTime() : null;
+      return (c !== null && c >= from && c < to) || (rv !== null && rv >= from && rv < to);
+    }).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  }, [projects, profileById, fromDate, toDate]);
 
   // Tabla de actividad por usuario
   const userRows = useMemo(() => {
@@ -240,6 +310,27 @@ export const AdminView: React.FC<AdminViewProps> = ({ projects, onBack }) => {
     URL.revokeObjectURL(url);
   };
 
+  // Exporta SIEMPRE todas las filas de trazabilidad del rango, no solo las visibles.
+  const exportTraceCsv = () => {
+    const headers = ['Proyecto', 'Experimento', 'Estado', 'Veredicto', 'Responsable', 'Creado por', 'Fecha creacion', 'Resuelto por', 'Fecha resolucion'];
+    const rows = traceRows.map(r => [
+      r.projectName, r.title, r.status, r.verdict, r.ownerName, r.creatorName,
+      r.createdAt ? new Date(r.createdAt).toISOString().split('T')[0] : '',
+      r.resolverName,
+      r.resolvedAt ? new Date(r.resolvedAt).toISOString().split('T')[0] : '',
+    ]);
+    const csv = [headers, ...rows]
+      .map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `trazabilidad-growth-hub-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -326,10 +417,16 @@ export const AdminView: React.FC<AdminViewProps> = ({ projects, onBack }) => {
             areaFilter={areaFilter}
             stateFilter={stateFilter}
             search={search}
+            fromDate={fromDate}
+            toDate={toDate}
+            traceRows={traceRows}
             onAreaFilter={setAreaFilter}
             onStateFilter={setStateFilter}
             onSearch={setSearch}
+            onFromDate={setFromDate}
+            onToDate={setToDate}
             onExport={exportCsv}
+            onExportTrace={exportTraceCsv}
           />
         )}
       </div>
@@ -474,6 +571,9 @@ const AdminProjectsSection: React.FC<{ users: Profile[] }> = ({ users }) => {
   const [showArchived, setShowArchived] = useState(false);
   const [managing, setManaging] = useState<AdminProjectRow | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  // Archivar/desarchivar cambia qué proyectos ve el portfolio: hay que refrescar
+  // el contexto, no solo la tabla local del panel Admin.
+  const { refetchAll } = useProjectContext();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -497,6 +597,7 @@ const AdminProjectsSection: React.FC<{ users: Profile[] }> = ({ users }) => {
       const { error } = await supabase.rpc('admin_set_project_archived', { p_project_id: p.id, p_archived: !p.archived });
       if (error) throw new Error(error.message);
       await load();
+      await refetchAll();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'No se pudo archivar.');
     } finally {
@@ -1038,12 +1139,19 @@ const UsageTab: React.FC<{
   areaFilter: string;
   stateFilter: string;
   search: string;
+  fromDate: string;
+  toDate: string;
+  traceRows: TraceRow[];
   onAreaFilter: (v: string) => void;
   onStateFilter: (v: string) => void;
   onSearch: (v: string) => void;
+  onFromDate: (v: string) => void;
+  onToDate: (v: string) => void;
   onExport: () => void;
-}> = ({ metrics, adoptionByArea, projectRanking, userRows, inactiveUsers, areaFilter, stateFilter, search, onAreaFilter, onStateFilter, onSearch, onExport }) => {
+  onExportTrace: () => void;
+}> = ({ metrics, adoptionByArea, projectRanking, userRows, inactiveUsers, areaFilter, stateFilter, search, fromDate, toDate, traceRows, onAreaFilter, onStateFilter, onSearch, onFromDate, onToDate, onExport, onExportTrace }) => {
   const { areas } = useAuth();
+  const visibleTraceRows = traceRows.slice(0, TRACE_ROW_LIMIT);
   const trendIcon = (t: 'up' | 'down' | 'flat') => t === 'up' ? '▲' : t === 'down' ? '▼' : '—';
   const trendColor = (t: 'up' | 'down' | 'flat') => t === 'up' ? '#16a34a' : t === 'down' ? '#dc2626' : '#9ca3af';
 
@@ -1054,6 +1162,27 @@ const UsageTab: React.FC<{
         padding: '10px 14px', fontSize: '12px', color: '#92400e',
       }}>
         Las métricas de actividad se acumulan desde que se desplegó esta versión; los primeros 30 días pueden verse incompletos.
+      </div>
+
+      {/* Filtro por rango de fechas */}
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: '#374151' }}>Rango de fechas:</span>
+          <input type="date" value={fromDate} onChange={e => onFromDate(e.target.value)} style={selectStyle} />
+          <span style={{ fontSize: '13px', color: '#9ca3af' }}>—</span>
+          <input type="date" value={toDate} onChange={e => onToDate(e.target.value)} style={selectStyle} />
+          {(fromDate || toDate) && (
+            <button
+              onClick={() => { onFromDate(''); onToDate(''); }}
+              style={{ border: 'none', background: 'none', color: '#4F46E5', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+            >
+              Limpiar
+            </button>
+          )}
+        </div>
+        <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '6px' }}>
+          Afecta al ranking de proyectos y a la trazabilidad. El estado de los usuarios y los proyectos inactivos siguen siendo relativos a hoy.
+        </div>
       </div>
 
       {/* Metrics */}
@@ -1108,6 +1237,76 @@ const UsageTab: React.FC<{
             </tbody>
           </table>
         </div>
+      </section>
+
+      {/* Trazabilidad de experimentos */}
+      <section>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '12px' }}>
+          <h2 style={{ fontSize: '16px', fontWeight: 700, margin: 0 }}>
+            Trazabilidad de experimentos — {traceRows.length}
+          </h2>
+          <button
+            onClick={onExportTrace}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px',
+              border: '1px solid #c7d2fe', borderRadius: '8px', background: '#eef2ff',
+              color: '#4F46E5', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+            }}
+          >
+            <Download size={14} />
+            Exportar CSV
+          </button>
+        </div>
+
+        <div style={{
+          background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px',
+          padding: '10px 14px', fontSize: '12px', color: '#92400e', marginBottom: '12px',
+        }}>
+          El creador se reconstruyó del historial; en experimentos antiguos puede faltar. «Resuelto por» se registra desde el despliegue de esta versión en adelante. Los proyectos archivados no se incluyen en estas métricas ni en la trazabilidad.
+        </div>
+
+        <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden', background: 'white' }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '980px' }}>
+              <thead>
+                <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                  {['Proyecto', 'Experimento', 'Estado', 'Veredicto', 'Responsable', 'Creado por', 'Fecha creación', 'Resuelto por', 'Fecha resolución'].map(h => (
+                    <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6b7280', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {visibleTraceRows.map(r => (
+                  <tr key={r.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                    <td style={{ padding: '10px 16px', fontSize: '13px', color: '#6b7280' }}>{r.projectName}</td>
+                    <td style={{ padding: '10px 16px', fontSize: '14px', fontWeight: 600 }}>{r.title}</td>
+                    <td style={{ padding: '10px 16px', fontSize: '13px', color: '#6b7280', whiteSpace: 'nowrap' }}>{r.status}</td>
+                    <td style={{ padding: '10px 16px', fontSize: '13px', color: '#6b7280' }}>{r.verdict || '—'}</td>
+                    <td style={{ padding: '10px 16px', fontSize: '13px', color: '#6b7280' }}>{r.ownerName || '—'}</td>
+                    <td style={{ padding: '10px 16px', fontSize: '13px', color: '#6b7280' }}>{r.creatorName}</td>
+                    <td style={{ padding: '10px 16px', fontSize: '13px', color: '#6b7280', whiteSpace: 'nowrap' }}>
+                      {r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '—'}
+                    </td>
+                    <td style={{ padding: '10px 16px', fontSize: '13px', color: '#6b7280' }}>{r.resolverName}</td>
+                    <td style={{ padding: '10px 16px', fontSize: '13px', color: '#6b7280', whiteSpace: 'nowrap' }}>
+                      {r.resolvedAt ? new Date(r.resolvedAt).toLocaleDateString() : '—'}
+                    </td>
+                  </tr>
+                ))}
+                {traceRows.length === 0 && (
+                  <tr><td colSpan={9} style={{ padding: '24px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>
+                    No hay experimentos en el rango seleccionado.
+                  </td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {traceRows.length > TRACE_ROW_LIMIT && (
+          <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '8px' }}>
+            Mostrando {TRACE_ROW_LIMIT} de {traceRows.length} — usa el filtro de fechas o exporta el CSV completo.
+          </div>
+        )}
       </section>
 
       {/* Usuarios inactivos +14d */}

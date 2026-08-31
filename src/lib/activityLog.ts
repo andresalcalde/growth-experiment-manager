@@ -13,6 +13,7 @@ interface LogActivityParams {
   action: ActivityAction
   entityType?: string
   entityId?: string
+  details?: Record<string, unknown>
 }
 
 // Registra una acción de entidad en activity_log. Best-effort: nunca lanza —
@@ -25,6 +26,7 @@ export async function logActivity(params: LogActivityParams): Promise<void> {
       action: params.action,
       entity_type: params.entityType ?? null,
       entity_id: params.entityId ?? null,
+      details: params.details ?? null,
     })
   } catch (err) {
     console.warn('activity log failed (non-critical):', err)

@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { supabase } from '../lib/supabase'
 import { logActivity } from '../lib/activityLog'
 import { useAuth } from './AuthContext'
-import type { Project, NorthStarMetric, Objective, Strategy, Experiment, TeamMember } from '../types'
+import type { Project, NorthStarMetric, Objective, Strategy, Experiment, TeamMember, Status } from '../types'
 
 // ============================================================================
 // Types
@@ -47,7 +47,10 @@ interface ProjectContextValue {
 
     // Mutations – Experiments
     addExperiment: (exp: Omit<Experiment, 'id'> & { id?: string }) => void
-    updateExperiment: (id: string, updates: Partial<Experiment>) => void
+    // `opts.fromStatus` permite al llamador declarar la etapa de origen real cuando el
+    // estado del contexto ya fue mutado antes de persistir (caso del drag & drop del
+    // board, donde handleDragOver cambia el status durante el arrastre).
+    updateExperiment: (id: string, updates: Partial<Experiment>, opts?: { fromStatus?: Status }) => void
     deleteExperiment: (id: string) => void
     setExperiments: (updater: Experiment[] | ((prev: Experiment[]) => Experiment[])) => void
 
@@ -199,6 +202,10 @@ function dbRowToExperiment(row: any): Experiment {
         verdict: row.verdict || undefined,
         visualProof: row.visual_proof || undefined,
         isPublic: row.is_public ?? false,
+        createdBy: row.created_by || undefined,
+        createdAt: row.created_at || undefined,
+        resolvedBy: row.resolved_by || undefined,
+        resolvedAt: row.resolved_at || undefined,
     }
 }
 
@@ -250,13 +257,22 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
                 .order('created_at', { ascending: false })
 
             if (projError) throw projError
-            if (!projectRows || projectRows.length === 0) {
+
+            // Los proyectos archivados no aparecen en el portfolio; se gestionan
+            // (y desarchivan) desde el panel Admin.
+            const visibleRows = (projectRows || []).filter((r: any) => !r.archived)
+
+            if (visibleRows.length === 0) {
                 setProjects([])
+                // No queda ningún proyecto visible: limpia la selección para no
+                // dejar apuntando un id archivado/inexistente.
+                setActiveProjectIdState(null)
+                try { localStorage.removeItem('lastActiveProjectId') } catch { }
                 setProjectsLoading(false)
                 return
             }
 
-            const projectIds = projectRows.map((p: any) => p.id)
+            const projectIds = visibleRows.map((p: any) => p.id)
 
             // Step 2: Fetch all child data in parallel
             const [objRes, stratRes, expRes] = await Promise.all([
@@ -270,7 +286,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
             const stratByProject = groupBy(stratRes.data || [], 'project_id')
             const expByProject = groupBy(expRes.data || [], 'project_id')
 
-            const fullProjects: Project[] = projectRows.map(row => {
+            const fullProjects: Project[] = visibleRows.map(row => {
                 const base = dbRowToProject(row)
                 return {
                     ...base,
@@ -282,14 +298,18 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 
             setProjects(fullProjects)
 
-            // Auto-select first project if none currently selected
+            // Auto-select el primero si no hay selección, o reconcilia si el
+            // proyecto seleccionado ya no es visible (p.ej. lo archivaron).
             setActiveProjectIdState(prev => {
-                if (!prev && fullProjects.length > 0) {
-                    const firstId = fullProjects[0].metadata.id
-                    try { localStorage.setItem('lastActiveProjectId', firstId) } catch { }
-                    return firstId
-                }
-                return prev
+                const stillVisible = prev !== null && fullProjects.some(p => p.metadata.id === prev)
+                if (stillVisible) return prev
+
+                const nextId = fullProjects[0]?.metadata.id ?? null
+                try {
+                    if (nextId) localStorage.setItem('lastActiveProjectId', nextId)
+                    else localStorage.removeItem('lastActiveProjectId')
+                } catch { }
+                return nextId
             })
 
         } catch (err) {
@@ -663,10 +683,22 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         if (user) logActivity({
             userId: user.id, projectId: activeProjectId,
             action: 'experiment_created', entityType: 'experiment', entityId: newExp.id,
+            details: { title: newExp.title },
         })
     }, [activeProjectId, user])
 
-    const updateExperiment = useCallback(async (id: string, updates: Partial<Experiment>) => {
+    const updateExperiment = useCallback(async (id: string, updates: Partial<Experiment>, opts?: { fromStatus?: Status }) => {
+        // Estado previo: se captura ANTES del update optimista para poder
+        // registrar la transición (from → to) y saber quién resolvió.
+        const prevExp = projects
+            .find(p => p.metadata.id === activeProjectId)
+            ?.experiments.find(e => e.id === id)
+
+        // El board muta el status en el contexto durante el arrastre (handleDragOver),
+        // así que ahí `prevExp.status` ya es el destino. `opts.fromStatus` deja que el
+        // llamador declare el origen real; el resto de rutas cae a prevExp?.status.
+        const fromStatus = opts?.fromStatus ?? prevExp?.status
+
         // Optimistic update
         setProjects(prev => prev.map(p =>
             p.metadata.id === activeProjectId
@@ -705,22 +737,45 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         if (updates.visualProof !== undefined) dbUpdates.visual_proof = updates.visualProof
         if (updates.isPublic !== undefined) dbUpdates.is_public = updates.isPublic
 
+        // Trazabilidad: quién resolvió. Se setea al entrar a Finished-* y se
+        // limpia si el experimento vuelve a una etapa activa. Solo aplica en un
+        // cambio real de etapa (un reorden dentro de la misma columna no cuenta).
+        if (updates.status !== undefined && updates.status !== fromStatus && user) {
+            const wasFinished = fromStatus?.startsWith('Finished') ?? false
+            const isFinished = updates.status.startsWith('Finished')
+            if (isFinished && !wasFinished) {
+                dbUpdates.resolved_by = user.id
+                dbUpdates.resolved_at = new Date().toISOString()
+            } else if (!isFinished && wasFinished) {
+                dbUpdates.resolved_by = null
+                dbUpdates.resolved_at = null
+            }
+        }
+
         if (Object.keys(dbUpdates).length === 0) return
 
         const { error } = await supabase.from('experiments').update(dbUpdates).eq('id', id)
         if (error) {
             console.error('Error updating experiment:', error)
             fetchProjects()
-        } else if (updates.status !== undefined && user) {
-            // Solo registramos cambios de etapa, no cada edición inline (evita ruido).
+        } else if (updates.status !== undefined && updates.status !== fromStatus && user) {
+            // Solo registramos cambios reales de etapa: ni ediciones inline ni
+            // reordenamientos dentro de la misma columna (evita ruido en el log).
             logActivity({
                 userId: user.id, projectId: activeProjectId,
                 action: 'experiment_moved', entityType: 'experiment', entityId: id,
+                details: { from: fromStatus ?? null, to: updates.status, title: prevExp?.title ?? null },
             })
         }
-    }, [activeProjectId, fetchProjects, user])
+    }, [activeProjectId, fetchProjects, projects, user])
 
     const deleteExperiment = useCallback(async (id: string) => {
+        // Se captura ANTES del borrado optimista: tras el setProjects el
+        // experimento ya no existe en memoria y el log quedaría sin título.
+        const prevExp = projects
+            .find(p => p.metadata.id === activeProjectId)
+            ?.experiments.find(e => e.id === id)
+
         setProjects(prev => prev.map(p =>
             p.metadata.id === activeProjectId
                 ? { ...p, experiments: p.experiments.filter(e => e.id !== id) }
@@ -735,9 +790,10 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
             logActivity({
                 userId: user.id, projectId: activeProjectId,
                 action: 'experiment_deleted', entityType: 'experiment', entityId: id,
+                details: { title: prevExp?.title ?? null },
             })
         }
-    }, [activeProjectId, fetchProjects, user])
+    }, [activeProjectId, fetchProjects, projects, user])
 
     // setExperiments – for drag-and-drop reordering and batch updates
     const setExperimentsLocal = useCallback((updater: Experiment[] | ((prev: Experiment[]) => Experiment[])) => {

@@ -37,6 +37,7 @@ interface AuthContextValue {
     profile: Profile | null
     loading: boolean
     isSuperAdmin: boolean
+    isAdminOrAbove: boolean
     canAccessGlobalLibrary: boolean
     areas: UserAreaRecord[]
     signIn: (email: string, password: string) => Promise<{ error: any }>
@@ -344,6 +345,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         profile,
         loading,
         isSuperAdmin: profile?.global_role === 'superadmin',
+        // Líderes de equipo (admin) y superadmins: acceso a la vista "Mi equipo".
+        isAdminOrAbove: profile?.global_role === 'superadmin' || profile?.global_role === 'admin',
         // Superadmin y admin (líder) siempre pueden ver la Biblioteca Global;
         // el resto, solo si tienen el flag explícito.
         canAccessGlobalLibrary:

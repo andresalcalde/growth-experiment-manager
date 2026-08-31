@@ -19,7 +19,8 @@ import {
   Trash2,
   Loader2,
   Pencil,
-  UserCircle
+  UserCircle,
+  Users
 } from 'lucide-react';
 import { uploadExperimentEvidence, deleteExperimentEvidence } from './lib/uploadEvidence';
 import { MethodologyToolkit } from './components/MethodologyToolkit';
@@ -63,6 +64,7 @@ import { InfoTooltip } from './components/InfoTooltip';
 import { useProjectContext } from './contexts/ProjectContext';
 import { useAuth } from './contexts/AuthContext';
 import { AdminView } from './AdminView';
+import { TeamView } from './TeamView';
 import { GlobalLibraryView } from './GlobalLibraryView';
 import { AreaPromptModal } from './components/AreaPromptModal';
 import { Lightbox, type LightboxItem } from './components/Lightbox';
@@ -662,9 +664,9 @@ const CaseStudyModal = ({ experiment, onClose, onUpdate, onEdit, onDelete }: { e
 
 const App: React.FC = () => {
   if (import.meta.env.DEV) console.log("App rendering");
-  const [view, setView] = useState<'portfolio' | 'board' | 'table' | 'library' | 'roadmap' | 'admin'>('portfolio');
+  const [view, setView] = useState<'portfolio' | 'board' | 'table' | 'library' | 'roadmap' | 'admin' | 'team'>('portfolio');
 
-  const { signOut, profile, updatePanelLogo, updateArea, isSuperAdmin, canAccessGlobalLibrary } = useAuth();
+  const { signOut, profile, updatePanelLogo, updateArea, isSuperAdmin, isAdminOrAbove, canAccessGlobalLibrary } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   // Multi-Project State Management via Context
@@ -726,6 +728,9 @@ const App: React.FC = () => {
   }, [view]);
 
   const [activeId, setActiveId] = useState<string | null>(null);
+  // Etapa de origen del experimento que se está arrastrando, capturada en dragStart
+  // (handleDragOver ya la habrá sobreescrito para cuando llegue el drop).
+  const dragFromStatusRef = useRef<Status | null>(null);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
 
   const [isMethodologyOpen, setIsMethodologyOpen] = useState(false);
@@ -849,7 +854,11 @@ const App: React.FC = () => {
   };
 
   const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
+    const draggedId = event.active.id as string;
+    // handleDragOver muta el status en el contexto durante el arrastre, así que
+    // el origen real hay que capturarlo acá. Solo hay un drag activo a la vez.
+    dragFromStatusRef.current = experiments.find(e => e.id === draggedId)?.status ?? null;
+    setActiveId(draggedId);
   };
 
 
@@ -906,10 +915,13 @@ const App: React.FC = () => {
     // Persist the status change that happened during drag over
     if (activeId) {
       const exp = experiments.find(e => e.id === activeId);
-      if (exp) {
-        updateExperiment(exp.id, { status: exp.status });
+      // Si el status no cambió es un reorden dentro de la misma columna: no hay
+      // nada que persistir (el orden no vive en BD) ni que loguear.
+      if (exp && dragFromStatusRef.current !== exp.status) {
+        updateExperiment(exp.id, { status: exp.status }, { fromStatus: dragFromStatusRef.current ?? undefined });
       }
     }
+    dragFromStatusRef.current = null;
     setActiveId(null);
   };
 
@@ -1032,6 +1044,15 @@ const App: React.FC = () => {
   // ============================================================================
 
   // Portfolio View - Show when no project is selected or view is 'portfolio'
+  if (view === 'team' && isAdminOrAbove) {
+    return (
+      <>
+        <TeamView onBack={() => setView('portfolio')} />
+        <AreaPromptModal />
+      </>
+    );
+  }
+
   if (view === 'admin' && isSuperAdmin) {
     return (
       <>
@@ -1050,6 +1071,7 @@ const App: React.FC = () => {
           onCreateProject={() => setIsCreateProjectOpen(true)}
           onSignOut={signOut}
           onOpenAdmin={isSuperAdmin ? () => setView('admin') : undefined}
+          onOpenTeam={isAdminOrAbove ? () => setView('team') : undefined}
           onOpenProfile={() => setIsProfileOpen(true)}
           onDeleteProject={handleDeleteProject}
         />
@@ -1239,10 +1261,33 @@ const App: React.FC = () => {
           <InfoTooltip content="Cierra el Growth Loop. Documenta aquí si la hipótesis se validó o se rechazó. El aprendizaje es el activo más valioso; un experimento 'fallido' es un éxito si nos dice qué no hacer en el futuro." position="right" />
         </button>
 
-        {/* Admin — top-level (cross-project), solo para superadmin */}
-        {isSuperAdmin && (
+        {/* Mi equipo — top-level (cross-project), para líderes (admin) y superadmin */}
+        {isAdminOrAbove && (
           <>
             <div style={{ height: 1, background: '#E5E7EB', margin: '12px 4px' }} />
+            <button
+              onClick={() => setView('team')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px',
+                borderRadius: '8px', width: '100%', textAlign: 'left', border: 'none',
+                cursor: 'pointer',
+                background: 'transparent',
+                color: '#4F46E5',
+                fontWeight: 600,
+              }}
+              title="Mi equipo — actividad y proyectos de los equipos que lideras"
+            >
+              <Users size={18} />
+              <span style={{ fontWeight: 600 }}>Mi equipo</span>
+            </button>
+          </>
+        )}
+
+        {/* Admin — top-level (cross-project), solo para superadmin.
+            El separador ya lo pone el bloque de "Mi equipo": todo superadmin es
+            admin-or-above, así que ese bloque siempre se renderiza antes. */}
+        {isSuperAdmin && (
+          <>
             <button
               onClick={() => setView('admin')}
               style={{
