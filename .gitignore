@@ -40,3 +40,8 @@ supabase/.env
 *.OLD_STATE
 
 .vercel
+
+# Herramientas locales de agentes (no compartidas)
+.claude/
+.gitnexus/
+AGENTS.md
