@@ -22,15 +22,24 @@ export function evidenceReference(value: string): string {
   return path ? `${PREFIX}${path}` : value;
 }
 
-/** Re-sign on every load; unavailable private evidence is omitted. */
-export async function resolveEvidence(values: string[] = []): Promise<string[]> {
-  const urls = await Promise.all(values.map(async value => {
+/** Presentation URLs are independent from persistent references, including failures. */
+export async function resolveEvidence(values: string[] = []): Promise<Record<string, string | null>> {
+  const pairs = await Promise.all(values.map(async value => {
+    const reference = evidenceReference(value);
     const path = evidencePath(value);
-    if (!path) return value;
-    const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 3600);
-    return !error && data ? data.signedUrl : null;
+    if (!path) return [reference, value] as const;
+    try {
+      const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 3600);
+      return [reference, !error && data ? data.signedUrl : null] as const;
+    } catch { return [reference, null] as const; }
   }));
-  return urls.filter((value): value is string => value !== null);
+  return Object.fromEntries(pairs);
+}
+
+export function displayEvidence(reference: string, urls: Record<string, string | null> = {}): string {
+  const key = evidenceReference(reference);
+  if (key.startsWith(PREFIX)) return urls[key] || 'Evidencia no disponible';
+  return reference;
 }
 
 export async function uploadExperimentEvidence(experimentId: string, file: File): Promise<string> {
@@ -43,9 +52,7 @@ export async function uploadExperimentEvidence(experimentId: string, file: File)
     upsert: false, contentType: file.type || undefined,
   });
   if (error) throw error;
-  const { data, error: signError } = await supabase.storage.from(BUCKET).createSignedUrl(path, 3600);
-  if (signError || !data) throw signError || new Error('No se pudo firmar la evidencia.');
-  return data.signedUrl;
+  return `${PREFIX}${path}`;
 }
 
 export async function deleteExperimentEvidence(url: string): Promise<void> {
