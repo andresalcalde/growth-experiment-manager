@@ -2,6 +2,10 @@
 BEGIN;
 SET LOCAL lock_timeout = '5s';
 SELECT pg_advisory_xact_lock(20261015);
+-- Bloquear antes de capturar: nadie cambia el catálogo entre la captura y el reemplazo.
+LOCK TABLE public.projects, public.project_members, public.profiles, public.experiments, public.objectives,
+  public.strategies, public.north_star_metrics, public.team_members, public.activity_log, storage.objects
+  IN ACCESS EXCLUSIVE MODE;
 CREATE TABLE IF NOT EXISTS public._rls_backup_20261015 (
   kind text NOT NULL, key text NOT NULL, data jsonb NOT NULL,
   PRIMARY KEY (kind, key)
@@ -154,7 +158,7 @@ BEGIN
       EXECUTE 'CREATE POLICY gh_update ON public.profiles FOR UPDATE TO authenticated USING (id = auth.uid() OR public.is_superadmin()) WITH CHECK (id = auth.uid() OR public.is_superadmin())';
     ELSIF t = 'activity_log' THEN
       read_expr := 'user_id = auth.uid() OR public.is_superadmin()';
-      EXECUTE 'CREATE POLICY gh_insert ON public.activity_log FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid())';
+      EXECUTE 'CREATE POLICY gh_insert ON public.activity_log FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid() AND ((project_id IS NOT NULL AND public.gh_project_write(project_id)) OR (project_id IS NULL AND public.is_superadmin())) AND (created_at IS NULL OR created_at BETWEEN now() - interval ''5 minutes'' AND now() + interval ''1 minute''))';
     ELSE
       project_expr := CASE WHEN t = 'projects' THEN 'id' ELSE 'project_id' END;
       IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public'

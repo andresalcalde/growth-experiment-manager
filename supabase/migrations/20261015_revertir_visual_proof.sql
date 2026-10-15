@@ -11,7 +11,7 @@ END $$;
 UPDATE public.experiments e SET visual_proof = (
  SELECT array_agg(CASE WHEN ref LIKE 'storage://experiment-evidence/%' THEN
    rtrim(current_setting('app.rollback_supabase_url'),'/') || '/storage/v1/object/public/experiment-evidence/' ||
-   replace(replace(replace(substring(ref FROM length('storage://experiment-evidence/')+1),'%','%25'),' ','%20'),'#','%23')
+   replace(replace(replace(replace(substring(ref FROM length('storage://experiment-evidence/')+1),'%','%25'),' ','%20'),'#','%23'),'?','%3F')
    ELSE ref END ORDER BY ord)
  FROM unnest(e.visual_proof) WITH ORDINALITY v(ref,ord)
 ) WHERE EXISTS(SELECT 1 FROM unnest(e.visual_proof) v(ref) WHERE ref LIKE 'storage://experiment-evidence/%');

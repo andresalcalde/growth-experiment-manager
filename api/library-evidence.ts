@@ -5,10 +5,10 @@ import { authenticatedUser } from './_lib/security.ts';
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const auth = await authenticatedUser(req);
-  if (!auth) return res.status(401).json({ error: 'Sesi?n inv?lida.' });
+  if (!auth) return res.status(401).json({ error: 'Sesión inválida.' });
   const id = req.body?.experimentId;
   if (typeof id !== 'string' || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id)) {
-    return res.status(400).json({ error: 'Experimento inv?lido.' });
+    return res.status(400).json({ error: 'Experimento inválido.' });
   }
   // Only DB-stored keys authorized by the definer can be signed here.
   const { data: paths, error } = await auth.client.rpc('gh_library_evidence_paths', { p_experiment: id });
