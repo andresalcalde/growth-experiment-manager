@@ -33,7 +33,7 @@ BEGIN
  OR NOT EXISTS(SELECT 1 FROM project_members WHERE user_id='${viewer}' AND project_id='${own}' AND role::text='viewer')
  THEN RAISE EXCEPTION 'Fixtures de usuario/proyecto/viewer inválidas'; END IF;
  IF to_regclass('public._rls_backup_20261015') IS NULL THEN RAISE EXCEPTION 'Migración de seguridad ausente'; END IF;
- IF EXISTS(SELECT 1 FROM pg_policies WHERE concat(qual,with_check) LIKE '%user_metadata%')
+ IF EXISTS(SELECT 1 FROM pg_policies WHERE concat(qual,with_check) ~* 'user_meta' AND ((schemaname='public' AND tablename IN ('projects','project_members','profiles','experiments','objectives','strategies','north_star_metrics','team_members','activity_log')) OR (schemaname='storage' AND tablename='objects')))
  OR EXISTS(SELECT 1 FROM storage.buckets WHERE id='experiment-evidence' AND public)
  THEN RAISE EXCEPTION 'Persisten metadata o bucket público'; END IF;
  IF NOT EXISTS(SELECT 1 FROM storage.objects WHERE bucket_id='experiment-evidence' AND gh_evidence_project(name)='${foreign}')

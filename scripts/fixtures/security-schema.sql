@@ -6,6 +6,7 @@ CREATE ROLE authenticator;
 GRANT anon, authenticated, service_role TO authenticator;
 CREATE SCHEMA auth;
 CREATE SCHEMA storage;
+CREATE TABLE auth.users(id uuid PRIMARY KEY,email text,email_confirmed_at timestamptz,raw_user_meta_data jsonb);
 CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
  SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
 CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS $$
@@ -83,3 +84,36 @@ INSERT INTO storage.buckets VALUES('experiment-evidence','experiment-evidence',t
 INSERT INTO storage.objects(bucket_id,name,owner_id) VALUES
  ('experiment-evidence','20000000-0000-0000-0000-000000000001/30000000-0000-0000-0000-000000000001/proof.png','10000000-0000-0000-0000-000000000001'),
  ('experiment-evidence','30000000-0000-0000-0000-000000000001/old.png','10000000-0000-0000-0000-000000000001');
+
+INSERT INTO auth.users(id,email,email_confirmed_at) SELECT id,email,now() FROM profiles;
+INSERT INTO auth.users(id,email,email_confirmed_at) VALUES
+ ('10000000-0000-0000-0000-000000000005','no-profile@mmglatam.com',now()),
+ ('10000000-0000-0000-0000-000000000006','unconfirmed@test.invalid',NULL);
+ALTER TABLE experiments ADD COLUMN owner_name text;
+ALTER TABLE experiments ADD COLUMN status text DEFAULT 'Finished - Winner';
+ALTER TABLE experiments ADD COLUMN is_public boolean DEFAULT false;
+ALTER TABLE experiments ADD COLUMN visual_proof text[];
+UPDATE experiments SET visual_proof=ARRAY[
+ 'storage://experiment-evidence/20000000-0000-0000-0000-000000000001/30000000-0000-0000-0000-000000000001/proof.png',
+ 'https://test.supabase.co/storage/v1/object/public/experiment-evidence/30000000-0000-0000-0000-000000000001/old.png'];
+ALTER TABLE profiles ADD COLUMN last_seen_at timestamptz;
+ALTER TABLE profiles ADD COLUMN area text[];
+ALTER TABLE projects ADD COLUMN archived boolean DEFAULT false;
+ALTER TABLE activity_log ADD COLUMN created_at timestamptz DEFAULT now();
+ALTER TABLE activity_log ADD COLUMN entity_type text;
+ALTER TABLE activity_log ADD COLUMN entity_id uuid;
+ALTER TABLE activity_log ADD COLUMN details jsonb;
+CREATE TABLE public.teams(id uuid PRIMARY KEY,name text,lead_user_id uuid);
+CREATE TABLE public.team_memberships(team_id uuid,user_id uuid);
+CREATE TABLE public.team_projects(team_id uuid,project_id uuid);
+CREATE FUNCTION public.is_team_lead_of(p_team_id uuid) RETURNS boolean LANGUAGE sql STABLE
+ SECURITY DEFINER SET search_path=public AS $$ SELECT EXISTS(SELECT 1 FROM teams WHERE id=p_team_id AND lead_user_id=auth.uid()) $$;
+INSERT INTO teams VALUES('40000000-0000-0000-0000-000000000001','Equipo','10000000-0000-0000-0000-000000000001');
+INSERT INTO team_projects VALUES('40000000-0000-0000-0000-000000000001','20000000-0000-0000-0000-000000000001');
+-- Both spellings outside the Hub must survive without modification.
+CREATE POLICY raw_metadata_probe ON legacy_metadata_probe FOR SELECT TO authenticated
+ USING(EXISTS(SELECT 1 FROM auth.users u WHERE u.id=auth.uid() AND u.raw_user_meta_data->>'global_role'='superadmin'));
+
+UPDATE profiles SET full_name='Owner' WHERE id='10000000-0000-0000-0000-000000000001';
+UPDATE profiles SET email='spoofed@test.invalid' WHERE id='10000000-0000-0000-0000-000000000002';
+UPDATE experiments SET owner_name='Owner';

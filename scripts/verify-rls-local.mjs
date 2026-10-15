@@ -22,7 +22,7 @@ async function snapshot() {
   const triggers = (await db.query(`SELECT pg_get_triggerdef(oid) AS def,tgenabled FROM pg_trigger
     WHERE NOT tgisinternal ORDER BY tgname`)).rows;
   const rls = (await db.query(`SELECT n.nspname,c.relname,c.relrowsecurity,c.relforcerowsecurity
-    FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE c.relkind='r'
+    FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE c.relkind IN ('r','p')
     AND n.nspname IN ('public','storage') ORDER BY 1,2`)).rows;
   return { policies, bucket, functions, triggers, rls };
 }
@@ -45,12 +45,14 @@ async function denied(name, sql, code = '42501') {
 async function empty(name, sql) { assert.equal((await db.query(sql)).rows.length,0); pass(name); }
 try {
   await db.exec(fixture);
+  await db.exec(await read('../supabase/09_migration_lead_rpcs.sql'));
   const before = await snapshot();
   await db.exec(migration);
   pass('SQL completo aplica en PostgreSQL local');
+  assert.equal((await db.query('SELECT owner_id FROM experiments')).rows[0].owner_id,user(1)); pass('owner_id historico solo con miembro unico');
   const secured = await snapshot();
   const backup = (await db.query('SELECT * FROM _rls_backup_20261015 ORDER BY kind,key')).rows;
-  assert.deepEqual(backup.filter(row => row.kind === 'policy').map(row => row.data),before.policies);
+  assert.deepEqual(backup.filter(row => row.kind === 'policy').map(row => row.data),before.policies.filter(p => p.tablename !== 'legacy_metadata_probe'));
   pass('captura contiene exactamente las políticas originales');
   await db.exec(migration);
   assert.deepEqual(await snapshot(), secured);
@@ -59,17 +61,17 @@ try {
   await asUser(user(2), async () => {
     await denied('normal no se autoasigna admin ajeno',`INSERT INTO project_members VALUES('${project(1)}','${user(2)}','admin')`);
     await denied('admin no mueve membresía propia a proyecto ajeno',`UPDATE project_members SET project_id='${project(1)}' WHERE user_id='${user(2)}' RETURNING *`);
-    await denied('admin no invita a proyecto ajeno',`SELECT gh_add_project_member('${project(1)}','outsider@test.invalid','admin')`);
+    assert.equal((await db.query(`SELECT gh_add_project_member('${project(1)}','outsider@test.invalid','admin') AS result`)).rows[0].result,null);
+    pass('invitacion ajena retorna respuesta uniforme');
     await denied('normal no cambia global_role',`UPDATE profiles SET global_role='superadmin' WHERE id='${user(2)}'`);
     await denied('normal no activa biblioteca global',`UPDATE profiles SET can_access_global_library=true WHERE id='${user(2)}'`);
     await db.exec(`SELECT set_config('request.jwt.claims','{"user_metadata":{"global_role":"superadmin"}}',false)`);
     assert.equal((await db.query('SELECT * FROM projects')).rows.length,1);
     pass('metadata superadmin falsificado no da visibilidad global');
-    await empty('metadata falsificado no lee otras tablas','SELECT * FROM legacy_metadata_probe');
-    await denied('metadata falsificado no escribe otras tablas',`INSERT INTO legacy_metadata_probe VALUES('${user(4)}')`);
-    await db.query('INSERT INTO legacy_metadata_probe VALUES($1)',[user(2)]);
-    assert.equal((await db.query('SELECT * FROM legacy_metadata_probe')).rows.length,1);
-    pass('reemplazo metadata conserva acceso propio, WITH CHECK y policy restrictiva');
+    assert.deepEqual((await db.query("SELECT * FROM pg_policies WHERE tablename='legacy_metadata_probe' ORDER BY policyname")).rows,
+      before.policies.filter(p => p.tablename==='legacy_metadata_probe').sort((a,b)=>a.policyname.localeCompare(b.policyname)));
+    pass('policies de otras apps con user_metadata y raw_user_meta_data intactas');
+    await denied('email propio no editable',`UPDATE profiles SET email='stolen@test.invalid' WHERE id='${user(2)}'`);
     for (const table of ['north_star_metrics','team_members','experiments','objectives','strategies']) {
       await empty(`normal no lee ${table} ajenos`,`SELECT * FROM ${table} WHERE project_id='${project(1)}'`);
       await denied(`normal no inserta ${table} ajenos`,`INSERT INTO ${table}(project_id,title) VALUES('${project(1)}','attack')`);
@@ -87,6 +89,28 @@ try {
     assert.equal((await db.query('SELECT role FROM project_members WHERE project_id=$1',[created])).rows[0].role,'admin');
     pass('RPC crea proyecto y primera membresía admin');
   });
+  await asUser(user(2),async () => {
+    assert.deepEqual((await db.query('SELECT gh_library_evidence_paths($1) AS paths',[experiment])).rows[0].paths,[]);
+    pass('sin acceso a Biblioteca no obtiene objetos');
+  });
+  await db.query(`UPDATE profiles SET can_access_global_library=true WHERE id='${user(2)}'`);
+  await db.query(`UPDATE experiments SET is_public=true WHERE id='${experiment}'`);
+  await asUser(user(2),async () => {
+    assert.equal((await db.query('SELECT gh_library_evidence_paths($1) AS paths',[experiment])).rows[0].paths.length,2);
+    pass('biblioteca autoriza evidencia publica terminada sin membresia');
+  });
+  await db.query(`UPDATE experiments SET is_public=false WHERE id='${experiment}'`);
+  await asUser(user(2),async () => {
+    assert.deepEqual((await db.query('SELECT gh_library_evidence_paths($1) AS paths',[experiment])).rows[0].paths,[]);
+    pass('biblioteca no firma experimento privado');
+  });
+  await db.query(`UPDATE experiments SET is_public=true,status='Idea' WHERE id='${experiment}'`);
+  await asUser(user(2),async () => {
+    assert.deepEqual((await db.query('SELECT gh_library_evidence_paths($1) AS paths',[experiment])).rows[0].paths,[]);
+    pass('biblioteca no firma experimento activo');
+  });
+  await db.query(`UPDATE experiments SET status='Finished - Winner' WHERE id='${experiment}'`);
+  await db.query(`UPDATE storage.objects SET owner_id='${user(3)}' WHERE name LIKE '%old.png'`);
   await asUser(user(3), async () => {
     assert.equal((await db.query('SELECT * FROM experiments')).rows.length,1); pass('viewer conserva lectura');
     for (const table of ['experiments','objectives','strategies','north_star_metrics','team_members']) {
@@ -99,16 +123,38 @@ try {
     await empty('viewer no borra evidencia de otro dueño','DELETE FROM storage.objects RETURNING *');
     await denied('viewer no sube evidencia',`INSERT INTO storage.objects(bucket_id,name,owner_id) VALUES('experiment-evidence','${project(1)}/attack','${user(3)}')`);
   });
+  await asUser(user(3),async () => {
+    await db.query('INSERT INTO activity_log(user_id,action) VALUES($1,$2)',[user(3),'own']);
+    await denied('actividad ajena no insertable',`INSERT INTO activity_log(user_id,action) VALUES('${user(1)}','fake')`);
+    await empty('actividad propia append-only UPDATE',"UPDATE activity_log SET action='fake' RETURNING *");
+    await empty('actividad propia append-only DELETE','DELETE FROM activity_log RETURNING *');
+    pass('viewer puede registrar actividad propia sin ampliar lectura');
+  });
+  await asUser(user(1),async () => {
+    await empty('miembro no lee actividad de otro','SELECT * FROM activity_log');
+    const team='40000000-0000-0000-0000-000000000001';
+    assert.equal((await db.query('SELECT lead_list_my_teams() AS data')).rows[0].data.length,1);
+    await db.query(`INSERT INTO activity_log(user_id,project_id,action) VALUES('${user(1)}','${project(1)}','own')`);
+    assert.equal((await db.query('SELECT lead_team_activity($1) AS data',[team])).rows[0].data.length,1);
+    assert.equal((await db.query('SELECT lead_team_projects($1) AS data',[team])).rows[0].data.length,1);
+    pass('RPCs lead reales conservan acceso SECURITY DEFINER');
+    for (const email of ['missing@test.invalid','unconfirmed@test.invalid']) {
+      assert.equal((await db.query('SELECT gh_add_project_member($1,$2,$3) AS result',[project(1),email,'editor'])).rows[0].result,null);
+    }
+    pass('email desconocido y sin confirmar responden igual');
+  });
   await asUser(user(1), async () => {
     const invited = await db.query(`SELECT gh_add_project_member('${project(1)}','outsider@test.invalid','editor') AS id`);
-    assert.equal(invited.rows[0].id,user(2)); pass('admin invita por email sin SELECT global de profiles');
-    await denied('admin no inventa rol superadmin',`SELECT gh_add_project_member('${project(1)}','outsider@test.invalid','superadmin')`);
+    assert.equal(invited.rows[0].id,null);
+    assert.equal((await db.query(`SELECT role FROM project_members WHERE project_id='${project(1)}' AND user_id='${user(2)}'`)).rows[0].role,'editor'); pass('admin invita por email sin SELECT global de profiles');
+    assert.equal((await db.query(`SELECT gh_add_project_member('${project(1)}','outsider@test.invalid','superadmin') AS result`)).rows[0].result,null);
+    pass('rol invalido no se distingue de invitacion inexistente');
     assert.equal((await db.query(`UPDATE experiments SET title='ok' WHERE id='${experiment}' RETURNING *`)).rows.length,1);
     pass('admin conserva escritura de experimento');
     assert.equal((await db.query('DELETE FROM storage.objects RETURNING *')).rows.length,2); pass('dueño/admin borra su evidencia');
   });
   await asUser(user(4), async () => {
-    assert.equal((await db.query('SELECT * FROM legacy_metadata_probe')).rows.length,2);
+    assert.equal((await db.query('SELECT * FROM profiles')).rows.length,4);
     pass('otras tablas autorizan superadmin por perfil');
     assert.equal((await db.query(`UPDATE profiles SET can_access_global_library=true WHERE id='${user(2)}' RETURNING *`)).rows.length,1);
     pass('superadmin concede biblioteca global');
@@ -118,13 +164,52 @@ try {
     assert.equal((await db.query('SELECT gh_reserve_ai_usage($1) AS ok',[user(2)])).rows[0].ok,false);
     pass('cuota diaria atómica deniega solicitud 51');
   },'service_role');
+  await asUser(user(1),async () => {
+    for(let i=0;i<30;i++) await db.query('SELECT gh_add_project_member($1,$2,$3)',[project(1),'missing@test.invalid','viewer']);
+    assert.equal((await db.query(`SELECT gh_add_project_member('${project(1)}','super@test.invalid','viewer') AS result`)).rows[0].result,null);
+    await empty('cuota invitacion bloquea email valido',`SELECT * FROM project_members WHERE user_id='${user(4)}'`);
+    pass('intentos fallidos consumen cuota de invitacion');
+  });
+  await asUser(user(4),async () => {
+    assert.equal((await db.query('SELECT count(*)::int AS n FROM activity_log')).rows[0].n,2);
+    pass('panel Uso superadmin conserva SELECT completo');
+  });
+  await asUser(user(1),async () => {
+    assert.equal((await db.query('SELECT gh_reserve_ai_usage($1,51) AS ok',[user(5)])).rows[0].ok,true);
+    assert.equal((await db.query('SELECT gh_reserve_ai_usage($1,51) AS ok',[user(1)])).rows[0].ok,false);
+    assert.equal((await db.query('SELECT requests FROM ai_global_usage')).rows[0].requests,51);
+    pass('IA sin profile funciona y tope global agregado no se excede');
+    assert.equal((await db.query('SELECT gh_reserve_notification($1,$2) AS result',[user(1),experiment])).rows[0].result,'reserved');
+    assert.equal((await db.query('SELECT gh_reserve_notification($1,$2) AS result',[user(2),experiment])).rows[0].result,'duplicate');
+    for(let i=0;i<5;i++) {
+      const id=(await db.query(`INSERT INTO experiments(project_id,title) VALUES('${project(1)}','quota') RETURNING id`)).rows[0].id;
+      assert.equal((await db.query('SELECT gh_reserve_notification($1,$2) AS result',[user(1),id])).rows[0].result,i<4?'reserved':'quota');
+    }
+    pass('correo dedupe entre actores y cuota persistente por actor');
+  },'service_role');
   await asUser(user(3), async () => { await empty('usage ajeno no se lee','SELECT * FROM ai_usage'); });
   await asUser(null, async () => {
     await empty('anon no lee evidencia aunque exista policy genérica','SELECT * FROM storage.objects');
   },'anon');
+  await db.query("SELECT set_config('app.rollback_supabase_url','https://test.supabase.co',false)");
+  await db.exec(await read('../supabase/migrations/20261015_revertir_visual_proof.sql'));
+  const converted=(await db.query('SELECT visual_proof FROM experiments WHERE id=$1',[experiment])).rows[0].visual_proof;
+  assert.ok(converted.every(ref=>!ref.startsWith('storage://'))); pass('SQL companion convierte referencias para frontend anterior');
   await db.exec(rollback);
   assert.deepEqual(await snapshot(),before); pass('rollback restaura exactamente políticas, funciones, triggers, bucket y flags RLS');
   await db.exec(rollback); pass('rollback idempotente');
+  await db.exec('ALTER TABLE team_members RENAME TO old_team_members; CREATE TABLE team_members (LIKE old_team_members INCLUDING DEFAULTS) PARTITION BY HASH(id); CREATE TABLE team_members_p PARTITION OF team_members FOR VALUES WITH (MODULUS 1,REMAINDER 0); INSERT INTO team_members SELECT * FROM old_team_members');
+  const partitionBefore=await snapshot();
+  await db.exec(migration);
+  assert.equal((await db.query("SELECT count(*)::int AS n FROM _rls_backup_20261015 WHERE kind='table' AND data->>'table'='team_members'")).rows[0].n,1);
+  await db.exec(rollback);
+  assert.deepEqual(await snapshot(),partitionBefore); pass('rollback captura y restaura padre particionado');
+  await db.exec('DROP TABLE team_members; ALTER TABLE old_team_members RENAME TO team_members');
+  for(const source of ["SELECT (auth.jwt()->'user_metadata'->>'global_role')='superadmin'","SELECT EXISTS(SELECT 1 FROM auth.users WHERE raw_user_meta_data->>'global_role'='superadmin')"]) {
+    await db.exec(`CREATE FUNCTION public.unsafe_role() RETURNS boolean LANGUAGE sql SECURITY DEFINER AS $$ ${source} $$`);
+    await assert.rejects(db.exec(migration),/SECURITY DEFINER/); await db.exec('ROLLBACK; DROP FUNCTION unsafe_role()');
+    pass('aborta definer que decide rol desde metadata editable');
+  }
   // The legacy team_members table may lack project_id: verify fail-closed branch.
   await db.exec('ALTER TABLE team_members DROP COLUMN project_id');
   await db.exec(migration);

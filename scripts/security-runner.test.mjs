@@ -44,7 +44,7 @@ test('SQL del runner pasa en PGlite y no deja cambios persistentes', async () =>
   try {
     await db.exec(await readFile(new URL('./fixtures/security-schema.sql', import.meta.url), 'utf8'));
     // Runner requires representative rows for every foreign table.
-    await db.exec('INSERT INTO objectives SELECT * FROM experiments; INSERT INTO strategies SELECT * FROM experiments');
+    await db.exec('INSERT INTO objectives(id,project_id,title) SELECT id,project_id,title FROM experiments; INSERT INTO strategies(id,project_id,title) SELECT id,project_id,title FROM experiments');
     await db.exec(await readFile(new URL('../supabase/migrations/20261015_cierre_brechas_rls.sql', import.meta.url), 'utf8'));
     const before = (await db.query('SELECT to_jsonb(p) AS row FROM profiles p ORDER BY id')).rows;
     await db.exec(verificationSql(fixtures));
