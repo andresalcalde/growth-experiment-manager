@@ -1,6 +1,7 @@
 -- Reversión por captura. Revierte autorización; no borra datos de negocio.
 -- Detener tráfico antes de aplicar: restaura también políticas vulnerables.
 BEGIN;
+SET LOCAL lock_timeout = '5s';
 SELECT pg_advisory_xact_lock(20261015);
 DO $rollback$
 DECLARE b record; p record; d jsonb; role_list text; assignments text;
@@ -37,10 +38,18 @@ BEGIN
      CASE WHEN d->>'with_check' IS NOT NULL THEN ' WITH CHECK (' || (d->>'with_check') || ')' ELSE '' END);
  END LOOP;
  FOR b IN SELECT data FROM public._rls_backup_20261015 WHERE kind = 'table' LOOP
-   EXECUTE format('ALTER TABLE %I.%I %s ROW LEVEL SECURITY',b.data->>'schema',b.data->>'table',
-     CASE WHEN (b.data->>'rls')::boolean THEN 'ENABLE' ELSE 'DISABLE' END);
-   EXECUTE format('ALTER TABLE %I.%I %s FORCE ROW LEVEL SECURITY',b.data->>'schema',b.data->>'table',
-     CASE WHEN (b.data->>'force_rls')::boolean THEN '' ELSE 'NO' END);
+   IF EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+      WHERE n.nspname=b.data->>'schema' AND c.relname=b.data->>'table'
+        AND c.relrowsecurity IS DISTINCT FROM (b.data->>'rls')::boolean) THEN
+     EXECUTE format('ALTER TABLE %I.%I %s ROW LEVEL SECURITY',b.data->>'schema',b.data->>'table',
+       CASE WHEN (b.data->>'rls')::boolean THEN 'ENABLE' ELSE 'DISABLE' END);
+   END IF;
+   IF EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+      WHERE n.nspname=b.data->>'schema' AND c.relname=b.data->>'table'
+        AND c.relforcerowsecurity IS DISTINCT FROM (b.data->>'force_rls')::boolean) THEN
+     EXECUTE format('ALTER TABLE %I.%I %s FORCE ROW LEVEL SECURITY',b.data->>'schema',b.data->>'table',
+       CASE WHEN (b.data->>'force_rls')::boolean THEN '' ELSE 'NO' END);
+   END IF;
  END LOOP;
  SELECT data INTO d FROM public._rls_backup_20261015 WHERE kind = 'bucket' AND key = 'experiment-evidence';
  IF d IS NOT NULL THEN
@@ -53,7 +62,16 @@ BEGIN
    -- rollback completo: respaldar/mover esos objetos antes de reintentar.
    DELETE FROM storage.buckets WHERE id = 'experiment-evidence';
  END IF;
- DROP FUNCTION IF EXISTS public.gh_reserve_ai_usage(uuid);
+ DROP FUNCTION IF EXISTS public.gh_library_evidence_paths(uuid);
+ DROP FUNCTION IF EXISTS public.gh_reserve_notification(uuid,uuid);
+ DROP TABLE IF EXISTS public.gh_notification_events;
+ DROP TABLE IF EXISTS public.gh_actor_usage;
+ DROP FUNCTION IF EXISTS public.gh_reserve_ai_usage(uuid,integer);
+ DROP TABLE IF EXISTS public.ai_global_usage;
+ IF EXISTS(SELECT 1 FROM public._rls_backup_20261015 WHERE kind='column'
+   AND key='experiments.owner_id' AND NOT (data->>'existed')::boolean) THEN
+   ALTER TABLE public.experiments DROP COLUMN owner_id;
+ END IF;
  DROP TABLE IF EXISTS public.ai_usage;
  DROP FUNCTION IF EXISTS public.gh_protect_profile();
  DROP FUNCTION IF EXISTS public.gh_evidence_project(text);

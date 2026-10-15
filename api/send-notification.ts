@@ -1,54 +1,56 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createClient } from '@supabase/supabase-js';
 import { authenticatedUser, escapeHtml } from './_lib/security.ts';
-
-// Simple per-instance limiter; instances do not share these windows.
-const windows = new Map<string, { until: number; count: number }>();
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const auth = await authenticatedUser(req);
-  if (!auth) return res.status(401).json({ error: 'Sesión inválida.' });
+  if (!auth) return res.status(401).json({ error: 'Sesi?n inv?lida.' });
   const body = (req.body ?? {}) as Record<string, unknown>;
-  const to = typeof body.to === 'string' ? [body.to] : body.to;
-  if (!Array.isArray(to) || !to.length || to.length > 10 ||
-      !to.every((value): value is string => typeof value === 'string' && /^[^\s@<>]+@[^\s@<>]+$/.test(value)) ||
-      body.type !== 'experiment_winner' || typeof body.experimentTitle !== 'string' ||
-      !body.experimentTitle.trim() || body.experimentTitle.length > 300 || 'html' in body) {
-    return res.status(400).json({ error: 'Notificación inválida.' });
+  if (typeof body.experimentId !== 'string' ||
+      !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(body.experimentId) ||
+      Object.keys(body).some(key => key !== 'experimentId')) {
+    return res.status(400).json({ error: 'Notificaci?n inv?lida.' });
   }
-  // Check shared projects explicitly, even for a superadmin caller.
-  const { data: memberships, error: ownError } = await auth.client.from('project_members')
-    .select('project_id').eq('user_id', auth.user.id);
-  if (ownError) return res.status(503).json({ error: 'No se pudo autorizar el envío.' });
-  const { data: profiles, error } = await auth.client.from('profiles').select('id,email').in('email', to);
-  if (error || !profiles || profiles.length !== new Set(to).size) {
-    return res.status(403).json({ error: 'Destinatario no autorizado.' });
+  // Caller JWT applies RLS; the service role never performs this read.
+  const { data: experiment, error } = await auth.client.from('experiments')
+    .select('id,project_id,status,title,owner_id').eq('id', body.experimentId).maybeSingle();
+  if (error) return res.status(503).json({ error: 'No se pudo autorizar el env?o.' });
+  if (!experiment || experiment.status !== 'Finished - Winner' || !experiment.owner_id) {
+    return res.status(403).json({ error: 'Evento no autorizado.' });
   }
-  const projectIds = (memberships || []).map(row => row.project_id);
-  for (const profile of profiles) {
-    if (profile.id === auth.user.id) continue;
-    if (!projectIds.length) return res.status(403).json({ error: 'Destinatario no autorizado.' });
-    const { data, error: memberError } = await auth.client.from('project_members')
-      .select('user_id').eq('user_id', profile.id).in('project_id', projectIds).limit(1);
-    if (memberError || !data?.length) return res.status(403).json({ error: 'Destinatario no autorizado.' });
-  }
-  const now = Date.now();
-  for (const [id, window] of windows) if (window.until <= now) windows.delete(id);
-  const window = windows.get(auth.user.id) || { until: now + 60_000, count: 0 };
-  if (window.count >= 5) return res.status(429).json({ error: 'Máximo 5 notificaciones por minuto.' });
-  window.count++;
-  windows.set(auth.user.id, window);
+  const { data: writable, error: writeError } = await auth.client.rpc('gh_project_write', { p_project: experiment.project_id });
+  if (writeError) return res.status(503).json({ error: 'No se pudo autorizar el env?o.' });
+  if (!writable) return res.status(403).json({ error: 'Evento no autorizado.' });
   const key = process.env.RESEND_API_KEY;
-  if (!key) return res.status(503).json({ error: 'Correo no configurado.' });
-  const title = escapeHtml(body.experimentTitle);
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key || !serviceKey) return res.status(503).json({ error: 'Correo no configurado.' });
+  const admin = createClient(process.env.VITE_SUPABASE_URL!, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data: recipient, error: recipientError } = await admin.auth.admin.getUserById(experiment.owner_id);
+  const { data: prefs, error: prefError } = await admin.rpc('get_notification_preference', { p_user_id: experiment.owner_id });
+  if (recipientError || prefError) return res.status(503).json({ error: 'No se pudo resolver el destinatario.' });
+  if (!recipient.user?.email || !recipient.user.email_confirmed_at || !prefs ||
+      prefs.volume === 'none' || !prefs.notify_winner) return res.status(200).json({ success: true, skipped: true });
+  const { data: reservation, error: quotaError } = await admin.rpc('gh_reserve_notification', {
+    p_actor: auth.user.id, p_experiment: experiment.id,
+  });
+  if (quotaError) return res.status(503).json({ error: 'No se pudo verificar la cuota.' });
+  if (reservation === 'duplicate') return res.status(200).json({ success: true, skipped: true });
+  if (reservation !== 'reserved') return res.status(429).json({ error: 'Cuota de notificaciones agotada.' });
+  const configuredFrom = process.env.NOTIFICATIONS_FROM?.trim() || '';
+  const sender = /^(?:[^<>\r\n]*<)?[^\s@<>]+@send\.mmglatam\.com>?$/i.test(configuredFrom)
+    ? configuredFrom : 'no-reply@send.mmglatam.com';
   try {
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}`,
+        'Idempotency-Key': `experiment-winner-${experiment.id}` },
       body: JSON.stringify({
-        from: 'Growth Hub <no-reply@send.mmglatam.com>', to,
-        subject: `🏆 Tu experimento fue un Winner: ${body.experimentTitle.replace(/[\r\n]/g, ' ')}`,
-        html: `<h2>¡Felicitaciones!</h2><p>Tu experimento <strong>${title}</strong> fue marcado como <strong>Winner</strong> en Growth Hub.</p>`,
+        from: sender, to: [recipient.user.email],
+        subject: `Tu experimento fue un Winner: ${experiment.title.replace(/[\r\n]/g, ' ')}`,
+        html: `<h2>?Felicitaciones!</h2><p>Tu experimento <strong>${escapeHtml(experiment.title)}</strong> fue marcado como <strong>Winner</strong> en Growth Hub.</p>`,
       }),
     });
     return res.status(response.ok ? 200 : 502).json({ success: response.ok });
