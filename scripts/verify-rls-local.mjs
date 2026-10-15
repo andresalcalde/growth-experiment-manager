@@ -24,7 +24,9 @@ async function snapshot() {
   const rls = (await db.query(`SELECT n.nspname,c.relname,c.relrowsecurity,c.relforcerowsecurity
     FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE c.relkind IN ('r','p')
     AND n.nspname IN ('public','storage') ORDER BY 1,2`)).rows;
-  return { policies, bucket, functions, triggers, rls };
+  const ownerColumn = (await db.query(`SELECT column_default FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='experiments' AND column_name='owner_id'`)).rows;
+  return { policies, bucket, functions, triggers, rls, ownerColumn };
 }
 async function asUser(id, fn, role = 'authenticated') {
   await db.exec('SET SESSION AUTHORIZATION authenticator');
@@ -58,6 +60,30 @@ try {
   assert.deepEqual(await snapshot(), secured);
   assert.deepEqual((await db.query('SELECT * FROM _rls_backup_20261015 ORDER BY kind,key')).rows,backup);
   pass('migración idempotente sin sobreescribir captura');
+  await asUser(user(1),async () => {
+    const row=(await db.query(`INSERT INTO experiments(project_id,title) VALUES($1,'default owner') RETURNING id,owner_id`,[project(1)])).rows[0];
+    assert.equal(row.owner_id,user(1));
+    await db.query('DELETE FROM experiments WHERE id=$1',[row.id]);
+    pass('owner_id omitido persiste auth.uid()');
+    await db.query(`INSERT INTO storage.objects(bucket_id,name,owner_id) VALUES('other-bucket','mine',$1)`,[user(1)]);
+    assert.equal((await db.query(`SELECT name FROM storage.objects WHERE bucket_id='other-bucket'`)).rows.length,1);
+    await denied('restrictiva mixta conserva WITH CHECK externo',`INSERT INTO storage.objects(bucket_id,name,owner_id) VALUES('other-bucket','forged','${user(2)}')`);
+    await denied('restrictiva mixta no permite transferir objeto externo',`UPDATE storage.objects SET owner_id='${user(2)}' WHERE bucket_id='other-bucket'`);
+    assert.equal((await db.query(`DELETE FROM storage.objects WHERE bucket_id='other-bucket' RETURNING *`)).rows.length,1);
+    pass('restrictiva mixta conserva lectura y borrado externo legitimo');
+  });
+  await db.query(`INSERT INTO storage.objects(bucket_id,name,owner_id) VALUES('other-bucket','foreign',$1)`,[user(2)]);
+  await asUser(user(1),async () => {
+    await empty('restrictiva mixta conserva USING externo',`SELECT * FROM storage.objects WHERE bucket_id='other-bucket'`);
+    await empty('restrictiva mixta impide borrado externo ajeno',`DELETE FROM storage.objects WHERE bucket_id='other-bucket' RETURNING *`);
+    assert.equal((await db.query(`SELECT * FROM storage.objects WHERE bucket_id='experiment-evidence'`)).rows.length,2);
+    pass('restrictiva antigua neutra permite evidencia legitima');
+    const path=`${project(1)}/${experiment}/temporary.png`;
+    await db.query(`INSERT INTO storage.objects(bucket_id,name,owner_id) VALUES('experiment-evidence',$1,$2)`,[path,user(1)]);
+    assert.equal((await db.query('DELETE FROM storage.objects WHERE name=$1 RETURNING *',[path])).rows.length,1);
+    pass('restrictiva antigua neutra permite INSERT y DELETE de evidencia');
+  });
+  await db.query(`DELETE FROM storage.objects WHERE bucket_id='other-bucket'`);
   await asUser(user(2), async () => {
     await denied('normal no se autoasigna admin ajeno',`INSERT INTO project_members VALUES('${project(1)}','${user(2)}','admin')`);
     await denied('admin no mueve membresía propia a proyecto ajeno',`UPDATE project_members SET project_id='${project(1)}' WHERE user_id='${user(2)}' RETURNING *`);
@@ -99,6 +125,40 @@ try {
     assert.equal((await db.query('SELECT gh_library_evidence_paths($1) AS paths',[experiment])).rows[0].paths.length,2);
     pass('biblioteca autoriza evidencia publica terminada sin membresia');
   });
+  const originalRefs=(await db.query('SELECT visual_proof FROM experiments WHERE id=$1',[experiment])).rows[0].visual_proof;
+  const prefix=`${project(1)}/${experiment}/`;
+  const encodedNames=['a b.png','café #?%+_.png','100%_ proof.png'];
+  const encodedPaths=encodedNames.map(name=>prefix+name);
+  const privateExperiment='30000000-0000-0000-0000-000000000002';
+  const privatePath=`${project(1)}/${privateExperiment}/secret.png`;
+  const foreignPath=`${project(2)}/foreign.png`;
+  const traversalPaths=[`${prefix}../secret.png`,`${prefix}%2e%2e/secret.png`,`${prefix}./secret.png`,`${prefix}%252e%252e/secret.png`];
+  const temporaryPaths=[...encodedPaths,privatePath,foreignPath,...traversalPaths];
+  await db.query('INSERT INTO experiments(id,project_id,title,is_public) VALUES($1,$2,$3,false)',[privateExperiment,project(1),'private']);
+  for(const path of temporaryPaths) await db.query(`INSERT INTO storage.objects(bucket_id,name,owner_id) VALUES('experiment-evidence',$1,$2)`,[path,user(1)]);
+  const legacyRefs=encodedNames.map((name,i)=>`https://test.supabase.co/storage/v1/object/${['public','sign','authenticated'][i]}/experiment-evidence/${prefix}${encodeURIComponent(name)}?token=ignored`);
+  await db.query('UPDATE experiments SET visual_proof=$1 WHERE id=$2',[[...legacyRefs,
+    `storage://experiment-evidence/${privatePath}`,`storage://experiment-evidence/${foreignPath}`,
+    ...traversalPaths.map(path=>`storage://experiment-evidence/${path}`),
+    `https://test.supabase.co/storage/v1/object/public/experiment-evidence/${prefix}%2E%2E/secret.png`,
+    `https://test.supabase.co/storage/v1/object/public/experiment-evidence/${prefix}%2e%2e%2fsecret.png`,
+    `https://test.supabase.co/storage/v1/object/public/experiment-evidence/${prefix}bad%ZZ.png`,
+    `https://test.supabase.co/storage/v1/object/public/experiment-evidence/${prefix}%C3%28.png`,
+    `https://test.supabase.co/storage/v1/object/public/experiment-evidence/${prefix}%.png`,
+    // These are patterns only if user data incorrectly reaches LIKE.
+    `storage://experiment-evidence/${prefix}%.png`,
+  ],experiment]);
+  await asUser(user(2),async () => {
+    const paths=(await db.query('SELECT gh_library_evidence_paths($1) AS paths',[experiment])).rows[0].paths;
+    assert.deepEqual(paths.sort(),encodedPaths.slice().sort());
+    pass('biblioteca decodifica espacios, UTF8 y caracteres reservados sin wildcards');
+    pass('biblioteca rechaza referencias privadas, ajenas, traversal y encoding invalido');
+    assert.deepEqual((await db.query('SELECT gh_library_evidence_paths($1) AS paths',[privateExperiment])).rows[0].paths,[]);
+    pass('biblioteca no firma evidencia de experimento privado');
+  });
+  await db.query('UPDATE experiments SET visual_proof=$1 WHERE id=$2',[originalRefs,experiment]);
+  for(const path of temporaryPaths) await db.query('DELETE FROM storage.objects WHERE name=$1',[path]);
+  await db.query('DELETE FROM experiments WHERE id=$1',[privateExperiment]);
   await db.query(`UPDATE experiments SET is_public=false WHERE id='${experiment}'`);
   await asUser(user(2),async () => {
     assert.deepEqual((await db.query('SELECT gh_library_evidence_paths($1) AS paths',[experiment])).rows[0].paths,[]);
@@ -143,6 +203,14 @@ try {
     }
     pass('email desconocido y sin confirmar responden igual');
   });
+  const quotaBefore=(await db.query(`SELECT sum(requests)::int AS n FROM gh_actor_usage WHERE actor=$1 AND kind='invite'`,[user(1)])).rows[0].n;
+  await asUser(user(1),async () => {
+    for(let i=0;i<2;i++) assert.equal((await db.query('SELECT gh_add_project_member($1,$2,$3) AS result',[project(1),'no-profile@mmglatam.com','editor'])).rows[0].result,null);
+    await empty('Auth confirmado sin perfil no crea membresia',`SELECT * FROM project_members WHERE user_id='${user(5)}'`);
+  });
+  assert.equal((await db.query(`SELECT sum(requests)::int AS n FROM gh_actor_usage WHERE actor=$1 AND kind='invite'`,[user(1)])).rows[0].n,quotaBefore+2);
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM profiles WHERE id=$1',[user(5)])).rows[0].n,0);
+  pass('Auth confirmado sin perfil responde NULL y conserva ambos intentos de cuota');
   await asUser(user(1), async () => {
     const invited = await db.query(`SELECT gh_add_project_member('${project(1)}','outsider@test.invalid','editor') AS id`);
     assert.equal(invited.rows[0].id,null);
@@ -205,6 +273,17 @@ try {
   await db.exec(rollback);
   assert.deepEqual(await snapshot(),partitionBefore); pass('rollback captura y restaura padre particionado');
   await db.exec('DROP TABLE team_members; ALTER TABLE old_team_members RENAME TO team_members');
+  // Existing owner columns keep their original default on rollback. Historical
+  // duplicate names must stay unassigned instead of inheriting the new default.
+  await db.exec(`ALTER TABLE experiments ADD COLUMN owner_id uuid REFERENCES auth.users(id) DEFAULT '${user(4)}'; UPDATE experiments SET owner_id=NULL; UPDATE profiles SET full_name='Owner' WHERE id='${user(3)}'`);
+  const existingOwnerBefore=await snapshot();
+  await db.exec(migration);
+  assert.equal((await db.query('SELECT owner_id FROM experiments WHERE id=$1',[experiment])).rows[0].owner_id,null);
+  pass('backfill de nombres ambiguos no elige owner ni aplica default retroactivo');
+  await db.exec(rollback);
+  assert.deepEqual(await snapshot(),existingOwnerBefore);
+  pass('rollback restaura default owner_id preexistente y politica restrictiva exactos');
+  await db.exec(`ALTER TABLE experiments DROP COLUMN owner_id; UPDATE profiles SET full_name=NULL WHERE id='${user(3)}'`);
   for(const source of ["SELECT (auth.jwt()->'user_metadata'->>'global_role')='superadmin'","SELECT EXISTS(SELECT 1 FROM auth.users WHERE raw_user_meta_data->>'global_role'='superadmin')"]) {
     await db.exec(`CREATE FUNCTION public.unsafe_role() RETURNS boolean LANGUAGE sql SECURITY DEFINER AS $$ ${source} $$`);
     await assert.rejects(db.exec(migration),/SECURITY DEFINER/); await db.exec('ROLLBACK; DROP FUNCTION unsafe_role()');

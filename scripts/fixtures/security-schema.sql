@@ -63,6 +63,11 @@ CREATE POLICY evidence_auth_update ON storage.objects FOR UPDATE TO authenticate
 CREATE POLICY evidence_auth_delete ON storage.objects FOR DELETE TO authenticated USING(bucket_id = 'experiment-evidence');
 -- Generic permissive policy must not defeat the new restrictive bucket guards.
 CREATE POLICY other_storage_policy ON storage.objects TO authenticated USING(true) WITH CHECK(true);
+-- Mixed restrictive policy must retain its effect on other buckets while being
+-- neutral for evidence, whose authorization is replaced by the Hub guards.
+CREATE POLICY mixed_storage_restrictive ON storage.objects AS RESTRICTIVE TO authenticated
+ USING(bucket_id IN ('experiment-evidence','other-bucket') AND owner_id=auth.uid()::text)
+ WITH CHECK(bucket_id IN ('experiment-evidence','other-bucket') AND owner_id=auth.uid()::text);
 GRANT USAGE ON SCHEMA public,auth,storage TO authenticated,anon,service_role;
 GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public,storage TO authenticated,anon,service_role;
 INSERT INTO profiles(id,email,global_role) VALUES
@@ -81,6 +86,7 @@ INSERT INTO experiments VALUES('30000000-0000-0000-0000-000000000001','20000000-
 INSERT INTO north_star_metrics SELECT * FROM experiments;
 INSERT INTO team_members SELECT * FROM experiments;
 INSERT INTO storage.buckets VALUES('experiment-evidence','experiment-evidence',true,26214400);
+INSERT INTO storage.buckets VALUES('other-bucket','other-bucket',false,26214400);
 INSERT INTO storage.objects(bucket_id,name,owner_id) VALUES
  ('experiment-evidence','20000000-0000-0000-0000-000000000001/30000000-0000-0000-0000-000000000001/proof.png','10000000-0000-0000-0000-000000000001'),
  ('experiment-evidence','30000000-0000-0000-0000-000000000001/old.png','10000000-0000-0000-0000-000000000001');
