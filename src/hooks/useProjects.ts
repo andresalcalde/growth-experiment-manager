@@ -33,15 +33,19 @@ export function useProjects() {
     try {
       console.log('➕ Creating project:', project);
       const { data, error } = await supabase
-        .from('projects')
-        .insert([project])
-        .select()
-        .single();
+        .rpc('create_project_with_membership', {
+          p_name: project.name, p_nsm_name: project.nsm_name,
+          p_nsm_value: project.nsm_value, p_nsm_target: project.nsm_target,
+          p_nsm_unit: project.nsm_unit, p_nsm_type: project.nsm_type,
+          p_logo: project.logo, p_industry: project.industry,
+        });
 
       console.log('📦 Create response:', { data, error });
       if (error) throw error;
       await fetchProjects();
-      return data;
+      const { data: created, error: readError } = await supabase.from('projects').select('*').eq('id', data).single();
+      if (readError) throw readError;
+      return created;
     } catch (err: any) {
       console.error('❌ Create error:', err);
       handleSupabaseError(err, 'Create Project');

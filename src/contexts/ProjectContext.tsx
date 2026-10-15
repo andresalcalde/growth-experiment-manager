@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { logActivity } from '../lib/activityLog'
+import { evidenceReference, resolveEvidence } from '../lib/uploadEvidence'
 import { useAuth } from './AuthContext'
 import type { Project, NorthStarMetric, Objective, Strategy, Experiment, TeamMember, Status } from '../types'
 
@@ -284,7 +285,10 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
             // Step 3: Group by project
             const objByProject = groupBy(objRes.data || [], 'project_id')
             const stratByProject = groupBy(stratRes.data || [], 'project_id')
-            const expByProject = groupBy(expRes.data || [], 'project_id')
+            const signedExperiments = await Promise.all((expRes.data || []).map(async row => ({
+                ...row, visual_proof: await resolveEvidence(row.visual_proof || []),
+            })))
+            const expByProject = groupBy(signedExperiments, 'project_id')
 
             const fullProjects: Project[] = visibleRows.map(row => {
                 const base = dbRowToProject(row)
@@ -318,6 +322,13 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
             setProjectsLoading(false)
         }
     }, [user, isSuperAdmin])
+
+    // Refresh evidence signatures before their one-hour expiry.
+    useEffect(() => {
+        if (!user) return
+        const timer = setInterval(() => { void fetchProjects() }, 45 * 60_000)
+        return () => clearInterval(timer)
+    }, [user, fetchProjects])
 
     // Fetch when auth is ready
     useEffect(() => {
@@ -399,28 +410,10 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     const addTeamMember = useCallback(async (email: string, role: TeamMember['role']) => {
         if (!activeProjectId) return
 
-        // 1. Find user by email
-        const { data: userProfile, error: profileError } = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('email', email)
-            .single()
-
-        if (profileError || !userProfile) {
-            alert("Usuario no encontrado. Asegúrate de que se haya registrado en la plataforma.")
-            return
-        }
-
-        // 2. Add to project_members
-        const dbRole = frontendRoleToDb(role)
-        const { error: insertError } = await supabase
-            .from('project_members')
-            .insert({
-                project_id: activeProjectId,
-                user_id: userProfile.id,
-                role: dbRole
-            })
-
+        // Resolve the email inside an authorized RPC; profiles stay private.
+        const { error: insertError } = await supabase.rpc('gh_add_project_member', {
+            p_project: activeProjectId, p_email: email, p_role: frontendRoleToDb(role),
+        })
         if (insertError) {
             if (insertError.code === '23505') { // Unique violation
                 alert("Este usuario ya es miembro del proyecto.")
@@ -662,7 +655,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
                 target_metric: exp.targetMetric || null,
                 key_learnings: exp.keyLearnings || null,
                 verdict: exp.verdict || null,
-                visual_proof: exp.visualProof || null,
+                visual_proof: exp.visualProof?.map(evidenceReference) || null,
                 is_public: exp.isPublic ?? false,
             })
             .select()
@@ -734,7 +727,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         if (updates.targetMetric !== undefined) dbUpdates.target_metric = updates.targetMetric
         if (updates.keyLearnings !== undefined) dbUpdates.key_learnings = updates.keyLearnings
         if (updates.verdict !== undefined) dbUpdates.verdict = updates.verdict
-        if (updates.visualProof !== undefined) dbUpdates.visual_proof = updates.visualProof
+        if (updates.visualProof !== undefined) dbUpdates.visual_proof = updates.visualProof.map(evidenceReference)
         if (updates.isPublic !== undefined) dbUpdates.is_public = updates.isPublic
 
         // Trazabilidad: quién resolvió. Se setea al entrar a Finished-* y se
@@ -917,7 +910,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
                     target_metric: exp.targetMetric || null,
                     key_learnings: exp.keyLearnings || null,
                     verdict: exp.verdict || null,
-                    visual_proof: exp.visualProof || null,
+                    visual_proof: exp.visualProof?.map(evidenceReference) || null,
                     is_public: exp.isPublic ?? false,
                 }))
 

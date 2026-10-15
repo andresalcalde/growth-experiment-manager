@@ -328,7 +328,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Concede o revoca el acceso de un usuario a la Biblioteca Global (RLS exige
-    // superadmin para escribir esta columna — ver migración 05).
+    // superadmin mediante el trigger de 20261015_cierre_brechas_rls.sql).
     const updateUserGlobalLibraryAccess = async (userId: string, value: boolean) => {
         const { error } = await supabase
             .from('profiles')
