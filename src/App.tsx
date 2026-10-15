@@ -936,6 +936,7 @@ const App: React.FC = () => {
       title: formData.title,
       status: formData.status,
       owner: { name: selectedMember.name, avatar: selectedMember.avatar },
+      ownerId: selectedMember.id,
       hypothesis: formData.hypothesis,
       observation: formData.observation,
       problem: formData.problem,

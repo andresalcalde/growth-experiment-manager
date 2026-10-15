@@ -892,6 +892,9 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
                     project_id: newProjectId,
                     title: exp.title,
                     status: exp.status || 'Idea',
+                    // New project: no imported name can identify a member here.
+                    // Preserve explicit identity; otherwise use the creating actor.
+                    owner_id: exp.ownerId || user?.id,
                     owner_name: exp.owner?.name || '',
                     owner_avatar: exp.owner?.avatar || '',
                     hypothesis: exp.hypothesis || '',

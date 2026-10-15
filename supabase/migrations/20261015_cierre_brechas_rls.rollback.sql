@@ -63,6 +63,7 @@ BEGIN
    DELETE FROM storage.buckets WHERE id = 'experiment-evidence';
  END IF;
  DROP FUNCTION IF EXISTS public.gh_library_evidence_paths(uuid);
+ DROP FUNCTION IF EXISTS public.gh_evidence_path(text);
  DROP FUNCTION IF EXISTS public.gh_reserve_notification(uuid,uuid);
  DROP TABLE IF EXISTS public.gh_notification_events;
  DROP TABLE IF EXISTS public.gh_actor_usage;
@@ -71,6 +72,15 @@ BEGIN
  IF EXISTS(SELECT 1 FROM public._rls_backup_20261015 WHERE kind='column'
    AND key='experiments.owner_id' AND NOT (data->>'existed')::boolean) THEN
    ALTER TABLE public.experiments DROP COLUMN owner_id;
+ ELSE
+   SELECT data INTO d FROM public._rls_backup_20261015 WHERE kind='column' AND key='experiments.owner_id';
+   IF d ? 'default' THEN
+     IF d->>'default' IS NULL THEN
+       ALTER TABLE public.experiments ALTER COLUMN owner_id DROP DEFAULT;
+     ELSE
+       EXECUTE 'ALTER TABLE public.experiments ALTER COLUMN owner_id SET DEFAULT ' || (d->>'default');
+     END IF;
+   END IF;
  END IF;
  DROP TABLE IF EXISTS public.ai_usage;
  DROP FUNCTION IF EXISTS public.gh_protect_profile();

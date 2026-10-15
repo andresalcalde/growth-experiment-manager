@@ -53,6 +53,8 @@ BEGIN
     INSERT INTO public._rls_backup_20261015
       SELECT 'column', 'experiments.owner_id', jsonb_build_object('existed', EXISTS (
         SELECT 1 FROM information_schema.columns WHERE table_schema='public'
+          AND table_name='experiments' AND column_name='owner_id'),
+        'default', (SELECT column_default FROM information_schema.columns WHERE table_schema='public'
           AND table_name='experiments' AND column_name='owner_id'));
     INSERT INTO public._rls_backup_20261015 VALUES ('manifest','captured','{}');
   END IF;
@@ -98,8 +100,11 @@ BEGIN
  ON CONFLICT(actor,kind,window_start) DO UPDATE SET requests=gh_actor_usage.requests+1
  WHERE gh_actor_usage.requests < 20 RETURNING requests INTO reserved;
  IF reserved IS NULL THEN RETURN NULL; END IF;
- SELECT id INTO target_user FROM auth.users
- WHERE lower(email)=lower(trim(p_email)) AND email_confirmed_at IS NOT NULL;
+ -- handle_new_user owns profile provisioning. An incomplete signup is treated
+ -- as not found, after reserving quota, rather than inserting a dangling FK.
+ SELECT u.id INTO target_user FROM auth.users u JOIN public.profiles pr ON pr.id=u.id
+ WHERE lower(u.email)=lower(trim(p_email)) AND u.email_confirmed_at IS NOT NULL
+ FOR KEY SHARE OF pr;
  IF target_user IS NULL THEN RETURN NULL; END IF;
  INSERT INTO public.project_members(project_id,user_id,role)
  VALUES(p_project,target_user,p_role::public.project_role_enum) ON CONFLICT DO NOTHING;
@@ -208,6 +213,9 @@ UPDATE public.experiments e SET owner_id = (
  WHERE pm.project_id=e.project_id AND lower(trim(pr.full_name))=lower(trim(e.owner_name))
  HAVING count(*)=1
 ) WHERE e.owner_id IS NULL;
+-- Omitted identities (including legacy SQL seeds) belong to the creating actor.
+-- Explicit NULL from an ambiguous name remains NULL and never notifies.
+ALTER TABLE public.experiments ALTER COLUMN owner_id SET DEFAULT auth.uid();
 
 -- Ruta nueva: project_id/experiment_id/archivo. Compatibilidad con evidencia
 -- antigua experiment_id/archivo sin mover objetos ni reescribir sus metadatos.
@@ -220,19 +228,27 @@ $$;
 INSERT INTO storage.buckets(id,name,public) VALUES ('experiment-evidence','experiment-evidence',false)
   ON CONFLICT(id) DO UPDATE SET public = false;
 DO $storage$
-DECLARE p record; role_list text;
+DECLARE p record; role_list text; guard text;
 BEGIN
  FOR p IN SELECT * FROM pg_policies WHERE schemaname='storage' AND tablename='objects'
-   AND (policyname LIKE 'gh_evidence_%' OR (concat(qual,with_check) LIKE '%experiment-evidence%'
-     AND concat(qual,with_check) NOT LIKE '%bucket_id <> ''experiment-evidence''%')) LOOP
+   AND policyname LIKE 'gh_evidence_%' LOOP
    EXECUTE format('DROP POLICY IF EXISTS %I ON storage.objects',p.policyname);
-   IF p.policyname NOT LIKE 'gh_evidence_%' THEN
+ END LOOP;
+ -- Always derive from the immutable capture: reapplication must not wrap a
+ -- restrictive expression again, and rollback keeps the exact original DDL.
+ FOR p IN SELECT original.* FROM public._rls_backup_20261015 b
+   CROSS JOIN LATERAL jsonb_populate_record(NULL::pg_catalog.pg_policies,b.data) original
+   WHERE b.kind='policy' AND original.schemaname='storage' AND original.tablename='objects'
+     AND concat(original.qual,original.with_check) LIKE '%experiment-evidence%' LOOP
+     EXECUTE format('DROP POLICY IF EXISTS %I ON storage.objects',p.policyname);
      SELECT string_agg(quote_ident(r),',') INTO role_list FROM unnest(p.roles) r;
+     guard := CASE WHEN p.permissive='RESTRICTIVE'
+       THEN 'bucket_id = ''experiment-evidence'' OR '
+       ELSE 'bucket_id <> ''experiment-evidence'' AND ' END;
      EXECUTE format('CREATE POLICY %I ON storage.objects AS %s FOR %s TO %s%s%s',
        p.policyname,p.permissive,p.cmd,role_list,
-       CASE WHEN p.qual IS NOT NULL THEN ' USING (bucket_id <> ''experiment-evidence'' AND (' || p.qual || '))' ELSE '' END,
-       CASE WHEN p.with_check IS NOT NULL THEN ' WITH CHECK (bucket_id <> ''experiment-evidence'' AND (' || p.with_check || '))' ELSE '' END);
-   END IF;
+       CASE WHEN p.qual IS NOT NULL THEN ' USING (' || guard || '(' || p.qual || '))' ELSE '' END,
+       CASE WHEN p.with_check IS NOT NULL THEN ' WITH CHECK (' || guard || '(' || p.with_check || '))' ELSE '' END);
  END LOOP;
 END $storage$;
 CREATE POLICY gh_evidence_select ON storage.objects FOR SELECT TO authenticated
@@ -320,6 +336,34 @@ BEGIN
  INSERT INTO public.gh_notification_events(experiment_id,actor) VALUES(p_experiment,p_actor);
  RETURN 'reserved';
 END $$;
+-- Decode only legacy HTTP URLs, once, as UTF-8 bytes. Durable storage:// keys
+-- are already decoded. Never interpret reference data as a pattern or SQL.
+CREATE OR REPLACE FUNCTION public.gh_evidence_path(p_ref text) RETURNS text
+LANGUAGE plpgsql IMMUTABLE STRICT SET search_path = pg_catalog, public AS $$
+DECLARE path text; bytes bytea := decode('','hex'); i integer := 1; hex text;
+BEGIN
+ IF starts_with(p_ref,'storage://experiment-evidence/') THEN
+   path := substr(p_ref,length('storage://experiment-evidence/')+1);
+ ELSE
+   path := substring(p_ref FROM '^https?://[^/?#]+/storage/v1/object/(?:public|sign|authenticated)/experiment-evidence/([^?#]+)');
+   IF path IS NULL OR path ~* '%(2f|5c)' THEN RETURN NULL; END IF;
+   WHILE i <= length(path) LOOP
+     IF substr(path,i,1)='%' THEN
+       hex := substr(path,i+1,2);
+       IF hex !~ '^[0-9A-Fa-f]{2}$' THEN RETURN NULL; END IF;
+       bytes := bytes || decode(hex,'hex'); i := i+3;
+     ELSE
+       bytes := bytes || convert_to(substr(path,i,1),'UTF8'); i := i+1;
+     END IF;
+   END LOOP;
+   path := convert_from(bytes,'UTF8');
+ END IF;
+ -- Reject dot segments and alternate/ambiguous separators before signing.
+ IF path='' OR path ~ '(^|/)[.]{1,2}(/|$)' OR path ~ '(^/|/$|//)'
+    OR strpos(path,chr(92))>0 OR path ~ '[[:cntrl:]]' OR path ~* '%(2e|2f|5c|25)' THEN RETURN NULL; END IF;
+ RETURN path;
+EXCEPTION WHEN character_not_in_repertoire OR untranslatable_character THEN RETURN NULL;
+END $$;
 CREATE OR REPLACE FUNCTION public.gh_library_evidence_paths(p_experiment uuid) RETURNS text[]
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog, public AS $$
  SELECT COALESCE(array_agg(o.name),ARRAY[]::text[]) FROM storage.objects o
@@ -327,9 +371,9 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog, public AS $$
   SELECT 1 FROM public.experiments e CROSS JOIN LATERAL unnest(e.visual_proof) v(ref)
   WHERE e.id=p_experiment AND e.is_public AND e.status::text LIKE 'Finished%'
    AND public.gh_evidence_project(o.name)=e.project_id
-   AND (v.ref='storage://experiment-evidence/' || o.name OR
-     split_part(v.ref,'?',1) = substring(v.ref FROM '^https?://[^/]+') || '/storage/v1/object/public/experiment-evidence/' || o.name OR
-     split_part(v.ref,'?',1) = substring(v.ref FROM '^https?://[^/]+') || '/storage/v1/object/sign/experiment-evidence/' || o.name)
+   AND (starts_with(o.name,e.project_id::text || '/' || e.id::text || '/')
+        OR starts_with(o.name,e.id::text || '/'))
+   AND public.gh_evidence_path(v.ref)=o.name
  ) AND EXISTS(SELECT 1 FROM public.profiles WHERE id=auth.uid() AND
   (can_access_global_library OR global_role::text IN ('admin','superadmin')));
 $$;
