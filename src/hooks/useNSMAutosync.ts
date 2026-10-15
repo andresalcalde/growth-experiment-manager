@@ -93,6 +93,9 @@ export function useNSMAutosync() {
     sourceUrl: string,
     config: NSMSourceConfig,
   ): Promise<SyncResult> => {
+    // Check before fetching or persisting status, including membership revocations.
+    const { data: writable, error: permissionError } = await supabase.rpc('gh_project_write', { p_project: projectId });
+    if (permissionError || !writable) return { success: false, error: 'Sin permiso de escritura.' };
     setSyncing(true);
     try {
       if (!sourceUrl) {

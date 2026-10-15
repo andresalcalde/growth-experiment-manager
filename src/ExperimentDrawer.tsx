@@ -1,3 +1,4 @@
+import { displayEvidence } from './lib/uploadEvidence';
 import React, { useState, useEffect } from 'react';
 import {
   X,
@@ -906,8 +907,10 @@ export const ExperimentDrawer: React.FC<ExperimentDrawerProps> = ({
               <div>
                 <div className="label">Prueba Visual</div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '12px', marginTop: '12px' }}>
-                  {experiment.visualProof && experiment.visualProof.map((proof, i) => {
-                    const gallery: LightboxItem[] = (experiment.visualProof || []).map(p => ({ src: p }));
+                  {experiment.visualProof && experiment.visualProof.map((reference, i) => {
+                    const proof = displayEvidence(reference, experiment.visualProofUrls);
+                    const gallery: LightboxItem[] = (experiment.visualProof || []).map(p => displayEvidence(p, experiment.visualProofUrls))
+                      .filter(p => p.startsWith('http') || p.startsWith('data:')).map(src => ({ src }));
                     const isHttpOrData = proof.startsWith('http') || proof.startsWith('data:');
                     return (
                       <div key={i} style={{ position: 'relative', borderRadius: '8px' }}>
@@ -919,7 +922,7 @@ export const ExperimentDrawer: React.FC<ExperimentDrawerProps> = ({
                             rounded={8}
                             fit="cover"
                             gallery={gallery}
-                            galleryIndex={i}
+                            galleryIndex={gallery.findIndex(item => item.src === proof)}
                             style={{ width: '100%', aspectRatio: '16/9', height: 'auto' }}
                           />
                         ) : (

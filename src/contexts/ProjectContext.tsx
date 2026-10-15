@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { notifyExperimentWinner } from '../lib/notify'
 import { logActivity } from '../lib/activityLog'
+import { evidenceReference, resolveEvidence } from '../lib/uploadEvidence'
 import { useAuth } from './AuthContext'
 import type { Project, NorthStarMetric, Objective, Strategy, Experiment, TeamMember, Status } from '../types'
 
@@ -200,7 +202,9 @@ function dbRowToExperiment(row: any): Experiment {
         targetMetric: row.target_metric || undefined,
         keyLearnings: row.key_learnings || undefined,
         verdict: row.verdict || undefined,
-        visualProof: row.visual_proof || undefined,
+        visualProof: row.visual_proof?.map(evidenceReference) || undefined,
+        visualProofUrls: row.visual_proof_urls || {},
+        ownerId: row.owner_id || undefined,
         isPublic: row.is_public ?? false,
         createdBy: row.created_by || undefined,
         createdAt: row.created_at || undefined,
@@ -284,7 +288,10 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
             // Step 3: Group by project
             const objByProject = groupBy(objRes.data || [], 'project_id')
             const stratByProject = groupBy(stratRes.data || [], 'project_id')
-            const expByProject = groupBy(expRes.data || [], 'project_id')
+            const signedExperiments = await Promise.all((expRes.data || []).map(async row => ({
+                ...row, visual_proof_urls: await resolveEvidence(row.visual_proof || []),
+            })))
+            const expByProject = groupBy(signedExperiments, 'project_id')
 
             const fullProjects: Project[] = visibleRows.map(row => {
                 const base = dbRowToProject(row)
@@ -318,6 +325,13 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
             setProjectsLoading(false)
         }
     }, [user, isSuperAdmin])
+
+    // Refresh evidence signatures before their one-hour expiry.
+    useEffect(() => {
+        if (!user) return
+        const timer = setInterval(() => { void fetchProjects() }, 45 * 60_000)
+        return () => clearInterval(timer)
+    }, [user, fetchProjects])
 
     // Fetch when auth is ready
     useEffect(() => {
@@ -399,37 +413,12 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     const addTeamMember = useCallback(async (email: string, role: TeamMember['role']) => {
         if (!activeProjectId) return
 
-        // 1. Find user by email
-        const { data: userProfile, error: profileError } = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('email', email)
-            .single()
-
-        if (profileError || !userProfile) {
-            alert("Usuario no encontrado. Asegúrate de que se haya registrado en la plataforma.")
-            return
-        }
-
-        // 2. Add to project_members
-        const dbRole = frontendRoleToDb(role)
-        const { error: insertError } = await supabase
-            .from('project_members')
-            .insert({
-                project_id: activeProjectId,
-                user_id: userProfile.id,
-                role: dbRole
-            })
-
-        if (insertError) {
-            if (insertError.code === '23505') { // Unique violation
-                alert("Este usuario ya es miembro del proyecto.")
-            } else {
-                console.error('Error adding team member:', insertError)
-                alert("Error al agregar miembro.")
-            }
-            return
-        }
+        // Resolve the email inside an authorized RPC; profiles stay private.
+        const { error: insertError } = await supabase.rpc('gh_add_project_member', {
+            p_project: activeProjectId, p_email: email, p_role: frontendRoleToDb(role),
+        })
+        if (insertError) console.error('Error adding team member:', insertError)
+        alert('Solicitud procesada. Si la cuenta tiene email confirmado y hay cuota, se agrega al equipo.')
 
         await fetchTeamMembers(activeProjectId)
     }, [activeProjectId, fetchTeamMembers])
@@ -640,6 +629,8 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
                 project_id: activeProjectId,
                 title: exp.title,
                 status: exp.status,
+                owner_id: exp.ownerId || (teamMembers.filter(m => m.name === exp.owner.name).length === 1
+                    ? teamMembers.find(m => m.name === exp.owner.name)?.id : null),
                 owner_name: exp.owner.name,
                 owner_avatar: exp.owner.avatar,
                 hypothesis: exp.hypothesis,
@@ -662,7 +653,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
                 target_metric: exp.targetMetric || null,
                 key_learnings: exp.keyLearnings || null,
                 verdict: exp.verdict || null,
-                visual_proof: exp.visualProof || null,
+                visual_proof: exp.visualProof?.map(evidenceReference) || null,
                 is_public: exp.isPublic ?? false,
             })
             .select()
@@ -673,7 +664,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
             return
         }
 
-        const newExp = dbRowToExperiment(data)
+        const newExp = dbRowToExperiment({ ...data, visual_proof_urls: await resolveEvidence(data.visual_proof || []) })
         setProjects(prev => prev.map(p =>
             p.metadata.id === activeProjectId
                 ? { ...p, experiments: [...p.experiments, newExp] }
@@ -685,7 +676,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
             action: 'experiment_created', entityType: 'experiment', entityId: newExp.id,
             details: { title: newExp.title },
         })
-    }, [activeProjectId, user])
+    }, [activeProjectId, user, teamMembers])
 
     const updateExperiment = useCallback(async (id: string, updates: Partial<Experiment>, opts?: { fromStatus?: Status }) => {
         // Estado previo: se captura ANTES del update optimista para poder
@@ -699,6 +690,10 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         // llamador declare el origen real; el resto de rutas cae a prevExp?.status.
         const fromStatus = opts?.fromStatus ?? prevExp?.status
 
+        if (updates.visualProof !== undefined) {
+            updates = { ...updates, visualProof: updates.visualProof.map(evidenceReference),
+                visualProofUrls: await resolveEvidence(updates.visualProof) }
+        }
         // Optimistic update
         setProjects(prev => prev.map(p =>
             p.metadata.id === activeProjectId
@@ -711,6 +706,8 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         if (updates.title !== undefined) dbUpdates.title = updates.title
         if (updates.status !== undefined) dbUpdates.status = updates.status
         if (updates.owner !== undefined) {
+            const matches = teamMembers.filter(m => m.name === updates.owner?.name)
+            dbUpdates.owner_id = updates.ownerId || (matches.length === 1 ? matches[0].id : null)
             dbUpdates.owner_name = updates.owner.name
             dbUpdates.owner_avatar = updates.owner.avatar
         }
@@ -734,7 +731,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         if (updates.targetMetric !== undefined) dbUpdates.target_metric = updates.targetMetric
         if (updates.keyLearnings !== undefined) dbUpdates.key_learnings = updates.keyLearnings
         if (updates.verdict !== undefined) dbUpdates.verdict = updates.verdict
-        if (updates.visualProof !== undefined) dbUpdates.visual_proof = updates.visualProof
+        if (updates.visualProof !== undefined) dbUpdates.visual_proof = updates.visualProof.map(evidenceReference)
         if (updates.isPublic !== undefined) dbUpdates.is_public = updates.isPublic
 
         // Trazabilidad: quién resolvió. Se setea al entrar a Finished-* y se
@@ -759,6 +756,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
             console.error('Error updating experiment:', error)
             fetchProjects()
         } else if (updates.status !== undefined && updates.status !== fromStatus && user) {
+            if (updates.status === 'Finished - Winner') void notifyExperimentWinner(id)
             // Solo registramos cambios reales de etapa: ni ediciones inline ni
             // reordenamientos dentro de la misma columna (evita ruido en el log).
             logActivity({
@@ -767,7 +765,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
                 details: { from: fromStatus ?? null, to: updates.status, title: prevExp?.title ?? null },
             })
         }
-    }, [activeProjectId, fetchProjects, projects, user])
+    }, [activeProjectId, fetchProjects, projects, user, teamMembers])
 
     const deleteExperiment = useCallback(async (id: string) => {
         // Se captura ANTES del borrado optimista: tras el setProjects el
@@ -894,6 +892,9 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
                     project_id: newProjectId,
                     title: exp.title,
                     status: exp.status || 'Idea',
+                    // New project: no imported name can identify a member here.
+                    // Preserve explicit identity; otherwise use the creating actor.
+                    owner_id: exp.ownerId || user?.id,
                     owner_name: exp.owner?.name || '',
                     owner_avatar: exp.owner?.avatar || '',
                     hypothesis: exp.hypothesis || '',
@@ -917,7 +918,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
                     target_metric: exp.targetMetric || null,
                     key_learnings: exp.keyLearnings || null,
                     verdict: exp.verdict || null,
-                    visual_proof: exp.visualProof || null,
+                    visual_proof: exp.visualProof?.map(evidenceReference) || null,
                     is_public: exp.isPublic ?? false,
                 }))
 

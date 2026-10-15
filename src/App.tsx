@@ -68,7 +68,7 @@ import { TeamView } from './TeamView';
 import { GlobalLibraryView } from './GlobalLibraryView';
 import { AreaPromptModal } from './components/AreaPromptModal';
 import { Lightbox, type LightboxItem } from './components/Lightbox';
-import { notifyExperimentWinner } from './lib/notify';
+import { displayEvidence } from './lib/uploadEvidence';
 
 
 // Original MOCK_EXPERIMENTS replaced with Laboratorio Polanco data
@@ -249,7 +249,8 @@ const LibraryCard = ({ experiment, onClick }: { experiment: Experiment; onClick:
     badgeBg = '#FEE2E2';
   }
 
-  const hasImage = experiment.visualProof && experiment.visualProof.length > 0;
+  const hero = displayEvidence(experiment.visualProof?.[0] || '', experiment.visualProofUrls);
+  const hasImage = hero.startsWith('http') || hero.startsWith('data:');
 
   return (
     <div
@@ -270,7 +271,7 @@ const LibraryCard = ({ experiment, onClick }: { experiment: Experiment; onClick:
       {/* Hero Image or compact badge */}
       {hasImage ? (
         <div style={{ height: '160px', background: '#f3f4f6', position: 'relative' }}>
-          <img src={experiment.visualProof![0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img src={hero} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           <div style={{ position: 'absolute', top: '12px', right: '12px', background: badgeBg, color: badgeColor, padding: '4px 8px', borderRadius: '99px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.5px' }}>
             {badgeText}
           </div>
@@ -316,6 +317,7 @@ const CaseStudyModal = ({ experiment, onClose, onUpdate, onEdit, onDelete }: { e
   // Lightbox: solo items previsualizables (imágenes y PDF)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const lightboxItems: LightboxItem[] = (experiment.visualProof || [])
+    .map(reference => displayEvidence(reference, experiment.visualProofUrls))
     .filter(p => isUrl(p) && isPreviewable(p))
     .map(p => ({ src: p, caption: fileNameFromUrl(p) }));
 
@@ -379,7 +381,7 @@ const CaseStudyModal = ({ experiment, onClose, onUpdate, onEdit, onDelete }: { e
     const cur = experiment.visualProof || [];
     const target = cur[idx];
     onUpdate({ visualProof: cur.filter((_, i) => i !== idx) });
-    if (target && isUrl(target)) {
+    if (target) {
       // El registro ya se quitó; un fallo al borrar en Storage no debe romper la UI.
       try { await deleteExperimentEvidence(target); } catch { /* ignore */ }
     }
@@ -464,7 +466,8 @@ const CaseStudyModal = ({ experiment, onClose, onUpdate, onEdit, onDelete }: { e
 
                 {(experiment.visualProof && experiment.visualProof.length > 0) ? (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                    {experiment.visualProof.map((proof, i) => {
+                    {experiment.visualProof.map((reference, i) => {
+                      const proof = displayEvidence(reference, experiment.visualProofUrls);
                       const removeBtn = (
                         <button
                           onClick={(e) => { e.stopPropagation(); handleRemove(i); }}
@@ -827,10 +830,6 @@ const App: React.FC = () => {
         endDate: new Date().toISOString().split('T')[0]
       });
       // Notificación por correo si el experimento resultó Winner (fire-and-forget).
-      if (pendingStatus === 'Finished - Winner') {
-        const exp = experiments.find(e => e.id === pendingExperimentId);
-        if (exp) void notifyExperimentWinner(exp.owner.name, exp.title);
-      }
       setIsLearningModalOpen(false);
       setPendingExperimentId(null);
       setPendingStatus(null);
@@ -937,6 +936,7 @@ const App: React.FC = () => {
       title: formData.title,
       status: formData.status,
       owner: { name: selectedMember.name, avatar: selectedMember.avatar },
+      ownerId: selectedMember.id,
       hypothesis: formData.hypothesis,
       observation: formData.observation,
       problem: formData.problem,

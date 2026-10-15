@@ -59,6 +59,7 @@ export interface Experiment {
   title: string;
   status: Status;
   owner: { name: string; avatar: string };
+  ownerId?: string;
   hypothesis: string;
   impact: number;
   confidence: number;
@@ -72,7 +73,8 @@ export interface Experiment {
   testUrl?: string;
   keyLearnings?: string;
   verdict?: string;
-  visualProof?: string[];
+  visualProof?: string[]; // Persistent references; never signed URLs.
+  visualProofUrls?: Record<string, string | null>; // Presentation only.
   observation?: string;
   problem?: string;
   source?: string;
