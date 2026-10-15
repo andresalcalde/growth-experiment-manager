@@ -184,17 +184,21 @@ try {
     await denied('viewer no sube evidencia',`INSERT INTO storage.objects(bucket_id,name,owner_id) VALUES('experiment-evidence','${project(1)}/attack','${user(3)}')`);
   });
   await asUser(user(3),async () => {
-    await db.query('INSERT INTO activity_log(user_id,action) VALUES($1,$2)',[user(3),'own']);
+    await denied('viewer no registra actividad sin proyecto',`INSERT INTO activity_log(user_id,action) VALUES('${user(3)}','own')`);
+    await denied('viewer no registra actividad en su proyecto',`INSERT INTO activity_log(user_id,project_id,action) VALUES('${user(3)}','${project(1)}','own')`);
     await denied('actividad ajena no insertable',`INSERT INTO activity_log(user_id,action) VALUES('${user(1)}','fake')`);
     await empty('actividad propia append-only UPDATE',"UPDATE activity_log SET action='fake' RETURNING *");
     await empty('actividad propia append-only DELETE','DELETE FROM activity_log RETURNING *');
-    pass('viewer puede registrar actividad propia sin ampliar lectura');
+    pass('viewer no escribe actividad');
   });
   await asUser(user(1),async () => {
     await empty('miembro no lee actividad de otro','SELECT * FROM activity_log');
     const team='40000000-0000-0000-0000-000000000001';
     assert.equal((await db.query('SELECT lead_list_my_teams() AS data')).rows[0].data.length,1);
     await db.query(`INSERT INTO activity_log(user_id,project_id,action) VALUES('${user(1)}','${project(1)}','own')`);
+    await denied('actividad en proyecto ajeno no insertable',`INSERT INTO activity_log(user_id,project_id,action) VALUES('${user(1)}','${project(2)}','experiment_deleted')`);
+    await denied('actividad con fecha futura no insertable',`INSERT INTO activity_log(user_id,project_id,action,created_at) VALUES('${user(1)}','${project(1)}','x','2099-01-01')`);
+    await denied('actividad sin proyecto solo superadmin',`INSERT INTO activity_log(user_id,action) VALUES('${user(1)}','role_changed')`);
     assert.equal((await db.query('SELECT lead_team_activity($1) AS data',[team])).rows[0].data.length,1);
     assert.equal((await db.query('SELECT lead_team_projects($1) AS data',[team])).rows[0].data.length,1);
     pass('RPCs lead reales conservan acceso SECURITY DEFINER');
@@ -239,7 +243,7 @@ try {
     pass('intentos fallidos consumen cuota de invitacion');
   });
   await asUser(user(4),async () => {
-    assert.equal((await db.query('SELECT count(*)::int AS n FROM activity_log')).rows[0].n,2);
+    assert.equal((await db.query('SELECT count(*)::int AS n FROM activity_log')).rows[0].n,1);
     pass('panel Uso superadmin conserva SELECT completo');
   });
   await asUser(user(1),async () => {

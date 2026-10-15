@@ -31,7 +31,8 @@ beforeEach(()=>{
   experiment:{id,project_id:'project',owner_id:'owner',status:'Finished - Winner',title:'<img src=x onerror=alert(1)>'},
   profile:{global_role:'user'},write:true,quota:true,notification:'reserved',paths:['project/experiment/proof.png'],
   prefs:{volume:'all',notify_winner:true},
-  query({table}){return {data:table==='profiles'?state.profile:state.experiment,error:null};},
+  member:{user_id:'owner'},
+  query({table}){return {data:table==='profiles'?state.profile:table==='project_members'?state.member:state.experiment,error:null};},
   rpc(name){return {error:null,data:({gh_project_write:state.write,gh_reserve_ai_usage:state.quota,
    gh_reserve_notification:state.notification,get_notification_preference:state.prefs,gh_library_evidence_paths:state.paths})[name]};},
  };
@@ -83,6 +84,11 @@ test('notification honors opt-out and unconfirmed owner email without consuming 
  state.prefs={volume:'all',notify_winner:true};state.recipient.email_confirmed_at=null;
  assert.equal((await request(notify,notification)).body.skipped,true);
  assert.equal(state.fetches.length,0);assert.ok(!state.reservations.some(r=>r.name==='gh_reserve_notification'));
+});
+test('notification skips an owner who is no longer a project member',async()=>{
+ state.member=null;assert.equal((await request(notify,notification)).body.skipped,true);
+ assert.equal(state.fetches.length,0);assert.ok(!state.reservations.some(r=>r.name==='gh_reserve_notification'));
+ assert.ok(state.queries.some(q=>q.table==='project_members'&&q.key!=='anon'));
 });
 test('notification DB quota, dedupe and backend errors prevent provider requests',async()=>{
  state.notification='quota';assert.equal((await request(notify,notification)).code,429);

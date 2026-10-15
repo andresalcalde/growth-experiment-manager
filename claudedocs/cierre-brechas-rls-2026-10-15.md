@@ -22,17 +22,27 @@ Estado: puntos 1-5 corregidos y checks locales completos (107 checks SQL, 26/26 
 
 | Comando | Resultado |
 |---|---|
-| `node scripts/verify-rls-local.mjs` | Exit 0, 107 checks, sin red. Incluye los nuevos negativos/positivos, idempotencia, captura/rollback exactos, default owner_id preexistente, padre particionado, definers con metadata, cuotas, RPCs lead y conversion para frontend anterior. |
-| `node --experimental-strip-types --experimental-test-module-mocks --test scripts/security-endpoints.test.mjs scripts/security-evidence.test.mjs scripts/security-runner.test.mjs` | Reintento exit 0, 26/26: endpoints 15, evidencia/NSM/owners 6, runner 5. Primer intento: 24 pasan y falla el archivo evidencia por cleanup del mock antes de completar un import asincrono agregado. Unica correccion: cargar el provider antes de registrar tests. El mock no tiene localStorage: el callback captura y registra esa advertencia; no es una prueba de navegador. |
+| `node scripts/verify-rls-local.mjs` | Exit 0, 112 checks (coordinador, tras la revisión final), sin red. Incluye los nuevos negativos/positivos, idempotencia, captura/rollback exactos, default owner_id preexistente, padre particionado, definers con metadata, cuotas, RPCs lead y conversion para frontend anterior. |
+| `node --experimental-strip-types --experimental-test-module-mocks --test scripts/security-endpoints.test.mjs scripts/security-evidence.test.mjs scripts/security-runner.test.mjs` | Exit 0, 27/27 tras la revisión final (endpoints 16, con dueño que ya no es miembro). Ronda del worker: 26/26: endpoints 15, evidencia/NSM/owners 6, runner 5. Primer intento: 24 pasan y falla el archivo evidencia por cleanup del mock antes de completar un import asincrono agregado. Unica correccion: cargar el provider antes de registrar tests. El mock no tiene localStorage: el callback captura y registra esa advertencia; no es una prueba de navegador. |
 | `.\node_modules\.bin\tsc.cmd --noEmit -p tsconfig.app.json` | Sin diagnosticos, exit 0. |
 | `.\node_modules\.bin\tsc.cmd --noEmit -p tsconfig.node.json` | Sin diagnosticos, exit 0. Incluye API. |
 | `npm.cmd run build --cache "$env:TEMP\gh-npm-cache"` | Exit 0, Vite 7.3.1, 1783 modulos. Advertencia chunk JS 767.57 kB. |
 | `node scripts/verify-security-lint.mjs` | Exit 0: 2 archivos TS cambiados frente a HEAD; base 19 errores, actual 19, cero diagnosticos nuevos. No equivale a lint global limpio. |
 | `git diff --check` | Exit 0. |
 
+## Correcciones tras la revisión final (Astra, 15-oct)
+
+- Notificación: el servidor exige que el dueño siga siendo miembro del proyecto antes de reservar cuota o enviar (`api/send-notification.ts`).
+- activity_log: INSERT exige permiso de escritura en el proyecto (sin proyecto, solo superadmin) y `created_at` entre 5 min atrás y 1 min adelante. Los viewers no registran actividad.
+- La migración bloquea las 9 tablas y `storage.objects` antes de capturar el catálogo.
+- `20261015_revertir_visual_proof.sql` codifica también `?`.
+- Mensajes de error de la API con tildes correctas.
+
 ## Pendientes concretos que impiden cerrar esta ronda
 
-- Revision y aceptacion del coordinador sobre estos cambios locales; no declarada por este worker.
+- Enumeración por efectos observables (MEDIO, decisión de producto): invitar crea la membresía al instante, así que el perfil del invitado queda visible para quien invita. Respuesta uniforme y cuota de 20/hora mitigan pero no eliminan el oráculo. Cerrarlo requiere un flujo de invitación pendiente que el invitado acepte.
+- La transacción toma ACCESS EXCLUSIVE sobre `storage.objects` (todos los buckets) y las 9 tablas mientras dura: aplicar en ventana de bajo tráfico. `lock_timeout` acota la espera, no la retención.
+
 - Ensayo autorizado en clon completo de Supabase: permisos DDL de Storage, triggers reales de alta/ultimo superadmin, politicas mixtas y rollback. PGlite no acredita esas condiciones ni el comportamiento HTTP de Storage.
 - Validacion de navegador/datos reales: alta/invitacion sin profiles, importacion y owner por UUID con nombres duplicados; el drawer legacy conserva resolucion por nombre sin enviar cuando es ambiguo. Completar el checklist posterior solo tras GO especifico.
 
