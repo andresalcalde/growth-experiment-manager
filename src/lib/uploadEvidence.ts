@@ -1,50 +1,56 @@
-import { supabase } from './supabase';
+﻿import { supabase } from './supabase';
 
 const BUCKET = 'experiment-evidence';
+const PREFIX = `storage://${BUCKET}/`;
 
-// Normaliza el nombre del archivo para una key segura en Storage.
 function safeName(name: string): string {
-  const dot = name.lastIndexOf('.');
-  const base = (dot > 0 ? name.slice(0, dot) : name)
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')   // quita acentos
-    .replace(/[^a-zA-Z0-9-_]+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .toLowerCase()
-    .slice(0, 60) || 'archivo';
-  const ext = dot > 0 ? name.slice(dot + 1).toLowerCase().replace(/[^a-z0-9]/g, '') : '';
-  return ext ? `${base}.${ext}` : base;
+  return name.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]+/g, '-').slice(-100) || 'archivo';
 }
 
-/**
- * Sube un archivo de evidencia de un experimento y devuelve su URL pública.
- * Acepta cualquier tipo de archivo (imágenes, PDF, docs, etc.).
- */
-export async function uploadExperimentEvidence(
-  experimentId: string,
-  file: File
-): Promise<string> {
-  const path = `${experimentId}/${Date.now()}-${safeName(file.name)}`;
+function evidencePath(value: string): string | null {
+  if (value.startsWith(PREFIX)) return value.slice(PREFIX.length);
+  // Legacy public URLs and previously signed URLs both resolve to the same key.
+  const match = value.match(/\/object\/(?:public|sign|authenticated)\/experiment-evidence\/([^?#]+)/);
+  if (!match) return null;
+  try { return decodeURIComponent(match[1]); } catch { return null; }
+}
 
-  const { error } = await supabase.storage
-    .from(BUCKET)
-    .upload(path, file, { upsert: false, contentType: file.type || undefined });
+/** Store an enduring key, never an expiring signature, in visual_proof. */
+export function evidenceReference(value: string): string {
+  const path = evidencePath(value);
+  return path ? `${PREFIX}${path}` : value;
+}
 
+/** Re-sign on every load; unavailable private evidence is omitted. */
+export async function resolveEvidence(values: string[] = []): Promise<string[]> {
+  const urls = await Promise.all(values.map(async value => {
+    const path = evidencePath(value);
+    if (!path) return value;
+    const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 3600);
+    return !error && data ? data.signedUrl : null;
+  }));
+  return urls.filter((value): value is string => value !== null);
+}
+
+export async function uploadExperimentEvidence(experimentId: string, file: File): Promise<string> {
+  // Derive project from the authorized experiment rather than trusting UI state.
+  const { data: experiment, error: lookupError } = await supabase.from('experiments')
+    .select('project_id').eq('id', experimentId).single();
+  if (lookupError || !experiment) throw lookupError || new Error('Experimento no accesible.');
+  const path = `${experiment.project_id}/${experimentId}/${crypto.randomUUID()}-${safeName(file.name)}`;
+  const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
+    upsert: false, contentType: file.type || undefined,
+  });
   if (error) throw error;
-
-  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
-  return data.publicUrl;
+  const { data, error: signError } = await supabase.storage.from(BUCKET).createSignedUrl(path, 3600);
+  if (signError || !data) throw signError || new Error('No se pudo firmar la evidencia.');
+  return data.signedUrl;
 }
 
-/**
- * Elimina un archivo de evidencia a partir de su URL pública.
- * No-op si la URL no pertenece a este bucket (p. ej. evidencia legacy en base64).
- */
 export async function deleteExperimentEvidence(url: string): Promise<void> {
-  const marker = `/object/public/${BUCKET}/`;
-  const idx = url.indexOf(marker);
-  if (idx === -1) return;
-  const path = decodeURIComponent(url.slice(idx + marker.length).split('?')[0]);
+  const path = evidencePath(url);
   if (!path) return;
-  await supabase.storage.from(BUCKET).remove([path]);
+  const { error } = await supabase.storage.from(BUCKET).remove([path]);
+  if (error) throw error;
 }

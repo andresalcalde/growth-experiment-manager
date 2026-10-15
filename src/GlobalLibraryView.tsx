@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Book, Search, X, Target } from 'lucide-react';
 import { supabase } from './lib/supabase';
+import { resolveEvidence } from './lib/uploadEvidence';
 import { useAuth } from './contexts/AuthContext';
 import { Lightbox, type LightboxItem } from './components/Lightbox';
 
@@ -57,14 +58,20 @@ export const GlobalLibraryView: React.FC = () => {
       console.error('Error loading global library:', error);
       setError('No se pudo cargar la biblioteca global.');
     } else {
-      setRows((data as GlobalExperimentRow[]) || []);
+      setRows(await Promise.all(((data as GlobalExperimentRow[]) || []).map(async row => ({
+        ...row, visual_proof: await resolveEvidence(row.visual_proof || []),
+      }))));
     }
     setLoading(false);
   }, []);
 
   // Carga inicial (fetch on mount); el setState ocurre tras el await.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadData();
+    const timer = setInterval(() => { void loadData(); }, 45 * 60_000);
+    return () => clearInterval(timer);
+  }, [loadData]);
 
   const brands = useMemo(() => {
     const set = new Set(rows.map(r => r.project_name));
