@@ -7,14 +7,14 @@ import { supabase } from './supabase';
  * configurado), NO debe romper el flujo de la app — se traga el error.
  * El envío real lo hace la función serverless `api/send-notification.ts`.
  */
-async function notifyEmail(to: string | string[], subject: string, html: string): Promise<void> {
+async function notifyEmail(to: string | string[], experimentTitle: string): Promise<void> {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
     await fetch('/api/send-notification', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-      body: JSON.stringify({ to, subject, html }),
+      body: JSON.stringify({ to, type: 'experiment_winner', experimentTitle }),
     });
   } catch {
     /* fire-and-forget */
@@ -56,7 +56,6 @@ export async function notifyExperimentWinner(ownerName: string, experimentTitle:
   if (rcpt.prefs.volume === 'none' || !rcpt.prefs.notify_winner) return;
   await notifyEmail(
     rcpt.email,
-    `🏆 Tu experimento fue un Winner: ${experimentTitle}`,
-    `<h2>¡Felicitaciones!</h2><p>Tu experimento <strong>${experimentTitle}</strong> fue marcado como <strong>Winner</strong> en Growth Hub.</p>`,
+    experimentTitle,
   );
 }

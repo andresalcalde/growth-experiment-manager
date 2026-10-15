@@ -1,78 +1,56 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { authenticatedUser, escapeHtml } from './_lib/security.ts';
 
-/**
- * Envío de notificaciones por correo (punto 7 del feedback Growth Lab).
- *
- * Usa la API REST de Resend (sin SDK) con `process.env.RESEND_API_KEY`. El
- * remitente se toma de `process.env.NOTIFICATIONS_FROM` (ej.
- * "Growth Hub <no-reply@tudominio.com>"). Requiere un token de sesión Supabase
- * válido para no ser un proxy de correo abierto.
- *
- * Body: { to: string | string[], subject: string, html: string }
- *
- * REQUIERE configurar en Vercel: RESEND_API_KEY y NOTIFICATIONS_FROM.
- */
+// Simple per-instance limiter; instances do not share these windows.
+const windows = new Map<string, { until: number; count: number }>();
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Method not allowed' });
-    return;
-  }
-
-  const resendKey = process.env.RESEND_API_KEY;
-  const from = process.env.NOTIFICATIONS_FROM;
-  if (!resendKey || !from) {
-    res.status(500).json({ error: 'Notificaciones no configuradas (RESEND_API_KEY / NOTIFICATIONS_FROM).' });
-    return;
-  }
-
-  // --- Validación de sesión Supabase (igual que ai-assistant) ---
-  const supabaseUrl = process.env.VITE_SUPABASE_URL;
-  const supabaseAnon = process.env.VITE_SUPABASE_ANON_KEY;
-  if (!supabaseUrl || !supabaseAnon) {
-    res.status(500).json({ error: 'Configuración de Supabase ausente en el servidor.' });
-    return;
-  }
-  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
-  if (!token) {
-    res.status(401).json({ error: 'Falta el token de sesión.' });
-    return;
-  }
-  try {
-    const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
-      headers: { Authorization: `Bearer ${token}`, apikey: supabaseAnon },
-    });
-    if (!userRes.ok) {
-      res.status(401).json({ error: 'Sesión inválida o expirada.' });
-      return;
-    }
-  } catch {
-    res.status(401).json({ error: 'No se pudo validar la sesión.' });
-    return;
-  }
-
-  // --- Body defensivo ---
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  const auth = await authenticatedUser(req);
+  if (!auth) return res.status(401).json({ error: 'Sesión inválida.' });
   const body = (req.body ?? {}) as Record<string, unknown>;
-  const to = Array.isArray(body.to)
-    ? (body.to as unknown[]).filter((x): x is string => typeof x === 'string')
-    : typeof body.to === 'string' ? [body.to] : [];
-  const subject = typeof body.subject === 'string' ? body.subject : '';
-  const html = typeof body.html === 'string' ? body.html : '';
-  if (to.length === 0 || !subject || !html) {
-    res.status(400).json({ error: 'Faltan campos: to, subject, html.' });
-    return;
+  const to = typeof body.to === 'string' ? [body.to] : body.to;
+  if (!Array.isArray(to) || !to.length || to.length > 10 ||
+      !to.every((value): value is string => typeof value === 'string' && /^[^\s@<>]+@[^\s@<>]+$/.test(value)) ||
+      body.type !== 'experiment_winner' || typeof body.experimentTitle !== 'string' ||
+      !body.experimentTitle.trim() || body.experimentTitle.length > 300 || 'html' in body) {
+    return res.status(400).json({ error: 'Notificación inválida.' });
   }
-
+  // Check shared projects explicitly, even for a superadmin caller.
+  const { data: memberships, error: ownError } = await auth.client.from('project_members')
+    .select('project_id').eq('user_id', auth.user.id);
+  if (ownError) return res.status(503).json({ error: 'No se pudo autorizar el envío.' });
+  const { data: profiles, error } = await auth.client.from('profiles').select('id,email').in('email', to);
+  if (error || !profiles || profiles.length !== new Set(to).size) {
+    return res.status(403).json({ error: 'Destinatario no autorizado.' });
+  }
+  const projectIds = (memberships || []).map(row => row.project_id);
+  for (const profile of profiles) {
+    if (profile.id === auth.user.id) continue;
+    if (!projectIds.length) return res.status(403).json({ error: 'Destinatario no autorizado.' });
+    const { data, error: memberError } = await auth.client.from('project_members')
+      .select('user_id').eq('user_id', profile.id).in('project_id', projectIds).limit(1);
+    if (memberError || !data?.length) return res.status(403).json({ error: 'Destinatario no autorizado.' });
+  }
+  const now = Date.now();
+  for (const [id, window] of windows) if (window.until <= now) windows.delete(id);
+  const window = windows.get(auth.user.id) || { until: now + 60_000, count: 0 };
+  if (window.count >= 5) return res.status(429).json({ error: 'Máximo 5 notificaciones por minuto.' });
+  window.count++;
+  windows.set(auth.user.id, window);
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return res.status(503).json({ error: 'Correo no configurado.' });
+  const title = escapeHtml(body.experimentTitle);
   try {
-    const r = await fetch('https://api.resend.com/emails', {
+    const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${resendKey}` },
-      body: JSON.stringify({ from, to, subject, html }),
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+      body: JSON.stringify({
+        from: 'Growth Hub <no-reply@send.mmglatam.com>', to,
+        subject: `🏆 Tu experimento fue un Winner: ${body.experimentTitle.replace(/[\r\n]/g, ' ')}`,
+        html: `<h2>¡Felicitaciones!</h2><p>Tu experimento <strong>${title}</strong> fue marcado como <strong>Winner</strong> en Growth Hub.</p>`,
+      }),
     });
-    const text = await r.text();
-    res.status(r.status);
-    res.setHeader('Content-Type', 'application/json');
-    res.send(text);
-  } catch {
-    res.status(502).json({ error: 'No se pudo contactar al proveedor de correo.' });
-  }
+    return res.status(response.ok ? 200 : 502).json({ success: response.ok });
+  } catch { return res.status(502).json({ error: 'No se pudo enviar el correo.' }); }
 }
